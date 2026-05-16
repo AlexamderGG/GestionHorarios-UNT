@@ -1,0 +1,193 @@
+-- ============================================================
+-- MIGRACION 001: Esquema inicial del sistema de horarios UNT
+-- ============================================================
+-- Tablas: docentes, cursos, aulas, laboratorios, 
+--          asignacion_docente_curso, configuracion, horarios,
+--          restricciones_horarias
+--
+-- Nota: Se usa SERIAL para IDs autoincrementales (PostgreSQL).
+--       Se asumen bloques de 2 horas (120 min), de 7am a 10pm.
+-- ============================================================
+
+-- --------------------------------------------------------------
+-- 1. Tabla: docentes
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS docentes (
+    id SERIAL PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    telefono VARCHAR(20),
+    
+    -- Categoría académica
+    categoria VARCHAR(50) NOT NULL CHECK (categoria IN (
+        'Principal', 'Asociado', 'Auxiliar', 'Jefe de practica'
+    )),
+    
+    -- Tipo de contrato/nombramiento
+    tipo_nombramiento VARCHAR(50) NOT NULL CHECK (tipo_nombramiento IN (
+        'Nombrado', 'Contratado'
+    )),
+    
+    -- Antigüedad en años (dentro de la misma categoría)
+    antiguedad_anios INTEGER NOT NULL DEFAULT 0 CHECK (antiguedad_anios >= 0),
+    
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE docentes IS 'Personal docente de la Escuela de Ingenieria de Sistemas';
+COMMENT ON COLUMN docentes.categoria IS 'Jerarquia: Principal > Asociado > Auxiliar > Jefe de practica';
+COMMENT ON COLUMN docentes.antiguedad_anios IS 'Usado para ordenar prioridad dentro de la misma categoria';
+
+-- --------------------------------------------------------------
+-- 2. Tabla: cursos
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cursos (
+    id SERIAL PRIMARY KEY,
+    codigo VARCHAR(20) UNIQUE NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    creditos INTEGER NOT NULL DEFAULT 3,
+    semestre INTEGER NOT NULL CHECK (semestre BETWEEN 1 AND 10),
+    ciclo VARCHAR(20) NOT NULL DEFAULT '2024-1',
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------------
+-- 3. Tabla: aulas
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS aulas (
+    id SERIAL PRIMARY KEY,
+    codigo VARCHAR(20) UNIQUE NOT NULL,
+    nombre VARCHAR(100),
+    capacidad INTEGER NOT NULL DEFAULT 40,
+    ubicacion VARCHAR(100),
+    tipo VARCHAR(50) DEFAULT 'Teoria', -- Teoria, Auditorio, etc.
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------------
+-- 4. Tabla: laboratorios
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS laboratorios (
+    id SERIAL PRIMARY KEY,
+    codigo VARCHAR(20) UNIQUE NOT NULL,
+    nombre VARCHAR(100),
+    capacidad INTEGER NOT NULL DEFAULT 25,
+    ubicacion VARCHAR(100),
+    especialidad VARCHAR(100), -- Redes, Programacion, etc.
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------------
+-- 5. Tabla: configuracion
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS configuracion (
+    id SERIAL PRIMARY KEY,
+    clave VARCHAR(100) UNIQUE NOT NULL,
+    valor TEXT NOT NULL,
+    descripcion TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Valores por defecto de configuracion
+INSERT INTO configuracion (clave, valor, descripcion) VALUES
+('dias_habiles', 'Lunes,Martes,Miercoles,Jueves,Viernes', 'Dias de la semana habiles separados por coma'),
+('hora_inicio', '07:00', 'Hora de inicio de jornada (HH:MM)'),
+('hora_fin', '22:00', 'Hora de fin de jornada (HH:MM)'),
+('duracion_bloque', '120', 'Duracion de cada bloque de clase en minutos (ej: 120 = 2 horas)'),
+('bloques_por_dia', '6', 'Cantidad de bloques teoricos por dia (7-9, 9-11, 11-13, 14-16, 16-18, 18-20)')
+ON CONFLICT (clave) DO NOTHING;
+
+-- --------------------------------------------------------------
+-- 6. Tabla: asignacion_docente_curso
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
+    id SERIAL PRIMARY KEY,
+    docente_id INTEGER NOT NULL REFERENCES docentes(id) ON DELETE CASCADE,
+    curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+    
+    -- tipo de asignacion dentro del curso
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('Teoria', 'Laboratorio')),
+    
+    -- Ambiente preferido (puede ser aula o laboratorio segun tipo)
+    ambiente_preferido_id INTEGER,
+    -- Nota: No se usa FK directa porque puede referir a aulas o laboratorios.
+    --        Se valida en la aplicacion (backend).
+    
+    semestre_asignacion VARCHAR(20) DEFAULT '2024-1',
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(docente_id, curso_id, tipo, semestre_asignacion)
+);
+
+COMMENT ON TABLE asignacion_docente_curso IS 'Relaciona docentes con cursos que dictan (teoria o lab)';
+
+-- --------------------------------------------------------------
+-- 7. Tabla: horarios
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS horarios (
+    id SERIAL PRIMARY KEY,
+    
+    -- Referencias
+    asignacion_id INTEGER NOT NULL REFERENCES asignacion_docente_curso(id) ON DELETE CASCADE,
+    
+    -- Fecha/periodo academico
+    semestre VARCHAR(20) NOT NULL DEFAULT '2024-1',
+    
+    -- Dia y hora
+    dia VARCHAR(20) NOT NULL CHECK (dia IN (
+        'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'
+    )),
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    
+    -- Ambiente asignado (puede ser aula o laboratorio)
+    aula_id INTEGER REFERENCES aulas(id) ON DELETE SET NULL,
+    laboratorio_id INTEGER REFERENCES laboratorios(id) ON DELETE SET NULL,
+    
+    -- Control de estado
+    generado_automaticamente BOOLEAN NOT NULL DEFAULT TRUE,
+    editado_manualmente BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Restricciones de integridad temporal
+    CONSTRAINT chk_horario_rango CHECK (hora_inicio < hora_fin)
+);
+
+COMMENT ON TABLE horarios IS 'Horarios finales asignados tras ejecutar el algoritmo o edicion manual';
+
+-- --------------------------------------------------------------
+-- 8. Tabla: restricciones_horarias (opcional, para futuro)
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS restricciones_horarias (
+    id SERIAL PRIMARY KEY,
+    docente_id INTEGER NOT NULL REFERENCES docentes(id) ON DELETE CASCADE,
+    dia VARCHAR(20) NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    tipo_restriccion VARCHAR(50) DEFAULT 'No_disponible', -- No_disponible, Preferencia, etc.
+    motivo TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------------
+-- Indices recomendados para rendimiento
+-- --------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_docentes_categoria ON docentes(categoria);
+CREATE INDEX IF NOT EXISTS idx_docentes_tipo ON docentes(tipo_nombramiento);
+CREATE INDEX IF NOT EXISTS idx_docentes_activo ON docentes(activo);
+
+CREATE INDEX IF NOT EXISTS idx_horarios_dia ON horarios(dia);
+CREATE INDEX IF NOT EXISTS idx_horarios_aula ON horarios(aula_id);
+CREATE INDEX IF NOT EXISTS idx_horarios_lab ON horarios(laboratorio_id);
+CREATE INDEX IF NOT EXISTS idx_horarios_semestre ON horarios(semestre);
+CREATE INDEX IF NOT EXISTS idx_asignacion_docente ON asignacion_docente_curso(docente_id);
+CREATE INDEX IF NOT EXISTS idx_asignacion_curso ON asignacion_docente_curso(curso_id);

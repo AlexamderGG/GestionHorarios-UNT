@@ -1,55 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const { success } = require('../utils/responseHelper');
+const AulaController = require('../controllers/aula.controller');
 
 /**
  * @route   GET /api/aulas
- * @desc    Listar todas las aulas
+ * @desc    Listar todas las aulas activas
  * @module  Modulo 1 - Gestion de datos maestros
  */
-router.get('/', (req, res) => {
-  // TODO: Implementar en Modulo 1
-  success(res, [], 'Endpoint de aulas - pendiente de implementacion');
-});
+router.get('/', AulaController.getAll);
 
 /**
  * @route   GET /api/aulas/:id
  * @desc    Obtener un aula por ID
  * @module  Modulo 1
  */
-router.get('/:id', (req, res) => {
-  // TODO: Implementar en Modulo 1
-  success(res, null, 'Endpoint de aula por ID - pendiente de implementacion');
-});
+router.get('/:id', AulaController.getById);
 
 /**
  * @route   POST /api/aulas
  * @desc    Crear un nuevo aula
  * @module  Modulo 1
+ * @body    { codigo, nombre, capacidad, ubicacion, tipo }
  */
-router.post('/', (req, res) => {
-  // TODO: Implementar en Modulo 1
-  success(res, req.body, 'Aula creada (mock) - pendiente de implementacion', 201);
-});
+router.post('/', AulaController.create);
 
 /**
  * @route   PUT /api/aulas/:id
  * @desc    Actualizar un aula
  * @module  Modulo 1
  */
-router.put('/:id', (req, res) => {
-  // TODO: Implementar en Modulo 1
-  success(res, req.body, 'Aula actualizada (mock) - pendiente de implementacion');
-});
+router.put('/:id', AulaController.update);
 
 /**
  * @route   DELETE /api/aulas/:id
- * @desc    Eliminar un aula
+ * @desc    Eliminar (soft-delete) un aula
  * @module  Modulo 1
  */
-router.delete('/:id', (req, res) => {
-  // TODO: Implementar en Modulo 1
-  success(res, null, 'Aula eliminada (mock) - pendiente de implementacion');
-});
+router.delete('/:id', AulaController.delete);
 
 module.exports = router;

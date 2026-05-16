@@ -146,23 +146,37 @@ El frontend estará disponible en: `http://localhost:5173`
 
 ---
 
+## Estado de Implementación
+
+| Modulo | Estado | Responsable | Rama |
+|--------|--------|-------------|------|
+| **Modulo 1** | Completado | Eduardo | `modulo1` |
+| **Modulo 2** | Pendiente | Jersson | `modulo2/algoritmo` |
+| **Modulo 3** | Pendiente | Gian Franco | `modulo3/dashboard-frontend` |
+| **Modulo 4** | Pendiente | Alexander | `modulo4/reportes-frontend` |
+
+Consulta `API_CONTRACTS.md` para los contratos de API y `MODULO1.md` para los detalles del Modulo 1 implementado.
+
+---
+
 ## División de Módulos (Trabajo Paralelo)
 
 Este proyecto está diseñado para ser desarrollado en paralelo por 4 programadores. Consulta `API_CONTRACTS.md` para los contratos de API.
 
-### Módulo 1 – Gestión de datos maestros y configuración (Backend)
+### Módulo 1 – Gestión de datos maestros y configuración (Backend) ✅ COMPLETADO
 
 **Responsable:** _Eduardo_  
-**Rama sugerida:** `modulo1/gestion-datos`
+**Rama:** `modulo1`
 
-**Tareas:**
+**Implementado:**
 
-- Implementar CRUD completo en backend para: `docentes`, `cursos`, `aulas`, `laboratorios`.
-- Implementar endpoints de `asignaciones` (asignar curso a docente con tipo y ambiente preferido).
-- Implementar endpoint de `configuracion` (días hábiles, horas, duración de bloques).
-- Validaciones de negocio (ej. no duplicar asignaciones, validar capacidad de aulas).
-- Crear seeds adicionales si es necesario.
-- **Archivos principales a modificar:** `backend/src/routes/*.routes.js`, `backend/src/controllers/`, `backend/src/models/`
+- CRUD completo para `docentes`, `cursos`, `aulas`, `laboratorios` con validaciones y soft-delete.
+- Endpoints de `asignaciones` (asignar curso a docente con tipo y ambiente preferido), con verificacion de duplicados y existencia de entidades relacionadas.
+- Endpoint de `configuracion` (días hábiles, horas, duración de bloques) con parseo de tipos.
+- Modelos SQL directos usando `pg` pool.
+- Script de prueba automatico: `node backend/tests/test_modulo1.js`
+
+**Documentación:** Ver `MODULO1.md`
 
 ---
 

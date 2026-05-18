@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { Calendar, Trash2, MapPin, User, Inbox, Clock } from 'lucide-react';
 
 const DIAS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 
@@ -61,7 +62,7 @@ const MiHorario = () => {
       const m1 = String(i % 60).padStart(2, '0');
       const h2 = String(Math.floor((i + duracion) / 60)).padStart(2, '0');
       const m2 = String((i + duracion) % 60).padStart(2, '0');
-      bloques.push(`${h1}:${m1} - ${h2}:${m2}`);
+      bloques.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
     }
     return bloques;
   };
@@ -75,82 +76,157 @@ const MiHorario = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3"></div>
+      <div className="animate-fade-in">
+        <div className="skeleton h-7 w-36 mb-6" />
+        <div className="card overflow-hidden">
+          <div className="flex">
+            <div className="w-36 p-3">
+              {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-14 w-full mb-1 rounded" />)}
+            </div>
+            {DIAS.map((_, i) => (
+              <div key={i} className="flex-1 p-1.5">
+                {[...Array(5)].map((_, j) => <div key={j} className="skeleton h-14 w-full mb-1 rounded" />)}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">Mi Horario</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary-600" />
+            Mi Horario
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            {horarios.length} clase{horarios.length !== 1 ? 's' : ''} asignada{horarios.length !== 1 ? 's' : ''}
+          </p>
+        </div>
         {demoEstado?.turnoActual && (
-          <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-            demoEstado.turnoActual.docente_id === user?.id
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-amber-50 text-amber-700 border border-amber-200'
-          }`}>
-            {demoEstado.turnoActual.docente_id === user?.id
-              ? '🟢 Tu turno — Puedes seleccionar'
-              : `🟡 Esperando turno (${demoEstado.turnoActual.nombre})`}
+          <div className={`badge ${demoEstado.turnoActual.docente_id === user?.id ? 'badge-success' : 'badge-warning'}`}>
+            {demoEstado.turnoActual.docente_id === user?.id ? 'Tu turno — Puedes seleccionar' : `Esperando turno (${demoEstado.turnoActual.nombre})`}
           </div>
         )}
       </div>
 
       {horarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-neutral-200 p-12 text-center text-neutral-400">
-          No tienes horarios asignados. Espera a que el administrador genere los horarios o selecciona desde "Mis Cursos".
+        <div className="card">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+              <Inbox className="w-8 h-8 text-neutral-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-neutral-800 mb-1">Sin horarios asignados</h3>
+            <p className="text-sm text-neutral-500 text-center max-w-md">
+              No tienes horarios asignados. Espera a que el administrador genere los horarios o selecciona desde &quot;Mis Cursos&quot;.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow border border-neutral-200 overflow-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-neutral-100">
-                <th className="border border-neutral-200 p-3 text-left font-semibold text-neutral-700 w-36 sticky left-0 bg-neutral-100 z-10">
-                  Bloque
-                </th>
-                {DIAS.map(dia => (
-                  <th key={dia} className="border border-neutral-200 p-3 text-center font-semibold text-neutral-700 min-w-[160px]">
-                    {dia}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bloques.map((bloque, idx) => (
-                <tr key={bloque} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/50'}>
-                  <td className="border border-neutral-200 p-2 text-neutral-600 font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
-                    {bloque}
-                  </td>
-                  {DIAS.map(dia => {
-                    const key = `${dia}|${bloque.split(' - ')[0]}`;
-                    const h = horariosIndex[key];
-                    return (
-                      <td key={`${dia}-${bloque}`} className="border border-neutral-200 p-2 align-top">
-                        {h ? (
-                          <div className="bg-primary-50 border border-primary-200 rounded p-2 text-xs">
-                            <p className="font-semibold text-primary-800">{h.curso?.codigo}</p>
-                            <p className="text-neutral-600">{h.curso?.nombre}</p>
-                            <p className="text-neutral-500 mt-1">
-                              {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
-                            </p>
+        <>
+          {/* Desktop Grid */}
+          <div className="hidden md:block card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50">
+                    <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-36 sticky left-0 bg-neutral-50 z-10">
+                      Bloque
+                    </th>
+                    {DIAS.map(dia => (
+                      <th key={dia} className="border-b border-r border-neutral-200 p-3 text-center text-xs font-semibold text-neutral-500 uppercase min-w-[160px] last:border-r-0">
+                        {dia}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bloques.map((bloque, idx) => (
+                    <tr key={bloque.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/30'}>
+                      <td className="border-b border-r border-neutral-200 p-3 text-neutral-600 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                        {bloque.label}
+                      </td>
+                      {DIAS.map(dia => {
+                        const key = `${dia}|${bloque.inicio}`;
+                        const h = horariosIndex[key];
+                        return (
+                          <td key={`${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 p-1.5 align-top last:border-r-0">
+                            {h ? (
+                              <div className="bg-primary-50/60 border-l-3 border-l-primary-500 rounded-lg p-2.5 group">
+                                <p className="text-xs font-semibold text-primary-800">{h.curso?.codigo}</p>
+                                <p className="text-xs text-neutral-600 truncate">{h.curso?.nombre}</p>
+                                <div className="flex items-center gap-1 mt-1.5">
+                                  <MapPin className="w-3 h-3 text-neutral-400" />
+                                  <span className="text-2xs text-neutral-500">
+                                    {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => eliminarHorario(h.id)}
+                                  className="mt-2 flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Eliminar
+                                </button>
+                              </div>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile List */}
+          <div className="md:hidden space-y-4">
+            {DIAS.map(dia => {
+              const horariosDelDia = horarios.filter(h => h.dia === dia);
+              if (horariosDelDia.length === 0) return null;
+              return (
+                <div key={dia} className="card overflow-hidden">
+                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+                    <h3 className="text-sm font-semibold text-neutral-800">{dia}</h3>
+                  </div>
+                  <div className="divide-y divide-neutral-100">
+                    {horariosDelDia
+                      .sort((a, b) => a.hora_inicio?.localeCompare(b.hora_inicio))
+                      .map(h => (
+                        <div key={h.id} className="p-3 flex items-start gap-3">
+                          <div className="flex-shrink-0 w-14 text-center pt-0.5">
+                            <p className="text-xs font-medium text-neutral-800">{h.hora_inicio?.slice(0, 5)}</p>
+                            <p className="text-xs text-neutral-400">{h.hora_fin?.slice(0, 5)}</p>
+                          </div>
+                          <div className="flex-1 bg-primary-50/60 border-l-3 border-l-primary-500 rounded-lg p-2.5">
+                            <p className="text-sm font-semibold text-primary-800">{h.curso?.codigo}</p>
+                            <p className="text-xs text-neutral-600">{h.curso?.nombre}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <MapPin className="w-3 h-3 text-neutral-400" />
+                              <span className="text-xs text-neutral-500">
+                                {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
+                              </span>
+                            </div>
                             <button
                               onClick={() => eliminarHorario(h.id)}
-                              className="mt-1 text-red-500 hover:text-red-700 text-[10px]"
+                              className="mt-2 flex items-center gap-1 text-danger-500 text-xs"
                             >
+                              <Trash2 className="w-3 h-3" />
                               Eliminar
                             </button>
                           </div>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

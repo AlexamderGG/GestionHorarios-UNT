@@ -1,0 +1,99 @@
+erDiagram
+    docentes {
+        SERIAL id PK
+        VARCHAR(100) nombres
+        VARCHAR(100) apellidos
+        VARCHAR(150) email UK
+        VARCHAR(20) telefono
+        VARCHAR(50) categoria
+        VARCHAR(50) tipo_nombramiento
+        INTEGER antiguedad_anios
+        BOOLEAN activo
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    cursos {
+        SERIAL id PK
+        VARCHAR(20) codigo UK
+        VARCHAR(150) nombre
+        INTEGER creditos
+        INTEGER semestre
+        VARCHAR(20) ciclo
+        BOOLEAN activo
+        TIMESTAMP created_at
+    }
+
+    aulas {
+        SERIAL id PK
+        VARCHAR(20) codigo UK
+        VARCHAR(100) nombre
+        INTEGER capacidad
+        VARCHAR(100) ubicacion
+        VARCHAR(50) tipo
+        BOOLEAN activa
+        TIMESTAMP created_at
+    }
+
+    laboratorios {
+        SERIAL id PK
+        VARCHAR(20) codigo UK
+        VARCHAR(100) nombre
+        INTEGER capacidad
+        VARCHAR(100) ubicacion
+        VARCHAR(100) especialidad
+        BOOLEAN activo
+        TIMESTAMP created_at
+    }
+
+    configuracion {
+        SERIAL id PK
+        VARCHAR(100) clave UK
+        TEXT valor
+        TEXT descripcion
+        TIMESTAMP updated_at
+    }
+
+    asignacion_docente_curso {
+        SERIAL id PK
+        INTEGER docente_id FK
+        INTEGER curso_id FK
+        VARCHAR(20) tipo
+        INTEGER ambiente_preferido_id
+        VARCHAR(20) semestre_asignacion
+        TEXT observaciones
+        TIMESTAMP created_at
+    }
+
+    horarios {
+        SERIAL id PK
+        INTEGER asignacion_id FK
+        VARCHAR(20) semestre
+        VARCHAR(20) dia
+        TIME hora_inicio
+        TIME hora_fin
+        INTEGER aula_id FK
+        INTEGER laboratorio_id FK
+        BOOLEAN generado_automaticamente
+        BOOLEAN editado_manualmente
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    restricciones_horarias {
+        SERIAL id PK
+        INTEGER docente_id FK
+        VARCHAR(20) dia
+        TIME hora_inicio
+        TIME hora_fin
+        VARCHAR(50) tipo_restriccion
+        TEXT motivo
+        TIMESTAMP created_at
+    }
+
+    docentes ||--o{ asignacion_docente_curso : "dicta"
+    cursos ||--o{ asignacion_docente_curso : "es_asignado_a"
+    asignacion_docente_curso ||--o{ horarios : "tiene"
+    aulas ||--o{ horarios : "se_asigna_en"
+    laboratorios ||--o{ horarios : "se_asigna_en"
+    docentes ||--o{ restricciones_horarias : "tiene"

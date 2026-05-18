@@ -8,20 +8,27 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Interceptor para requests (ej. agregar token en el futuro)
 api.interceptors.request.use(
   (config) => {
-    // TODO: Agregar token de autenticacion si se implementa login
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor para responses (manejo global de errores)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Error en la petición API:', error);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );

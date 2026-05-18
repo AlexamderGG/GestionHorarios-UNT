@@ -36,8 +36,11 @@ const ConfiguracionModel = {
     rows.forEach(row => {
       if (row.clave === 'dias_habiles') {
         config[row.clave] = row.valor.split(',');
-      } else if (row.clave === 'duracion_bloque' || row.clave === 'bloques_por_dia') {
+      } else if (row.clave === 'duracion_bloque' || row.clave === 'bloques_por_dia'
+        || row.clave === 'demo_turno_actual' || row.clave === 'demo_step_minutes') {
         config[row.clave] = parseInt(row.valor, 10);
+      } else if (row.clave === 'demo_mode' || row.clave === 'seleccion_abierta') {
+        config[row.clave] = row.valor === 'true';
       } else {
         config[row.clave] = row.valor;
       }

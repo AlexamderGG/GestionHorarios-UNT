@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, requireRole } = require('../middleware/auth');
 
 // Importar rutas de entidades
+const authRoutes = require('./auth.routes');
 const docentesRoutes = require('./docentes.routes');
 const cursosRoutes = require('./cursos.routes');
 const aulasRoutes = require('./aulas.routes');
@@ -11,16 +13,31 @@ const horariosRoutes = require('./horarios.routes');
 const estadisticasRoutes = require('./estadisticas.routes');
 const reportesRoutes = require('./reportes.routes');
 const configuracionRoutes = require('./configuracion.routes');
+const restriccionesRoutes = require('./restricciones.routes');
+const docenteAuthRoutes = require('./docente-auth.routes');
+const demoRoutes = require('./demo.routes');
 
-// Montar rutas
-router.use('/docentes', docentesRoutes);
-router.use('/cursos', cursosRoutes);
-router.use('/aulas', aulasRoutes);
-router.use('/laboratorios', laboratoriosRoutes);
-router.use('/asignaciones', asignacionesRoutes);
-router.use('/horarios', horariosRoutes);
-router.use('/estadisticas', estadisticasRoutes);
-router.use('/reportes', reportesRoutes);
+// Rutas públicas
+router.use('/auth', authRoutes);
+
+// Rutas protegidas - admin (datos maestros)
+router.use('/docentes', authenticate, requireRole('admin'), docentesRoutes);
+router.use('/cursos', authenticate, requireRole('admin'), cursosRoutes);
+router.use('/aulas', authenticate, requireRole('admin'), aulasRoutes);
+router.use('/laboratorios', authenticate, requireRole('admin'), laboratoriosRoutes);
+router.use('/asignaciones', authenticate, requireRole('admin'), asignacionesRoutes);
+router.use('/estadisticas', authenticate, requireRole('admin'), estadisticasRoutes);
+router.use('/reportes', authenticate, requireRole('admin'), reportesRoutes);
 router.use('/configuracion', configuracionRoutes);
+router.use('/demo', demoRoutes);
+
+// Rutas protegidas - horarios (GET abierto, el resto en el propio router)
+router.use('/horarios', horariosRoutes);
+
+// Rutas protegidas - docente autenticado
+router.use('/docente', docenteAuthRoutes);
+
+// Rutas protegidas - restricciones (docente y admin)
+router.use('/restricciones', restriccionesRoutes);
 
 module.exports = router;

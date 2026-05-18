@@ -43,6 +43,17 @@ const HorariosController = {
     }
   },
 
+  getEstadoSeleccion: async (req, res) => {
+    try {
+      const semestre = req.query.semestre || '2024-1';
+      const estado = await HorarioModel.getEstadoSeleccion(semestre);
+      success(res, estado, 'Estado de selección obtenido correctamente');
+    } catch (err) {
+      console.error(err);
+      error(res, 'Error al obtener estado de selección', 500);
+    }
+  },
+
   generar: async (req, res) => {
     try {
       const { semestre = '2024-1', forzar = false } = req.body || {};
@@ -75,6 +86,22 @@ const HorariosController = {
     } catch (err) {
       console.error(err);
       error(res, 'Error al actualizar horario', 500);
+    }
+  },
+
+  remove: async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!Number.isInteger(Number(id))) return error(res, 'id debe ser entero', 400);
+
+      const horario = await HorarioModel.getById(id);
+      if (!horario) return error(res, 'Horario no encontrado', 404);
+
+      await HorarioModel.delete(id);
+      success(res, null, 'Horario eliminado correctamente');
+    } catch (err) {
+      console.error(err);
+      error(res, 'Error al eliminar horario', 500);
     }
   },
 };

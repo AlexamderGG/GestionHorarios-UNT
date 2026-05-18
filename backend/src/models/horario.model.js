@@ -311,6 +311,61 @@ const HorarioModel = {
     return result.rows[0] || null;
   },
 
+  delete: async (id) => {
+    const result = await pool.query('DELETE FROM horarios WHERE id = $1 RETURNING *', [id]);
+    return result.rows[0] || null;
+  },
+
+  getAsignacionesPendientes: async (semestre) => {
+    const result = await pool.query(
+      `SELECT
+         adc.id AS asignacion_id,
+         adc.docente_id,
+         adc.curso_id,
+         adc.tipo,
+         d.nombres AS docente_nombres,
+         d.apellidos AS docente_apellidos,
+         d.email AS docente_email,
+         d.categoria,
+         d.tipo_nombramiento,
+         c.codigo AS curso_codigo,
+         c.nombre AS curso_nombre
+       FROM asignacion_docente_curso adc
+       JOIN docentes d ON d.id = adc.docente_id AND d.activo = TRUE
+       JOIN cursos c ON c.id = adc.curso_id AND c.activo = TRUE
+       LEFT JOIN horarios h ON h.asignacion_id = adc.id AND h.semestre = $1
+       WHERE adc.semestre_asignacion = $1 AND h.id IS NULL
+       ORDER BY d.apellidos, d.nombres, c.codigo`,
+      [semestre]
+    );
+    return result.rows;
+  },
+
+  getEstadoSeleccion: async (semestre) => {
+    const result = await pool.query(
+      `SELECT
+         d.id AS docente_id,
+         CONCAT(d.nombres, ' ', d.apellidos) AS nombre,
+         d.email,
+         d.categoria,
+         d.tipo_nombramiento,
+         COUNT(adc.id)::int AS total_asignaciones,
+         COUNT(h.id)::int AS asignaciones_con_horario
+       FROM docentes d
+       JOIN asignacion_docente_curso adc ON adc.docente_id = d.id AND adc.semestre_asignacion = $1
+       LEFT JOIN horarios h ON h.asignacion_id = adc.id AND h.semestre = $1
+       WHERE d.activo = TRUE
+       GROUP BY d.id, d.nombres, d.apellidos, d.email, d.categoria, d.tipo_nombramiento
+       ORDER BY d.apellidos, d.nombres`,
+      [semestre]
+    );
+
+    return result.rows.map(row => ({
+      ...row,
+      completado: row.total_asignaciones === row.asignaciones_con_horario,
+    }));
+  },
+
   getEstadisticas: async (semestre = null) => {
     const filtros = semestre ? 'WHERE h.semestre = $1' : '';
     const params = semestre ? [semestre] : [];

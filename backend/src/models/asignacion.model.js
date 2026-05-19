@@ -149,7 +149,7 @@ const AsignacionModel = {
        FROM asignacion_docente_curso adc
        JOIN cursos c ON c.id = adc.curso_id
        WHERE adc.docente_id = $1 AND adc.semestre_asignacion = $2`,
-      [docente_id, semestre_asignacion]
+      [docente_id, semestre_asignacion],
     );
     return result.rows[0]?.total_horas || 0;
   },
@@ -159,7 +159,7 @@ const AsignacionModel = {
     const result = await pool.query(
       `SELECT 1 FROM asignacion_docente_curso 
        WHERE curso_id = $1 AND tipo = $2 AND semestre_asignacion = $3`,
-      [curso_id, tipo, semestre_asignacion]
+      [curso_id, tipo, semestre_asignacion],
     );
     return result.rowCount > 0;
   },
@@ -168,7 +168,7 @@ const AsignacionModel = {
   deleteAllBySemestre: async (semestre_asignacion) => {
     const result = await pool.query(
       `DELETE FROM asignacion_docente_curso WHERE semestre_asignacion = $1 RETURNING *`,
-      [semestre_asignacion]
+      [semestre_asignacion],
     );
     return result.rowCount;
   },
@@ -180,7 +180,7 @@ const AsignacionModel = {
        FROM asignacion_docente_curso adc
        JOIN cursos c ON c.id = adc.curso_id
        WHERE adc.semestre_asignacion = $1`,
-      [semestre_asignacion]
+      [semestre_asignacion],
     );
     return result.rows;
   },

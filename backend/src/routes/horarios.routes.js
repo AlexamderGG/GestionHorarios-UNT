@@ -25,6 +25,13 @@ router.get('/estado-seleccion', authenticate, requireRole('admin'), HorariosCont
 router.post('/generar', authenticate, requireRole('admin'), HorariosController.generar);
 
 /**
+ * @route   POST /api/horarios/limpiar
+ * @desc    Eliminar TODOS los horarios de un semestre
+ * @body    { semestre? }
+ */
+router.post('/limpiar', authenticate, requireRole('admin'), HorariosController.limpiar);
+
+/**
  * @route   PUT /api/horarios/:id
  * @desc    Editar manualmente un horario asignado validando cruces
  * @body    { dia?, hora_inicio?, hora_fin?, aula_id?, laboratorio_id? }

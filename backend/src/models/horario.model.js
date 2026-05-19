@@ -204,11 +204,12 @@ const HorarioModel = {
          d.categoria,
          d.tipo_nombramiento,
          d.antiguedad_anios,
-          c.codigo AS curso_codigo,
-          c.nombre AS curso_nombre,
-          c.creditos AS curso_creditos,
-          c.horas_aula AS curso_horas_aula,
-          c.horas_lab AS curso_horas_lab,
+           c.codigo AS curso_codigo,
+           c.nombre AS curso_nombre,
+           c.creditos AS curso_creditos,
+           c.ciclo AS curso_ciclo,
+           c.horas_aula AS curso_horas_aula,
+           c.horas_lab AS curso_horas_lab,
           CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
          CASE d.categoria
            WHEN 'Principal' THEN 1
@@ -298,6 +299,30 @@ const HorarioModel = {
          AND dia = $3
          AND hora_inicio < $5::time
          AND hora_fin > $4::time
+         ${exclude}
+       LIMIT 1`,
+      params
+    );
+    return result.rows[0] || null;
+  },
+
+  existeConflictoCiclo: async ({ ciclo, semestre, dia, hora_inicio, hora_fin, excludeId = null }, client = pool) => {
+    const params = [ciclo, semestre, dia, hora_inicio, hora_fin];
+    let exclude = '';
+    if (excludeId) {
+      params.push(excludeId);
+      exclude = `AND h.id != $${params.length}`;
+    }
+    const result = await client.query(
+      `SELECT h.id
+       FROM horarios h
+       JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
+       JOIN cursos c ON c.id = adc.curso_id
+       WHERE c.ciclo = $1
+         AND h.semestre = $2
+         AND h.dia = $3
+         AND h.hora_inicio < $5::time
+         AND h.hora_fin > $4::time
          ${exclude}
        LIMIT 1`,
       params

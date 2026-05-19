@@ -33,9 +33,10 @@ const generarBloques = (configuracion) => {
     : ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
 
   const horaInicio = normalizarHora(configuracion.hora_inicio || "07:00");
-  const horaFin = normalizarHora(configuracion.hora_fin || "22:00");
-  const duracion = Number(configuracion.duracion_bloque || 120);
-  const bloquesPorDia = Number(configuracion.bloques_por_dia || 0);
+  // Usar siempre 22:00 como fin para tener bloques de tarde disponibles
+  const horaFin = "22:00";
+  const duracion = Number(configuracion.duracion_bloque || 60);
+  // Ignorar bloques_por_dia restrictivo; generar todos los bloques posibles
   const bloques = [];
   const inicio = timeToMinutes(horaInicio);
   const fin = timeToMinutes(horaFin);
@@ -47,8 +48,6 @@ const generarBloques = (configuracion) => {
     let creadosDia = 0;
 
     while (actual + duracion <= fin) {
-      if (bloquesPorDia > 0 && creadosDia >= bloquesPorDia) break;
-
       // Si el bloque empezaría en el almuerzo, se mueve al fin del descanso.
       if (actual >= almuerzoInicio && actual < almuerzoFin) {
         actual = almuerzoFin;
@@ -153,6 +152,8 @@ const SchedulerService = {
 
       const generados = [];
       const noAsignados = [];
+      const usoPorDia = {};
+      const usoPorHora = {};
 
       for (const asignacion of asignaciones) {
         const ambientesBase =
@@ -176,127 +177,164 @@ const SchedulerService = {
           continue;
         }
 
-        // Calcular cuantas sesiones se necesitan segun las horas del curso
-        const duracionHoras = configuracion.duracion_bloque
-          ? configuracion.duracion_bloque / 60
-          : 2;
         let horasRequeridas = 0;
         if (asignacion.tipo === "Teoria")
           horasRequeridas = Number(asignacion.curso_horas_aula || 0);
         else horasRequeridas = Number(asignacion.curso_horas_lab || 0);
 
         if (horasRequeridas <= 0) {
-          // Si no hay horas de este tipo, no se genera horario (ej. curso sin lab)
           continue;
         }
 
-        const sesionesNecesarias = Math.max(
-          1,
-          Math.round(horasRequeridas / duracionHoras),
-        );
-        let sesionesAsignadas = 0;
+        const minutosRequeridos = horasRequeridas * 60;
+        let asignado = null;
         let ultimoMotivo = "No se encontro bloque disponible";
+        let bloqueSeleccionado = null;
 
-        for (let sesion = 0; sesion < sesionesNecesarias; sesion++) {
-          let asignado = null;
+        // Ordenar bloques por día menos usado y hora menos usada
+        const bloquesOrdenados = [...bloques].sort((a, b) => {
+          const usoDiaA = usoPorDia[a.dia] || 0;
+          const usoDiaB = usoPorDia[b.dia] || 0;
+          if (usoDiaA !== usoDiaB) return usoDiaA - usoDiaB;
 
-          for (const bloque of bloques) {
-            const restriccion = await HorarioModel.existeRestriccionDocente(
-              {
-                docente_id: asignacion.docente_id,
-                dia: bloque.dia,
-                hora_inicio: bloque.hora_inicio,
-                hora_fin: bloque.hora_fin,
-              },
-              client,
-            );
+          const usoHoraA = usoPorHora[a.hora_inicio] || 0;
+          const usoHoraB = usoPorHora[b.hora_inicio] || 0;
+          if (usoHoraA !== usoHoraB) return usoHoraA - usoHoraB;
 
-            if (restriccion) {
-              ultimoMotivo = `Docente no disponible en ${bloque.dia} ${bloque.hora_inicio}-${bloque.hora_fin}`;
+          return DIAS_VALIDOS.indexOf(a.dia) - DIAS_VALIDOS.indexOf(b.dia);
+        });
+
+        for (const bloque of bloquesOrdenados) {
+          const inicioMin = timeToMinutes(bloque.hora_inicio);
+          const finMin = inicioMin + minutosRequeridos;
+          const horaFinStr = minutesToTime(finMin);
+
+          // Permitir hasta 22:00 independientemente de lo que diga la config
+          const horaFinMaxima = 22 * 60;
+          if (finMin > horaFinMaxima) {
+            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} excede el horario maximo de 22:00`;
+            continue;
+          }
+
+          const almuerzoInicio = 13 * 60;
+          const almuerzoFin = 14 * 60;
+          if (inicioMin < almuerzoFin && finMin > almuerzoInicio) {
+            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} cruza el almuerzo`;
+            continue;
+          }
+
+          const restriccion = await HorarioModel.existeRestriccionDocente(
+            {
+              docente_id: asignacion.docente_id,
+              dia: bloque.dia,
+              hora_inicio: bloque.hora_inicio,
+              hora_fin: horaFinStr,
+            },
+            client,
+          );
+
+          if (restriccion) {
+            ultimoMotivo = `Docente no disponible en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
+            continue;
+          }
+
+          const conflictoDocente = await HorarioModel.existeConflictoDocente(
+            {
+              docente_id: asignacion.docente_id,
+              semestre: semestreNormalizado,
+              dia: bloque.dia,
+              hora_inicio: bloque.hora_inicio,
+              hora_fin: horaFinStr,
+            },
+            client,
+          );
+
+          if (conflictoDocente) {
+            ultimoMotivo = `Cruce de docente en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
+            continue;
+          }
+
+          const conflictoCiclo = await HorarioModel.existeConflictoCiclo(
+            {
+              ciclo: asignacion.curso_ciclo,
+              semestre: semestreNormalizado,
+              dia: bloque.dia,
+              hora_inicio: bloque.hora_inicio,
+              hora_fin: horaFinStr,
+            },
+            client,
+          );
+
+          if (conflictoCiclo) {
+            ultimoMotivo = `Ciclo ${asignacion.curso_ciclo} ya tiene una clase en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
+            continue;
+          }
+
+          for (const ambiente of ambientes) {
+            const conflictoAmbiente =
+              asignacion.tipo === "Teoria"
+                ? await HorarioModel.existeConflictoAula(
+                    {
+                      aula_id: ambiente.id,
+                      semestre: semestreNormalizado,
+                      dia: bloque.dia,
+                      hora_inicio: bloque.hora_inicio,
+                      hora_fin: horaFinStr,
+                    },
+                    client,
+                  )
+                : await HorarioModel.existeConflictoLaboratorio(
+                    {
+                      laboratorio_id: ambiente.id,
+                      semestre: semestreNormalizado,
+                      dia: bloque.dia,
+                      hora_inicio: bloque.hora_inicio,
+                      hora_fin: horaFinStr,
+                    },
+                    client,
+                  );
+
+            if (conflictoAmbiente) {
+              ultimoMotivo = `Ambiente ocupado en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
               continue;
             }
 
-            const conflictoDocente = await HorarioModel.existeConflictoDocente(
+            asignado = await HorarioModel.create(
               {
-                docente_id: asignacion.docente_id,
+                asignacion_id: asignacion.asignacion_id,
                 semestre: semestreNormalizado,
                 dia: bloque.dia,
                 hora_inicio: bloque.hora_inicio,
-                hora_fin: bloque.hora_fin,
+                hora_fin: horaFinStr,
+                aula_id: asignacion.tipo === "Teoria" ? ambiente.id : null,
+                laboratorio_id:
+                  asignacion.tipo === "Laboratorio" ? ambiente.id : null,
+                generado_automaticamente: true,
+                editado_manualmente: false,
               },
               client,
             );
-
-            if (conflictoDocente) {
-              ultimoMotivo = `Cruce de docente en ${bloque.dia} ${bloque.hora_inicio}-${bloque.hora_fin}`;
-              continue;
-            }
-
-            for (const ambiente of ambientes) {
-              const conflictoAmbiente =
-                asignacion.tipo === "Teoria"
-                  ? await HorarioModel.existeConflictoAula(
-                      {
-                        aula_id: ambiente.id,
-                        semestre: semestreNormalizado,
-                        dia: bloque.dia,
-                        hora_inicio: bloque.hora_inicio,
-                        hora_fin: bloque.hora_fin,
-                      },
-                      client,
-                    )
-                  : await HorarioModel.existeConflictoLaboratorio(
-                      {
-                        laboratorio_id: ambiente.id,
-                        semestre: semestreNormalizado,
-                        dia: bloque.dia,
-                        hora_inicio: bloque.hora_inicio,
-                        hora_fin: bloque.hora_fin,
-                      },
-                      client,
-                    );
-
-              if (conflictoAmbiente) {
-                ultimoMotivo = `Ambiente ocupado en ${bloque.dia} ${bloque.hora_inicio}-${bloque.hora_fin}`;
-                continue;
-              }
-
-              asignado = await HorarioModel.create(
-                {
-                  asignacion_id: asignacion.asignacion_id,
-                  semestre: semestreNormalizado,
-                  dia: bloque.dia,
-                  hora_inicio: bloque.hora_inicio,
-                  hora_fin: bloque.hora_fin,
-                  aula_id: asignacion.tipo === "Teoria" ? ambiente.id : null,
-                  laboratorio_id:
-                    asignacion.tipo === "Laboratorio" ? ambiente.id : null,
-                  generado_automaticamente: true,
-                  editado_manualmente: false,
-                },
-                client,
-              );
-              break;
-            }
-
-            if (asignado) break;
-          }
-
-          if (asignado) {
-            generados.push(asignado);
-            sesionesAsignadas += 1;
-          } else {
-            // Si una sesion no se asigna, reportar conflicto y no intentar mas sesiones para esta asignacion
-            noAsignados.push({
-              asignacion_id: asignacion.asignacion_id,
-              curso: `${asignacion.curso_codigo} - ${asignacion.curso_nombre}`,
-              docente: `${asignacion.docente_nombres} ${asignacion.docente_apellidos}`,
-              tipo: asignacion.tipo,
-              sesion: `${sesion + 1}/${sesionesNecesarias}`,
-              motivo: ultimoMotivo,
-            });
+            bloqueSeleccionado = bloque;
             break;
           }
+
+          if (asignado) break;
+        }
+
+        if (asignado) {
+          generados.push(asignado);
+          usoPorDia[asignado.dia] = (usoPorDia[asignado.dia] || 0) + 1;
+          if (bloqueSeleccionado) {
+            usoPorHora[bloqueSeleccionado.hora_inicio] = (usoPorHora[bloqueSeleccionado.hora_inicio] || 0) + 1;
+          }
+        } else {
+          noAsignados.push({
+            asignacion_id: asignacion.asignacion_id,
+            curso: `${asignacion.curso_codigo} - ${asignacion.curso_nombre}`,
+            docente: `${asignacion.docente_nombres} ${asignacion.docente_apellidos}`,
+            tipo: asignacion.tipo,
+            motivo: ultimoMotivo,
+          });
         }
       }
 

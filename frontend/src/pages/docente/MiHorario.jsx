@@ -76,6 +76,21 @@ const MiHorario = () => {
     return h * 60 + m;
   };
 
+  // Genera un color unico y consistente para cada curso basado en su codigo
+  const getColorCurso = (codigo) => {
+    let hash = 0;
+    for (let i = 0; i < (codigo || '').length; i++) {
+      hash = codigo.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return {
+      bg: `hsla(${hue}, 75%, 92%, 0.85)`,
+      border: `hsla(${hue}, 70%, 35%, 1)`,
+      text: `hsla(${hue}, 80%, 22%, 1)`,
+      sub: `hsla(${hue}, 60%, 35%, 1)`,
+    };
+  };
+
   const horarioEnBloque = (dia, bloqueInicio, bloqueFin) => {
     const bloqueIniMin = timeToMinutes(bloqueInicio);
     const bloqueFinMin = timeToMinutes(bloqueFin);
@@ -168,29 +183,40 @@ const MiHorario = () => {
                         return (
                           <td key={`${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 p-1.5 align-top last:border-r-0">
                             {h ? (
-                              <div className="bg-primary-50/60 border-l-3 border-l-primary-500 rounded-lg p-2.5 group">
-                                <p className="text-xs font-semibold text-primary-800">{h.curso?.codigo}</p>
-                                <p className="text-xs text-neutral-600 truncate">{h.curso?.nombre}</p>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <Clock className="w-3 h-3 text-neutral-400" />
-                                  <span className="text-2xs text-neutral-500">
-                                    {h.hora_inicio?.slice(0, 5)} - {h.hora_fin?.slice(0, 5)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <MapPin className="w-3 h-3 text-neutral-400" />
-                                  <span className="text-2xs text-neutral-500">
-                                    {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => eliminarHorario(h.id)}
-                                  className="mt-2 flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  Eliminar
-                                </button>
-                              </div>
+                              (() => {
+                                const color = getColorCurso(h.curso?.codigo);
+                                return (
+                                  <div
+                                    className="rounded-lg p-2.5 group border-l-[3px]"
+                                    style={{
+                                      backgroundColor: color.bg,
+                                      borderLeftColor: color.border,
+                                    }}
+                                  >
+                                    <p className="text-xs font-semibold truncate" style={{ color: color.text }}>{h.curso?.codigo}</p>
+                                    <p className="text-xs truncate" style={{ color: color.sub }}>{h.curso?.nombre}</p>
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <Clock className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                      <span className="text-2xs" style={{ color: color.sub }}>
+                                        {h.hora_inicio?.slice(0, 5)} - {h.hora_fin?.slice(0, 5)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                      <span className="text-2xs" style={{ color: color.sub }}>
+                                        {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => eliminarHorario(h.id)}
+                                      className="mt-2 flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                );
+                              })()
                             ) : null}
                           </td>
                         );
@@ -221,23 +247,34 @@ const MiHorario = () => {
                             <p className="text-xs font-medium text-neutral-800">{h.hora_inicio?.slice(0, 5)}</p>
                             <p className="text-xs text-neutral-400">{h.hora_fin?.slice(0, 5)}</p>
                           </div>
-                          <div className="flex-1 bg-primary-50/60 border-l-3 border-l-primary-500 rounded-lg p-2.5">
-                            <p className="text-sm font-semibold text-primary-800">{h.curso?.codigo}</p>
-                            <p className="text-xs text-neutral-600">{h.curso?.nombre}</p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <MapPin className="w-3 h-3 text-neutral-400" />
-                              <span className="text-xs text-neutral-500">
-                                {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => eliminarHorario(h.id)}
-                              className="mt-2 flex items-center gap-1 text-danger-500 text-xs"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              Eliminar
-                            </button>
-                          </div>
+                          {(() => {
+                            const color = getColorCurso(h.curso?.codigo);
+                            return (
+                              <div
+                                className="flex-1 rounded-lg p-2.5 border-l-[3px]"
+                                style={{
+                                  backgroundColor: color.bg,
+                                  borderLeftColor: color.border,
+                                }}
+                              >
+                                <p className="text-sm font-semibold" style={{ color: color.text }}>{h.curso?.codigo}</p>
+                                <p className="text-xs" style={{ color: color.sub }}>{h.curso?.nombre}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                  <span className="text-xs" style={{ color: color.sub }}>
+                                    {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => eliminarHorario(h.id)}
+                                  className="mt-2 flex items-center gap-1 text-danger-500 text-xs"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Eliminar
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                   </div>

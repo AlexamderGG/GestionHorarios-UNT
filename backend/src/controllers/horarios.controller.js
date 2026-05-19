@@ -136,6 +136,23 @@ const HorariosController = {
       error(res, "Error al eliminar horario", 500);
     }
   },
+
+  limpiar: async (req, res) => {
+    try {
+      const { semestre } = req.body || {};
+      const semestreNormalizado = String(semestre || "2026-1").trim();
+      const errorSemestre = SchedulerService.validarSemestre(semestreNormalizado);
+      if (errorSemestre) {
+        return error(res, errorSemestre, 400);
+      }
+
+      const eliminados = await HorarioModel.deleteBySemestre(semestreNormalizado);
+      success(res, { semestre: semestreNormalizado, eliminados }, `${eliminados} horarios eliminados correctamente`);
+    } catch (err) {
+      console.error(err);
+      error(res, "Error al limpiar horarios", 500);
+    }
+  },
 };
 
 module.exports = HorariosController;

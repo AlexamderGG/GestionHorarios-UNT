@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import api from "../../services/api";
 import {
   Calendar,
@@ -14,18 +14,48 @@ import {
   Inbox,
   X,
   Save,
+  BookOpen,
+  Clock,
+  GraduationCap,
 } from "lucide-react";
 
 const DIAS = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
 
+const timeToMinutes = (t) => {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+};
+
+// Genera un color unico y consistente para cada curso basado en su codigo
+const getColorCurso = (codigo) => {
+  let hash = 0;
+  for (let i = 0; i < (codigo || "").length; i++) {
+    hash = codigo.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return {
+    bg: `hsla(${hue}, 75%, 92%, 0.85)`,
+    border: `hsla(${hue}, 70%, 35%, 1)`,
+    text: `hsla(${hue}, 80%, 22%, 1)`,
+    sub: `hsla(${hue}, 60%, 35%, 1)`,
+  };
+};
+
 const AdminHorarios = () => {
-  const [tab, setTab] = useState("grilla");
   const [horarios, setHorarios] = useState([]);
   const [docentes, setDocentes] = useState([]);
+  const [cursos, setCursos] = useState([]);
+  const [asignaciones, setAsignaciones] = useState([]);
   const [config, setConfig] = useState(null);
   const [filtroDocente, setFiltroDocente] = useState("");
   const [semestre, setSemestre] = useState("2026-1");
+  const [cicloActivo, setCicloActivo] = useState("");
   const [loading, setLoading] = useState(true);
+  const [generando, setGenerando] = useState(false);
+  const [limpiando, setLimpiando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+  const [editando, setEditando] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     api
@@ -37,23 +67,22 @@ const AdminHorarios = () => {
       })
       .catch((err) => console.error("Error cargando configuración:", err));
   }, []);
-  const [generando, setGenerando] = useState(false);
-  const [mensaje, setMensaje] = useState(null);
-  const [editando, setEditando] = useState(null);
-  const [editForm, setEditForm] = useState({});
 
   const cargarDatos = useCallback(async () => {
+    setLoading(true);
     try {
-      const [resHor, resDoc, resConf] = await Promise.all([
-        api.get("/horarios", {
-          params: { semestre, docente_id: filtroDocente || undefined },
-        }),
+      const [resHor, resDoc, resConf, resCur, resAsig] = await Promise.all([
+        api.get("/horarios", { params: { semestre, docente_id: filtroDocente || undefined } }),
         api.get("/docentes"),
         api.get("/configuracion"),
+        api.get("/cursos"),
+        api.get("/asignaciones"),
       ]);
       setHorarios(resHor.data?.data || []);
       setDocentes(resDoc.data?.data || []);
       setConfig(resConf.data?.data || null);
+      setCursos(resCur.data?.data || []);
+      setAsignaciones(resAsig.data?.data || []);
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -65,28 +94,54 @@ const AdminHorarios = () => {
     cargarDatos();
   }, [cargarDatos]);
 
+  // Determinar ciclos activos según semestre
+  const getCiclosActivos = useMemo(() => {
+    if (!semestre) return [];
+    const part = semestre.split("-");
+    if (part.length !== 2) return [];
+    const num = parseInt(part[1], 10);
+    if (num === 1) return [1, 3, 5, 7, 9];
+    if (num === 2) return [2, 4, 6, 8, 10];
+    return [];
+  }, [semestre]);
+
+  // Seleccionar primer ciclo activo si no hay uno seleccionado
+  useEffect(() => {
+    if (getCiclosActivos.length > 0 && !cicloActivo) {
+      setCicloActivo(String(getCiclosActivos[0]));
+    }
+  }, [getCiclosActivos, cicloActivo]);
+
   const handleGenerar = async () => {
     setGenerando(true);
     setMensaje(null);
     try {
-      const res = await api.post("/horarios/generar", {
-        semestre,
-        forzar: true,
-      });
+      const res = await api.post("/horarios/generar", { semestre, forzar: true });
       if (res.data?.success) {
-        setMensaje({
-          tipo: "exito",
-          texto: `${res.data.data?.generados || 0} horarios generados`,
-        });
+        setMensaje({ tipo: "exito", texto: `${res.data.data?.generados || 0} horarios generados` });
         cargarDatos();
       }
     } catch (err) {
-      setMensaje({
-        tipo: "error",
-        texto: err.response?.data?.message || "Error al generar",
-      });
+      setMensaje({ tipo: "error", texto: err.response?.data?.message || "Error al generar" });
     } finally {
       setGenerando(false);
+    }
+  };
+
+  const handleLimpiar = async () => {
+    if (!confirm(`¿Eliminar TODOS los horarios del semestre ${semestre}?`)) return;
+    setLimpiando(true);
+    setMensaje(null);
+    try {
+      const res = await api.post("/horarios/limpiar", { semestre });
+      if (res.data?.success) {
+        setMensaje({ tipo: "exito", texto: `${res.data.data?.eliminados || 0} horarios eliminados` });
+        cargarDatos();
+      }
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: err.response?.data?.message || "Error al limpiar" });
+    } finally {
+      setLimpiando(false);
     }
   };
 
@@ -121,11 +176,12 @@ const AdminHorarios = () => {
     }
   };
 
+  // Generar bloques de 1 hora para visualización
   const generarBloques = () => {
     if (!config) return [];
     const inicio = config.hora_inicio || "07:00";
     const fin = config.hora_fin || "22:00";
-    const duracion = Number(config.duracion_bloque) || 120;
+    const duracion = 60; // Siempre 1 hora para visualización
     const [hIni, mIni] = inicio.split(":").map(Number);
     const [hFin] = fin.split(":").map(Number);
     const bloques = [];
@@ -134,24 +190,52 @@ const AdminHorarios = () => {
       const m1 = String(i % 60).padStart(2, "0");
       const h2 = String(Math.floor((i + duracion) / 60)).padStart(2, "0");
       const m2 = String((i + duracion) % 60).padStart(2, "0");
-      bloques.push({
-        inicio: `${h1}:${m1}`,
-        fin: `${h2}:${m2}`,
-        label: `${h1}:${m1} - ${h2}:${m2}`,
-      });
+      bloques.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
     }
     return bloques;
   };
 
   const bloques = generarBloques();
 
-  const horariosPorDocente = {};
-  horarios.forEach((h) => {
-    const key = h.docente?.id;
-    if (!horariosPorDocente[key])
-      horariosPorDocente[key] = { docente: h.docente, horarios: [] };
-    horariosPorDocente[key].horarios.push(h);
-  });
+  // Filtrar horarios por ciclo
+  const horariosPorCiclo = useMemo(() => {
+    const map = {};
+    for (const h of horarios) {
+      const cicloCurso = h.curso?.ciclo;
+      if (!cicloCurso) continue;
+      if (!map[cicloCurso]) map[cicloCurso] = [];
+      map[cicloCurso].push(h);
+    }
+    return map;
+  }, [horarios]);
+
+  // Función para verificar si un horario cubre un bloque
+  const horarioEnBloque = (dia, bloqueInicio, bloqueFin, horariosDelCiclo) => {
+    const bloqueIniMin = timeToMinutes(bloqueInicio);
+    const bloqueFinMin = timeToMinutes(bloqueFin);
+    return horariosDelCiclo.find((h) => {
+      if (h.dia !== dia) return false;
+      const hIniMin = timeToMinutes(h.hora_inicio);
+      const hFinMin = timeToMinutes(h.hora_fin);
+      return hIniMin <= bloqueIniMin && hFinMin >= bloqueFinMin;
+    });
+  };
+
+  // Obtener cursos del docente seleccionado
+  const cursosDelDocente = useMemo(() => {
+    if (!filtroDocente) return [];
+    return asignaciones.filter((a) => a.docente_id === Number(filtroDocente) && a.semestre_asignacion === semestre);
+  }, [asignaciones, filtroDocente, semestre]);
+
+  const getNombreDocente = (id) => {
+    const d = docentes.find((doc) => doc.id === id);
+    return d ? `${d.nombres} ${d.apellidos}` : `Docente ${id}`;
+  };
+
+  const getNombreCurso = (id) => {
+    const c = cursos.find((cur) => cur.id === id);
+    return c ? `${c.codigo} — ${c.nombre}` : `Curso ${id}`;
+  };
 
   if (loading) {
     return (
@@ -182,7 +266,10 @@ const AdminHorarios = () => {
             Gestión de Horarios
           </h1>
           <p className="text-sm text-neutral-500 mt-1">
-            Administra y edita los horarios del semestre
+            Semestre: <span className="font-semibold text-primary-700">{semestre}</span>
+            {getCiclosActivos.length > 0 && (
+              <span className="ml-2 text-xs text-neutral-400">(Ciclos activos: {getCiclosActivos.join(", ")})</span>
+            )}
           </p>
         </div>
         {mensaje && (
@@ -194,10 +281,7 @@ const AdminHorarios = () => {
             }`}
           >
             {mensaje.texto}
-            <button
-              onClick={() => setMensaje(null)}
-              className="text-neutral-400 hover:text-neutral-600"
-            >
+            <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600">
               &times;
             </button>
           </div>
@@ -208,25 +292,15 @@ const AdminHorarios = () => {
       <div className="card p-4 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              Semestre
-            </label>
-            <input
-              type="text"
-              value={semestre}
-              onChange={(e) => setSemestre(e.target.value)}
-              className="input w-28"
-            />
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Semestre</label>
+            <input type="text" value={semestre} onChange={(e) => setSemestre(e.target.value)} className="input w-28" />
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+              <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
               Docente
             </label>
-            <select
-              value={filtroDocente}
-              onChange={(e) => setFiltroDocente(e.target.value)}
-              className="input w-56"
-            >
+            <select value={filtroDocente} onChange={(e) => setFiltroDocente(e.target.value)} className="input w-56">
               <option value="">Todos</option>
               {docentes.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -235,290 +309,205 @@ const AdminHorarios = () => {
               ))}
             </select>
           </div>
-          <button
-            onClick={handleGenerar}
-            disabled={generando}
-            className="btn-primary flex items-center gap-2"
-          >
+          <button onClick={handleGenerar} disabled={generando} className="btn-primary flex items-center gap-2">
             {generando ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Generando...
-              </>
+              <><RefreshCw className="w-4 h-4 animate-spin" /> Generando...</>
             ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                Generar Horarios
-              </>
+              <><Zap className="w-4 h-4" /> Generar Horarios</>
             )}
           </button>
-          <button
-            onClick={cargarDatos}
-            className="btn-secondary flex items-center gap-2"
-          >
+          <button onClick={handleLimpiar} disabled={limpiando} className="btn-secondary flex items-center gap-2 bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100">
+            {limpiando ? (
+              <><RefreshCw className="w-4 h-4 animate-spin" /> Limpiando...</>
+            ) : (
+              <><Trash2 className="w-4 h-4" /> Limpiar Todo</>
+            )}
+          </button>
+          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      </div>
 
-      {/* Tab Switch */}
-      <div className="flex gap-1 mb-4 bg-neutral-100 rounded-lg p-1 w-fit">
-        {[
-          { key: "grilla", label: "Grilla General", icon: LayoutGrid },
-          { key: "docente", label: "Por Docente", icon: Users },
-        ].map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-md transition-all duration-150 ${
-                tab === t.key
-                  ? "bg-white text-primary-700 shadow-sm font-medium"
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Grid View */}
-      {tab === "grilla" && (
-        <>
-          {horarios.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-neutral-50">
-                      <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-36 sticky left-0 bg-neutral-50 z-10">
-                        Bloque
-                      </th>
-                      {DIAS.map((dia) => (
-                        <th
-                          key={dia}
-                          className="border-b border-r border-neutral-200 p-3 text-center text-xs font-semibold text-neutral-500 uppercase min-w-[180px] last:border-r-0"
-                        >
-                          {dia}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bloques.map((bloque, idx) => (
-                      <tr
-                        key={bloque.label}
-                        className={
-                          idx % 2 === 0 ? "bg-white" : "bg-neutral-50/30"
-                        }
-                      >
-                        <td className="border-b border-r border-neutral-200 p-3 text-neutral-600 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
-                          {bloque.label}
-                        </td>
-                        {DIAS.map((dia) => {
-                          const h = horarios.find(
-                            (hr) =>
-                              hr.dia === dia &&
-                              hr.hora_inicio?.slice(0, 5) === bloque.inicio,
-                          );
-                          return (
-                            <td
-                              key={`${dia}-${bloque.label}`}
-                              className="border-b border-r border-neutral-200 p-1.5 align-top last:border-r-0"
-                            >
-                              {h ? (
-                                <div
-                                  className={`rounded-lg p-2 border-l-3 cursor-pointer hover:shadow-sm transition-all group ${
-                                    h.curso?.tipo === "Laboratorio"
-                                      ? "bg-indigo-50/60 border-l-indigo-500"
-                                      : "bg-primary-50/60 border-l-primary-500"
-                                  }`}
-                                  onClick={() => abrirEdicion(h)}
-                                >
-                                  <p className="text-xs font-semibold text-neutral-800 truncate">
-                                    {h.curso?.codigo}
-                                  </p>
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <User className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                                    <span className="text-2xs text-neutral-500 truncate">
-                                      {h.docente?.nombres}{" "}
-                                      {h.docente?.apellidos}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    <MapPin className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                                    <span className="text-2xs text-neutral-500">
-                                      {h.aula?.codigo || h.laboratorio?.codigo}
-                                    </span>
-                                  </div>
-                                  <div className="flex gap-1 mt-1.5">
-                                    {h.editado_manualmente && (
-                                      <span className="badge-warning text-2xs">
-                                        <Pencil className="w-2.5 h-2.5" />
-                                        Editado
-                                      </span>
-                                    )}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEliminar(h.id);
-                                      }}
-                                      className="text-danger-400 hover:text-danger-600 text-2xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      Eliminar
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : null}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {/* Cursos del docente seleccionado */}
+        {filtroDocente && cursosDelDocente.length > 0 && (
+          <div className="mt-4 p-3 bg-primary-50 rounded-lg border border-primary-200">
+            <p className="text-xs font-medium text-primary-700 mb-1.5">Cursos asignados a {getNombreDocente(Number(filtroDocente))}:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {cursosDelDocente.map((a) => (
+                <span key={a.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-white text-primary-700 border border-primary-200 font-medium">
+                  <BookOpen className="w-3 h-3" />
+                  {getNombreCurso(a.curso_id)} ({a.tipo})
+                </span>
+              ))}
             </div>
-          )}
-        </>
-      )}
+          </div>
+        )}
+      </div>
 
-      {/* Per Teacher View */}
-      {tab === "docente" && (
-        <div className="space-y-4">
-          {Object.values(horariosPorDocente).length === 0 ? (
-            <EmptyState />
+      {/* Tabs por ciclo */}
+      <div className="flex gap-1 mb-4 bg-neutral-100 rounded-lg p-1 w-fit flex-wrap">
+        {getCiclosActivos.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCicloActivo(String(c))}
+            className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-md transition-all duration-150 ${
+              cicloActivo === String(c)
+                ? "bg-white text-primary-700 shadow-sm font-medium"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            Ciclo {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid por ciclo */}
+      {cicloActivo && (
+        <div className="card overflow-hidden mb-6">
+          <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-primary-600" />
+              Horario Ciclo {cicloActivo}
+            </h2>
+            <span className="text-xs text-neutral-500">
+              {(horariosPorCiclo[cicloActivo] || []).length} clase{(horariosPorCiclo[cicloActivo] || []).length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {(horariosPorCiclo[cicloActivo] || []).length === 0 ? (
+            <div className="p-12 text-center text-neutral-400">
+              <Inbox className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
+              <p className="text-sm">No hay horarios para el ciclo {cicloActivo}.</p>
+            </div>
           ) : (
-            Object.values(horariosPorDocente).map(
-              ({ docente, horarios: hs }) => (
-                <div key={docente?.id} className="card p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-neutral-800">
-                        {docente?.nombres} {docente?.apellidos}
-                      </h3>
-                      <p className="text-xs text-neutral-500">
-                        {hs.length} clase{hs.length !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {hs.map((h) => (
-                      <div
-                        key={h.id}
-                        className="border border-neutral-200 rounded-lg p-2.5 cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
-                        onClick={() => abrirEdicion(h)}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50">
+                    <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-28 sticky left-0 bg-neutral-50 z-10">
+                      Bloque
+                    </th>
+                    {DIAS.map((dia) => (
+                      <th
+                        key={dia}
+                        className="border-b border-r border-neutral-200 p-3 text-center text-xs font-semibold text-neutral-500 uppercase min-w-[160px] last:border-r-0"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-neutral-800">
-                            {h.dia}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {h.hora_inicio?.slice(0, 5)}-
-                            {h.hora_fin?.slice(0, 5)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-neutral-500 mt-1 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {h.curso?.codigo} —{" "}
-                          {h.aula?.codigo || h.laboratorio?.codigo}
-                        </p>
-                      </div>
+                        {dia}
+                      </th>
                     ))}
-                  </div>
-                </div>
-              ),
-            )
+                  </tr>
+                </thead>
+                <tbody>
+                  {bloques.map((bloque, idx) => (
+                    <tr key={bloque.label} className={idx % 2 === 0 ? "bg-white" : "bg-neutral-50/30"}>
+                      <td className="border-b border-r border-neutral-200 p-2 text-neutral-600 text-xs font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                        {bloque.label}
+                      </td>
+                      {DIAS.map((dia) => {
+                        const h = horarioEnBloque(dia, bloque.inicio, bloque.fin, horariosPorCiclo[cicloActivo] || []);
+                        return (
+                          <td
+                            key={`${dia}-${bloque.label}`}
+                            className="border-b border-r border-neutral-200 p-1 align-top last:border-r-0"
+                          >
+                            {h ? (
+                              (() => {
+                                const color = getColorCurso(h.curso?.codigo);
+                                return (
+                                  <div
+                                    className="rounded-lg p-2 border-l-[3px] cursor-pointer hover:shadow-sm transition-all group"
+                                    style={{
+                                      backgroundColor: color.bg,
+                                      borderLeftColor: color.border,
+                                    }}
+                                    onClick={() => abrirEdicion(h)}
+                                  >
+                                    <p className="text-xs font-semibold truncate" style={{ color: color.text }}>{h.curso?.codigo}</p>
+                                    <p className="text-xs truncate" style={{ color: color.sub }}>{h.curso?.nombre}</p>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <Clock className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                      <span className="text-2xs" style={{ color: color.sub }}>
+                                        {h.hora_inicio?.slice(0, 5)} - {h.hora_fin?.slice(0, 5)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <User className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                      <span className="text-2xs truncate" style={{ color: color.sub }}>
+                                        {h.docente?.nombres} {h.docente?.apellidos}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
+                                      <span className="text-2xs" style={{ color: color.sub }}>
+                                        {h.aula?.codigo || h.laboratorio?.codigo}
+                                      </span>
+                                    </div>
+                                    <div className="flex gap-1 mt-1">
+                                      {h.editado_manualmente && (
+                                        <span className="badge-warning text-2xs">
+                                          <Pencil className="w-2.5 h-2.5" />
+                                          Editado
+                                        </span>
+                                      )}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleEliminar(h.id); }}
+                                        className="text-danger-400 hover:text-danger-600 text-2xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        Eliminar
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })()
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
 
       {/* Edit Modal */}
       {editando && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in"
-          onClick={() => setEditando(null)}
-        >
-          <div
-            className="card p-6 w-full max-w-md shadow-modal animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
+          <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
                 <Pencil className="w-5 h-5 text-primary-600" />
                 Editar Horario
               </h2>
-              <button
-                onClick={() => setEditando(null)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
-              >
+              <button onClick={() => setEditando(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  Día
-                </label>
-                <select
-                  value={editForm.dia}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, dia: e.target.value })
-                  }
-                  className="input"
-                >
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día</label>
+                <select value={editForm.dia} onChange={(e) => setEditForm({ ...editForm, dia: e.target.value })} className="input">
                   {DIAS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                    Hora inicio
-                  </label>
-                  <input
-                    type="time"
-                    value={editForm.hora_inicio}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, hora_inicio: e.target.value })
-                    }
-                    className="input"
-                  />
+                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora inicio</label>
+                  <input type="time" value={editForm.hora_inicio} onChange={(e) => setEditForm({ ...editForm, hora_inicio: e.target.value })} className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                    Hora fin
-                  </label>
-                  <input
-                    type="time"
-                    value={editForm.hora_fin}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, hora_fin: e.target.value })
-                    }
-                    className="input"
-                  />
+                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora fin</label>
+                  <input type="time" value={editForm.hora_fin} onChange={(e) => setEditForm({ ...editForm, hora_fin: e.target.value })} className="input" />
                 </div>
               </div>
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setEditando(null)} className="btn-ghost">
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleGuardarEdicion}
-                  className="btn-primary flex items-center gap-2"
-                >
+                <button onClick={() => setEditando(null)} className="btn-ghost">Cancelar</button>
+                <button onClick={handleGuardarEdicion} className="btn-primary flex items-center gap-2">
                   <Save className="w-4 h-4" />
                   Guardar
                 </button>
@@ -530,22 +519,5 @@ const AdminHorarios = () => {
     </div>
   );
 };
-
-const EmptyState = () => (
-  <div className="card">
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-        <Inbox className="w-8 h-8 text-neutral-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-neutral-800 mb-1">
-        No hay horarios
-      </h3>
-      <p className="text-sm text-neutral-500 text-center">
-        Use &quot;Generar Horarios&quot; para crear la programación del
-        semestre.
-      </p>
-    </div>
-  </div>
-);
 
 export default AdminHorarios;

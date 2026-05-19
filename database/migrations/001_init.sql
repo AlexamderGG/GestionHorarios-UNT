@@ -115,8 +115,8 @@ INSERT INTO configuracion (clave, valor, descripcion) VALUES
 ('dias_habiles', 'Lunes,Martes,Miercoles,Jueves,Viernes', 'Dias de la semana habiles separados por coma'),
 ('hora_inicio', '07:00', 'Hora de inicio de jornada (HH:MM)'),
 ('hora_fin', '22:00', 'Hora de fin de jornada (HH:MM)'),
-('duracion_bloque', '120', 'Duracion de cada bloque de clase en minutos (ej: 120 = 2 horas)'),
-('bloques_por_dia', '6', 'Cantidad de bloques teoricos por dia (7-9, 9-11, 11-13, 14-16, 16-18, 18-20)'),
+('duracion_bloque', '60', 'Duracion de cada bloque de clase en minutos (ej: 60 = 1 hora)'),
+('bloques_por_dia', '12', 'Cantidad de bloques teoricos por dia (7-8, 8-9, 9-10, ..., 21-22)'),
 ('semestre_activo', '2026-1', 'Semestre academico activo. Formato YYYY-N. Determina ciclos impares (N impar) o pares (N par)')
 ON CONFLICT (clave) DO NOTHING;
 

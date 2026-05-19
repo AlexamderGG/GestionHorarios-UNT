@@ -224,7 +224,7 @@ const DocenteAuthController = {
             ? ambienteSeleccionado.id
             : null,
         generado_automaticamente: false,
-        editado_manualmente: false,
+        editado_manualmente: true,
       });
 
       const horarioCompleto = await HorarioModel.getById(horario.id);

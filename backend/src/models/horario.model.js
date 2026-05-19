@@ -126,8 +126,20 @@ const HorarioModel = {
     return result.rows[0]?.total || 0;
   },
 
+  // NUEVO METODO: Cuenta solo los generados automáticamente
+  countAutomaticosBySemestre: async (semestre, client = pool) => {
+    const result = await client.query('SELECT COUNT(*)::int AS total FROM horarios WHERE semestre = $1 AND generado_automaticamente = TRUE', [semestre]);
+    return result.rows[0]?.total || 0;
+  },
+
   deleteBySemestre: async (semestre, client = pool) => {
     const result = await client.query('DELETE FROM horarios WHERE semestre = $1 RETURNING id', [semestre]);
+    return result.rowCount;
+  },
+
+  // NUEVO METODO: Borra solo los generados automáticamente
+  deleteAutomaticosBySemestre: async (semestre, client = pool) => {
+    const result = await client.query('DELETE FROM horarios WHERE semestre = $1 AND generado_automaticamente = TRUE RETURNING id', [semestre]);
     return result.rowCount;
   },
 
@@ -183,8 +195,8 @@ const HorarioModel = {
     return result.rows[0] || null;
   },
 
+  // MODIFICADO: Excluye asignaciones con horarios ya creados
   getAsignacionesParaScheduling: async (semestre, client = pool) => {
-    // Determine active cycles based on semester parity: -1 = odd, -2 = even
     const semestreTrim = String(semestre).trim();
     const isOddSemester = semestreTrim.endsWith('-1');
     const cicloParityFilter = isOddSemester
@@ -204,13 +216,13 @@ const HorarioModel = {
          d.categoria,
          d.tipo_nombramiento,
          d.antiguedad_anios,
-           c.codigo AS curso_codigo,
-           c.nombre AS curso_nombre,
-           c.creditos AS curso_creditos,
-           c.ciclo AS curso_ciclo,
-           c.horas_aula AS curso_horas_aula,
-           c.horas_lab AS curso_horas_lab,
-          CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
+         c.codigo AS curso_codigo,
+         c.nombre AS curso_nombre,
+         c.creditos AS curso_creditos,
+         c.ciclo AS curso_ciclo,
+         c.horas_aula AS curso_horas_aula,
+         c.horas_lab AS curso_horas_lab,
+         CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
          CASE d.categoria
            WHEN 'Principal' THEN 1
            WHEN 'Asociado' THEN 2
@@ -221,7 +233,9 @@ const HorarioModel = {
        FROM asignacion_docente_curso adc
        JOIN docentes d ON d.id = adc.docente_id AND d.activo = TRUE
        JOIN cursos c ON c.id = adc.curso_id AND c.activo = TRUE
+       LEFT JOIN horarios h ON h.asignacion_id = adc.id -- Se une para revisar si ya hay horario
        WHERE adc.semestre_asignacion = $1
+         AND h.id IS NULL -- Filtrar para traer solo las que NO tienen horario
          ${cicloParityFilter}
        ORDER BY prioridad_tipo ASC, prioridad_categoria ASC, d.antiguedad_anios DESC, d.apellidos ASC, d.nombres ASC, c.codigo ASC`,
       [semestre]

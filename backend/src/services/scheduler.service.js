@@ -33,10 +33,8 @@ const generarBloques = (configuracion) => {
     : ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
 
   const horaInicio = normalizarHora(configuracion.hora_inicio || "07:00");
-  // Usar siempre 22:00 como fin para tener bloques de tarde disponibles
   const horaFin = "22:00";
   const duracion = Number(configuracion.duracion_bloque || 60);
-  // Ignorar bloques_por_dia restrictivo; generar todos los bloques posibles
   const bloques = [];
   const inicio = timeToMinutes(horaInicio);
   const fin = timeToMinutes(horaFin);
@@ -45,15 +43,12 @@ const generarBloques = (configuracion) => {
 
   for (const dia of dias) {
     let actual = inicio;
-    let creadosDia = 0;
 
     while (actual + duracion <= fin) {
-      // Si el bloque empezaría en el almuerzo, se mueve al fin del descanso.
       if (actual >= almuerzoInicio && actual < almuerzoFin) {
         actual = almuerzoFin;
       }
 
-      // Si el bloque cruzaría el almuerzo, también se mueve para no partir clases.
       if (actual < almuerzoInicio && actual + duracion > almuerzoInicio) {
         actual = almuerzoFin;
       }
@@ -63,7 +58,6 @@ const generarBloques = (configuracion) => {
       const bloqueInicio = minutesToTime(actual);
       const bloqueFin = minutesToTime(actual + duracion);
       bloques.push({ dia, hora_inicio: bloqueInicio, hora_fin: bloqueFin });
-      creadosDia += 1;
       actual += duracion;
     }
   }
@@ -111,22 +105,25 @@ const SchedulerService = {
     try {
       await client.query("BEGIN");
 
-      const existentes = await HorarioModel.countBySemestre(
+      // CAMBIO AQUÍ: Contar solo los horarios automáticos existentes
+      const existentesAuto = await HorarioModel.countAutomaticosBySemestre(
         semestreNormalizado,
         client,
       );
-      if (existentes > 0 && !forzar) {
+      
+      if (existentesAuto > 0 && !forzar) {
         await client.query("ROLLBACK");
         return {
           ok: false,
           status: 409,
-          message: `Ya existen ${existentes} horarios para el semestre ${semestreNormalizado}. Envia forzar=true para regenerarlos.`,
+          message: `Ya existen ${existentesAuto} horarios automáticos para el semestre ${semestreNormalizado}. Envía forzar=true para regenerarlos (los manuales se mantendrán).`,
         };
       }
 
       let eliminados = 0;
-      if (forzar && existentes > 0) {
-        eliminados = await HorarioModel.deleteBySemestre(
+      if (forzar && existentesAuto > 0) {
+        // CAMBIO AQUÍ: Eliminar ÚNICAMENTE los horarios automáticos
+        eliminados = await HorarioModel.deleteAutomaticosBySemestre(
           semestreNormalizado,
           client,
         );
@@ -134,6 +131,8 @@ const SchedulerService = {
 
       const configuracion = await ConfiguracionModel.getConfiguracionCompleta();
       const bloques = generarBloques(configuracion);
+      
+      // Obtiene solo las asignaciones que NO tienen ningún horario establecido (ni manual)
       const asignaciones = await HorarioModel.getAsignacionesParaScheduling(
         semestreNormalizado,
         client,
@@ -188,10 +187,9 @@ const SchedulerService = {
 
         const minutosRequeridos = horasRequeridas * 60;
         let asignado = null;
-        let ultimoMotivo = "No se encontro bloque disponible";
+        let ultimoMotivo = "No se encontró bloque disponible";
         let bloqueSeleccionado = null;
 
-        // Ordenar bloques por día menos usado y hora menos usada
         const bloquesOrdenados = [...bloques].sort((a, b) => {
           const usoDiaA = usoPorDia[a.dia] || 0;
           const usoDiaB = usoPorDia[b.dia] || 0;
@@ -209,10 +207,9 @@ const SchedulerService = {
           const finMin = inicioMin + minutosRequeridos;
           const horaFinStr = minutesToTime(finMin);
 
-          // Permitir hasta 22:00 independientemente de lo que diga la config
           const horaFinMaxima = 22 * 60;
           if (finMin > horaFinMaxima) {
-            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} excede el horario maximo de 22:00`;
+            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} excede el horario máximo de 22:00`;
             continue;
           }
 
@@ -238,6 +235,7 @@ const SchedulerService = {
             continue;
           }
 
+          // Estos métodos validarán contra la BD (donde los manuales siguen existiendo)
           const conflictoDocente = await HorarioModel.existeConflictoDocente(
             {
               docente_id: asignacion.docente_id,

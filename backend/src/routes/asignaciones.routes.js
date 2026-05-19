@@ -18,6 +18,22 @@ router.get('/', AsignacionController.getAll);
 router.post('/', AsignacionController.create);
 
 /**
+ * @route   POST /api/asignaciones/auto
+ * @desc    Asignar automaticamente todos los cursos a docentes disponibles
+ * @module  Modulo 1
+ * @body    { semestre? }
+ */
+router.post('/auto', AsignacionController.asignarAutomaticamente);
+
+/**
+ * @route   POST /api/asignaciones/limpiar
+ * @desc    Eliminar TODAS las asignaciones de un semestre
+ * @module  Modulo 1
+ * @body    { semestre? }
+ */
+router.post('/limpiar', AsignacionController.limpiarAsignaciones);
+
+/**
  * @route   DELETE /api/asignaciones/:id
  * @desc    Eliminar una asignacion
  * @module  Modulo 1

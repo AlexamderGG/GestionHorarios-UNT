@@ -78,8 +78,7 @@ const selectHorarioCompleto = `
       'codigo', l.codigo,
       'nombre', l.nombre,
       'capacidad', l.capacidad,
-      'ubicacion', l.ubicacion,
-      'especialidad', l.especialidad
+      'ubicacion', l.ubicacion
     ) END AS laboratorio
   FROM horarios h
   JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
@@ -185,6 +184,13 @@ const HorarioModel = {
   },
 
   getAsignacionesParaScheduling: async (semestre, client = pool) => {
+    // Determine active cycles based on semester parity: -1 = odd, -2 = even
+    const semestreTrim = String(semestre).trim();
+    const isOddSemester = semestreTrim.endsWith('-1');
+    const cicloParityFilter = isOddSemester
+      ? "AND c.ciclo % 2 = 1"
+      : "AND c.ciclo % 2 = 0";
+
     const result = await client.query(
       `SELECT
          adc.id AS asignacion_id,
@@ -198,10 +204,12 @@ const HorarioModel = {
          d.categoria,
          d.tipo_nombramiento,
          d.antiguedad_anios,
-         c.codigo AS curso_codigo,
-         c.nombre AS curso_nombre,
-         c.creditos AS curso_creditos,
-         CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
+          c.codigo AS curso_codigo,
+          c.nombre AS curso_nombre,
+          c.creditos AS curso_creditos,
+          c.horas_aula AS curso_horas_aula,
+          c.horas_lab AS curso_horas_lab,
+          CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
          CASE d.categoria
            WHEN 'Principal' THEN 1
            WHEN 'Asociado' THEN 2
@@ -213,6 +221,7 @@ const HorarioModel = {
        JOIN docentes d ON d.id = adc.docente_id AND d.activo = TRUE
        JOIN cursos c ON c.id = adc.curso_id AND c.activo = TRUE
        WHERE adc.semestre_asignacion = $1
+         ${cicloParityFilter}
        ORDER BY prioridad_tipo ASC, prioridad_categoria ASC, d.antiguedad_anios DESC, d.apellidos ASC, d.nombres ASC, c.codigo ASC`,
       [semestre]
     );

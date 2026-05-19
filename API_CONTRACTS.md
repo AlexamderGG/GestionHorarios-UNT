@@ -2,7 +2,6 @@
 
 > Documento de contratos de API para desarrollo paralelo de módulos.
 > Cada módulo debe respetar estos endpoints, métodos, parámetros y formatos de respuesta.
-> En fase inicial, los endpoints devuelven mocks; los equipos deben reemplazar por lógica real.
 
 ---
 
@@ -37,10 +36,11 @@ Base path: `/api/docentes`
 | Método | Endpoint | Descripción | Responsable |
 |--------|----------|-------------|---------------|
 | GET | `/` | Listar todos los docentes (activos) | Módulo 1 |
+| GET | `/disponibles` | Docentes disponibles por especialidad/semestre | Módulo 1 |
 | GET | `/:id` | Obtener un docente por ID | Módulo 1 |
 | POST | `/` | Crear docente | Módulo 1 |
 | PUT | `/:id` | Actualizar docente | Módulo 1 |
-| DELETE | `/:id` | Eliminar (soft-delete recomendado) | Módulo 1 |
+| DELETE | `/:id` | Eliminar (soft-delete) | Módulo 1 |
 
 **Body POST/PUT:**
 ```json
@@ -51,9 +51,26 @@ Base path: `/api/docentes`
   "telefono": "string",
   "categoria": "Principal|Asociado|Auxiliar|Jefe de practica",
   "tipo_nombramiento": "Nombrado|Contratado",
+  "especialidad": "string",
+  "escuela": "string",
+  "semestre_contrato": "2026-1",
   "antiguedad_anios": 0
 }
 ```
+
+- `especialidad`: Área de conocimiento (ej: "Ingenieria de Sistemas", "Matematicas", "Musica").
+- `escuela`: Escuela de procedencia (ej: "Ingenieria de Sistemas", "Escuela de Matematicas").
+- `semestre_contrato`: Solo para contratados de un semestre. NULL = disponible todos los semestres.
+
+**GET /disponibles Query Params:**
+- `especialidad` (string) - Filtrar por especialidad
+- `semestre` (string) - Requerido. Semestre activo (ej: "2026-1")
+
+**Lógica de disponibilidad:**
+- Docentes `Nombrados` siempre están disponibles.
+- Docentes `Contratados` solo disponibles si:
+  - `semestre_contrato` es NULL (contrato indefinido), O
+  - `semestre_contrato` coincide con el semestre solicitado.
 
 ---
 
@@ -72,13 +89,22 @@ Base path: `/api/cursos`
 **Body POST/PUT:**
 ```json
 {
-  "codigo": "IS101",
-  "nombre": "Introduccion a la Programacion",
-  "creditos": 4,
-  "semestre": 1,
-  "ciclo": "2024-1"
+  "codigo": "EG-101",
+  "nombre": "Desarrollo del Pensamiento Logico Matematico",
+  "creditos": 3,
+  "ciclo": 1,
+  "semestre": "2026-1",
+  "especialidad": "Matematicas",
+  "horas_aula": 4,
+  "horas_lab": 0
 }
 ```
+
+- `ciclo` (INTEGER): Ciclo académico del curso (1 - 10).
+- `semestre` (VARCHAR): Periodo académico. Formato `YYYY-1` o `YYYY-2`.
+- `especialidad` (VARCHAR): Área del curso. Se usa para validar asignación a docentes.
+- `horas_aula` (INTEGER): Horas semanales de teoría/práctica en aula.
+- `horas_lab` (INTEGER): Horas semanales de laboratorio.
 
 ---
 
@@ -108,6 +134,8 @@ Base path: `/api/laboratorios`
 | PUT | `/:id` | Actualizar laboratorio | Módulo 1 |
 | DELETE | `/:id` | Eliminar laboratorio | Módulo 1 |
 
+> **Nota:** Los laboratorios son de uso general (sin especialidad). Cualquier curso puede reservarlos según sus `horas_lab`.
+
 ---
 
 ## 5. Asignaciones Docente-Curso
@@ -116,7 +144,7 @@ Base path: `/api/asignaciones`
 
 | Método | Endpoint | Descripción | Responsable |
 |--------|----------|-------------|---------------|
-| GET | `/` | Listar asignaciones (con joins a docente/curso) | Módulo 1 |
+| GET | `/` | Listar asignaciones | Módulo 1 |
 | POST | `/` | Asignar curso a docente | Módulo 1 |
 | DELETE | `/:id` | Eliminar asignación | Módulo 1 |
 
@@ -126,14 +154,16 @@ Base path: `/api/asignaciones`
   "docente_id": 1,
   "curso_id": 5,
   "tipo": "Teoria|Laboratorio",
-  "ambiente_preferido_id": 1, // opcional
-  "semestre_asignacion": "2024-1"
+  "ambiente_preferido_id": 1,
+  "semestre_asignacion": "2026-1",
+  "ciclo": 1
 }
 ```
 
-**Validaciones:**
-- Un mismo curso no puede asignarse dos veces al mismo docente con el mismo tipo y semestre.
-- `ambiente_preferido_id` debe referir a una aula (si tipo=Teoria) o laboratorio (si tipo=Laboratorio).
+**Validaciones de especialidad:**
+- Si el docente es `Contratado`, su `especialidad` debe coincidir con la del curso.
+- Si el docente contratado tiene `semestre_contrato`, debe coincidir con `semestre_asignacion`.
+- Docentes `Nombrados` pueden dictar cualquier curso (asumen adaptación a la necesidad).
 
 ---
 
@@ -143,129 +173,69 @@ Base path: `/api/horarios`
 
 | Método | Endpoint | Descripción | Responsable |
 |--------|----------|-------------|---------------|
-| GET | `/` | Listar horarios (filtros por query params) | Módulo 2 |
-| POST | `/generar` | Ejecutar algoritmo de generación automática | Módulo 2 |
+| GET | `/` | Listar horarios | Módulo 2 |
+| POST | `/generar` | Generar horarios automáticamente | Módulo 2 |
 | PUT | `/:id` | Editar manualmente un horario | Módulo 2 |
 
 **GET Query Params:**
-- `docente_id` (int) - Filtrar por docente
-- `aula_id` (int) - Filtrar por aula
-- `laboratorio_id` (int) - Filtrar por laboratorio
-- `dia` (string) - Filtrar por día
-- `semestre` (string) - Ej: "2024-1"
-
-**Respuesta GET (ejemplo de item):**
-```json
-{
-  "id": 1,
-  "asignacion_id": 3,
-  "semestre": "2024-1",
-  "dia": "Lunes",
-  "hora_inicio": "07:00",
-  "hora_fin": "09:00",
-  "aula_id": 1,
-  "laboratorio_id": null,
-  "generado_automaticamente": true,
-  "editado_manualmente": false,
-  "docente": { "id": 1, "nombres": "...", "apellidos": "...", "categoria": "..." },
-  "curso": { "id": 5, "codigo": "IS301", "nombre": "Bases de Datos I" },
-  "aula": { "id": 1, "codigo": "A101", "nombre": "..." }
-}
-```
+- `semestre` (string) - Ej: "2026-1"
+- `docente_id`, `aula_id`, `laboratorio_id`, `dia`
 
 **Body POST /generar:**
 ```json
 {
-  "semestre": "2024-1", // opcional, default actual
-  "forzar": false       // opcional, si true borra horarios previos del semestre
+  "semestre": "2026-1",
+  "forzar": true
 }
 ```
 
-**Restricciones del Algoritmo (Módulo 2):**
-1. Orden de asignación por jerarquía:
-   - Nombrados: Principal → Asociado → Auxiliar → Jefe de práctica
-   - Contratados: misma sub-jerarquía por categoría y antigüedad
-2. Un docente no puede tener dos clases al mismo tiempo (teoría o lab).
-3. Un aula/laboratorio no puede tener dos clases al mismo tiempo.
-4. Respetar configuración de días hábiles, hora inicio/fin y duración de bloque.
+**Lógica del Scheduler:**
+1. Lee `semestre_activo` de configuración.
+2. Determina ciclos activos: impar (1,3,5,7,9) si semestre termina en -1; par (2,4,6,8,10) si termina en -2.
+3. Obtiene asignaciones del semestre para ciclos activos.
+4. Ordena por jerarquía: Nombrados > Contratados; luego categoría; luego antigüedad.
+5. Para cada asignación, genera N sesiones según `horas_aula` o `horas_lab` del curso.
 
 ---
 
-## 7. Estadísticas
-
-Base path: `/api/estadisticas`
-
-| Método | Endpoint | Descripción | Responsable |
-|--------|----------|-------------|---------------|
-| GET | `/` | Obtener métricas para dashboard | Módulo 2 o 3 |
-
-**Respuesta:**
-```json
-{
-  "total_docentes": 12,
-  "total_cursos": 12,
-  "total_aulas": 6,
-  "total_laboratorios": 5,
-  "ocupacion_aulas": 68.5,
-  "distribucion_teoria_lab": { "teoria": 45, "laboratorio": 30 },
-  "carga_por_docente": [
-    { "docente_id": 1, "nombre": "Carlos Ramirez", "horas": 12 }
-  ],
-  "uso_por_ambiente": [
-    { "ambiente": "A101", "horas": 24 },
-    { "ambiente": "LAB01", "horas": 18 }
-  ]
-}
-```
-
----
-
-## 8. Reportes
-
-Base path: `/api/reportes`
-
-| Método | Endpoint | Descripción | Responsable |
-|--------|----------|-------------|---------------|
-| GET | `/operacional` | Horarios detallados por ambiente/día | Módulo 4 |
-| GET | `/gestion` | Resumen por docente | Módulo 4 |
-| GET | `/docente/:docente_id` | Horario individual de un docente | Módulo 4 |
-
-**Query Params comunes:**
-- `formato` = `json` | `pdf` (default: `json`)
-- `semestre` (string)
-- `anio` (string)
-
-**Nota sobre PDF:**
-Se recomienda que el backend devuelva JSON estructurado y el frontend (Módulo 4) use `jsPDF` + `html2canvas` para renderizar el PDF. Si el equipo prefiere generar PDF desde el backend, pueden usar librerías como `pdfkit` o `puppeteer`, pero esto sale del contrato inicial.
-
----
-
-## 9. Configuración
+## 7. Configuración
 
 Base path: `/api/configuracion`
 
 | Método | Endpoint | Descripción | Responsable |
 |--------|----------|-------------|---------------|
-| GET | `/` | Obtener configuración actual | Módulo 1 |
+| GET | `/` | Obtener configuración | Módulo 1 |
 | PUT | `/` | Actualizar configuración | Módulo 1 |
 
-**Respuesta / Body:**
+**Claves de configuración:**
+- `dias_habiles`: "Lunes,Martes,Miercoles,Jueves,Viernes"
+- `hora_inicio`: "07:00"
+- `hora_fin`: "22:00"
+- `duracion_bloque`: "120" (minutos)
+- `bloques_por_dia`: "6"
+- `semestre_activo`: "2026-1"
+
+**Respuesta GET:**
 ```json
 {
   "dias_habiles": ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"],
   "hora_inicio": "07:00",
   "hora_fin": "22:00",
   "duracion_bloque": 120,
-  "bloques_por_dia": 6
+  "bloques_por_dia": 6,
+  "semestre_activo": "2026-1"
 }
 ```
+
+> **semestre_activo** determina qué ciclos están activos:
+> - Termina en `-1` (impar): ciclos 1, 3, 5, 7, 9
+> - Termina en `-2` (par): ciclos 2, 4, 6, 8, 10
 
 ---
 
 ## Notas de Coordinación
 
-- **Módulo 1** debe proveer los seeds completos para que Módulo 2 pueda probar el algoritmo.
-- **Módulo 2** debe publicar un mock de `/api/horarios` con datos ficticios tan pronto tenga la estructura, para que Módulo 3 pueda pintar el grid.
-- **Módulo 3** debe usar los componentes de página ya creados (`Dashboard.jsx`, `Horarios.jsx`) y expandirlos.
-- **Módulo 4** debe usar `jsPDF` y `html2canvas` ya incluidos en `package.json`.
-- Todos los módulos deben usar la instancia de `axios` en `frontend/src/services/api.js` para las peticiones.
+- **Módulo 1** provee seeds completos con especialidades y escuelas.
+- **Módulo 2** debe respetar el `semestre_activo` para filtrar ciclos.
+- **Módulo 3** puede usar `/api/docentes/disponibles?especialidad=X&semestre=Y` para poblar selectores.
+- **Módulo 4** reportes pueden agrupar por especialidad o escuela.

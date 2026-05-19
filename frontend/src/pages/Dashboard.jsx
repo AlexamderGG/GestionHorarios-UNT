@@ -1,16 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import {
-  Users, BookOpen, Building2, FlaskConical, BarChart3,
-  Zap, Calendar, FileDown, RefreshCw, TrendingUp, ArrowRight, X,
-} from 'lucide-react';
-import api from '../services/api';
+  Users,
+  BookOpen,
+  Building2,
+  FlaskConical,
+  BarChart3,
+  Zap,
+  Calendar,
+  FileDown,
+  RefreshCw,
+  TrendingUp,
+  ArrowRight,
+  X,
+} from "lucide-react";
+import api from "../services/api";
 
-const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2'];
+const COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+  "#ea580c",
+  "#16a34a",
+  "#0891b2",
+];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -27,22 +53,33 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
-  const [semestre, setSemestre] = useState('2024-1');
+  const [semestre, setSemestre] = useState("2026-1");
 
   const cargarEstadisticas = () => {
     setLoading(true);
-    api.get('/estadisticas')
+    api
+      .get("/estadisticas")
       .then((res) => {
         if (res.data?.data) setStats(res.data.data);
       })
       .catch((err) => {
-        console.error('Error cargando estadísticas:', err);
-        setMensaje({ tipo: 'error', texto: 'Error al cargar estadísticas' });
+        console.error("Error cargando estadísticas:", err);
+        setMensaje({ tipo: "error", texto: "Error al cargar estadísticas" });
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    // Load active semester from configuration
+    api
+      .get("/configuracion")
+      .then((res) => {
+        if (res.data?.data?.semestre_activo) {
+          setSemestre(res.data.data.semestre_activo);
+        }
+      })
+      .catch((err) => console.error("Error cargando configuración:", err));
+
     cargarEstadisticas();
   }, []);
 
@@ -50,31 +87,51 @@ const Dashboard = () => {
     setGenerando(true);
     setMensaje(null);
     try {
-      const res = await api.post('/horarios/generar', { semestre, forzar: true });
+      const res = await api.post("/horarios/generar", {
+        semestre,
+        forzar: true,
+      });
       if (res.data?.success) {
-        setMensaje({ tipo: 'exito', texto: `Horarios generados: ${res.data.data?.generados || 0} clases asignadas.` });
+        setMensaje({
+          tipo: "exito",
+          texto: `Horarios generados: ${res.data.data?.generados || 0} clases asignadas.`,
+        });
         cargarEstadisticas();
       } else {
-        setMensaje({ tipo: 'error', texto: res.data?.message || 'Error al generar horarios' });
+        setMensaje({
+          tipo: "error",
+          texto: res.data?.message || "Error al generar horarios",
+        });
       }
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.response?.data?.message || 'Error de conexión al generar horarios' });
+      setMensaje({
+        tipo: "error",
+        texto:
+          err.response?.data?.message ||
+          "Error de conexión al generar horarios",
+      });
     } finally {
       setGenerando(false);
     }
   };
 
-  const dataCargaDocente = (stats.carga_por_docente || []).map(d => ({
+  const dataCargaDocente = (stats.carga_por_docente || []).map((d) => ({
     nombre: d.nombre || d.docente || `Docente ${d.docente_id}`,
     horas: Number(d.horas || 0),
   }));
 
   const dataDistribucion = [
-    { name: 'Teoría', value: Number(stats.distribucion_teoria_lab?.teoria || 0) },
-    { name: 'Laboratorio', value: Number(stats.distribucion_teoria_lab?.laboratorio || 0) },
+    {
+      name: "Teoría",
+      value: Number(stats.distribucion_teoria_lab?.teoria || 0),
+    },
+    {
+      name: "Laboratorio",
+      value: Number(stats.distribucion_teoria_lab?.laboratorio || 0),
+    },
   ];
 
-  const dataUsoAmbiente = (stats.uso_por_ambiente || []).map(a => ({
+  const dataUsoAmbiente = (stats.uso_por_ambiente || []).map((a) => ({
     nombre: a.ambiente,
     horas: Number(a.horas || 0),
   }));
@@ -89,14 +146,16 @@ const Dashboard = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
-          <p className="text-sm text-neutral-500 mt-1">Resumen general del sistema de horarios</p>
+          <p className="text-sm text-neutral-500 mt-1">
+            Resumen general del sistema de horarios
+          </p>
         </div>
         {mensaje && (
           <div
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium animate-slide-down ${
-              mensaje.tipo === 'exito'
-                ? 'bg-success-50 text-success-700 border border-success-200'
-                : 'bg-danger-50 text-danger-700 border border-danger-200'
+              mensaje.tipo === "exito"
+                ? "bg-success-50 text-success-700 border border-success-200"
+                : "bg-danger-50 text-danger-700 border border-danger-200"
             }`}
           >
             <span className="flex-1">{mensaje.texto}</span>
@@ -148,13 +207,15 @@ const Dashboard = () => {
       <div className="card p-5 mb-6">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Semestre</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+              Semestre
+            </label>
             <input
               type="text"
               value={semestre}
               onChange={(e) => setSemestre(e.target.value)}
               className="input w-32"
-              placeholder="2024-1"
+              placeholder="2026-1"
             />
           </div>
           <button
@@ -175,14 +236,14 @@ const Dashboard = () => {
             )}
           </button>
           <button
-            onClick={() => navigate('/admin/horarios-general')}
+            onClick={() => navigate("/admin/horarios-general")}
             className="btn-secondary flex items-center gap-2"
           >
             <Calendar className="w-4 h-4" />
             Ver Horarios
           </button>
           <button
-            onClick={() => navigate('/admin/reportes')}
+            onClick={() => navigate("/admin/reportes")}
             className="btn-secondary flex items-center gap-2"
           >
             <FileDown className="w-4 h-4" />
@@ -201,18 +262,32 @@ const Dashboard = () => {
           </h2>
           {dataCargaDocente.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dataCargaDocente} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <BarChart
+                data={dataCargaDocente}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="nombre" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" height={60} />
+                <XAxis
+                  dataKey="nombre"
+                  tick={{ fontSize: 11 }}
+                  angle={-20}
+                  textAnchor="end"
+                  height={60}
+                />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)',
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                   }}
                 />
-                <Bar dataKey="horas" fill="#2563eb" radius={[4, 4, 0, 0]} name="Horas" />
+                <Bar
+                  dataKey="horas"
+                  fill="#2563eb"
+                  radius={[4, 4, 0, 0]}
+                  name="Horas"
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -226,7 +301,7 @@ const Dashboard = () => {
             <FlaskConical className="w-4.5 h-4.5 text-primary-600" />
             Distribución Teoría vs Laboratorio
           </h2>
-          {dataDistribucion.some(d => d.value > 0) ? (
+          {dataDistribucion.some((d) => d.value > 0) ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -245,9 +320,9 @@ const Dashboard = () => {
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)',
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                   }}
                 />
                 <Legend />
@@ -266,18 +341,32 @@ const Dashboard = () => {
           </h2>
           {dataUsoAmbiente.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dataUsoAmbiente} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} layout="vertical">
+              <BarChart
+                data={dataUsoAmbiente}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                layout="vertical"
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis type="number" tick={{ fontSize: 12 }} />
-                <YAxis dataKey="nombre" type="category" tick={{ fontSize: 12 }} width={100} />
+                <YAxis
+                  dataKey="nombre"
+                  type="category"
+                  tick={{ fontSize: 12 }}
+                  width={100}
+                />
                 <Tooltip
                   contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)',
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
                   }}
                 />
-                <Bar dataKey="horas" fill="#7c3aed" radius={[0, 4, 4, 0]} name="Horas ocupadas" />
+                <Bar
+                  dataKey="horas"
+                  fill="#7c3aed"
+                  radius={[0, 4, 4, 0]}
+                  name="Horas ocupadas"
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -290,11 +379,31 @@ const Dashboard = () => {
 };
 
 const colorMap = {
-  primary: { bg: 'bg-primary-50', icon: 'text-primary-600', border: 'border-l-primary-500' },
-  indigo: { bg: 'bg-indigo-50', icon: 'text-indigo-600', border: 'border-l-indigo-500' },
-  success: { bg: 'bg-success-50', icon: 'text-success-600', border: 'border-l-success-500' },
-  warning: { bg: 'bg-warning-50', icon: 'text-warning-600', border: 'border-l-warning-500' },
-  danger: { bg: 'bg-danger-50', icon: 'text-danger-600', border: 'border-l-danger-500' },
+  primary: {
+    bg: "bg-primary-50",
+    icon: "text-primary-600",
+    border: "border-l-primary-500",
+  },
+  indigo: {
+    bg: "bg-indigo-50",
+    icon: "text-indigo-600",
+    border: "border-l-indigo-500",
+  },
+  success: {
+    bg: "bg-success-50",
+    icon: "text-success-600",
+    border: "border-l-success-500",
+  },
+  warning: {
+    bg: "bg-warning-50",
+    icon: "text-warning-600",
+    border: "border-l-warning-500",
+  },
+  danger: {
+    bg: "bg-danger-50",
+    icon: "text-danger-600",
+    border: "border-l-danger-500",
+  },
 };
 
 const StatCard = ({ label, value, icon: Icon, color }) => {
@@ -303,7 +412,9 @@ const StatCard = ({ label, value, icon: Icon, color }) => {
     <div className={`card-hover p-4 border-l-4 ${c.border}`}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm text-neutral-500 font-medium">{label}</p>
-        <div className={`w-9 h-9 rounded-lg ${c.bg} flex items-center justify-center`}>
+        <div
+          className={`w-9 h-9 rounded-lg ${c.bg} flex items-center justify-center`}
+        >
           <Icon className={`w-5 h-5 ${c.icon}`} />
         </div>
       </div>

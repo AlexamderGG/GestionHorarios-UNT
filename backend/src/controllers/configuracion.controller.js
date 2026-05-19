@@ -7,10 +7,7 @@ const CLAVES_VALIDAS = [
   'hora_fin',
   'duracion_bloque',
   'bloques_por_dia',
-  'demo_mode',
-  'demo_turno_actual',
-  'demo_step_minutes',
-  'seleccion_abierta',
+  'semestre_activo'
 ];
 
 const validarConfiguracion = (data) => {
@@ -33,6 +30,10 @@ const validarConfiguracion = (data) => {
   if (clave === 'hora_inicio' || clave === 'hora_fin') {
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(valor)) errores.push(`${clave} debe estar en formato HH:MM`);
+  }
+  if (clave === 'semestre_activo') {
+    const semRegex = /^\d{4}-[12]$/;
+    if (!semRegex.test(valor)) errores.push('semestre_activo debe tener formato YYYY-1 o YYYY-2');
   }
 
   return errores;

@@ -10,6 +10,8 @@ import MiHorario from './pages/docente/MiHorario';
 import SeleccionarHorario from './pages/docente/SeleccionarHorario';
 import MisRestricciones from './pages/docente/MisRestricciones';
 import AdminHorarios from './pages/admin/AdminHorarios';
+import AdminAsignaciones from './pages/admin/AdminAsignaciones';
+import AdminDocentes from './pages/admin/AdminDocentes';
 import EstadoDocentes from './pages/admin/EstadoDocentes';
 import DemoPanel from './pages/admin/DemoPanel';
 import Dashboard from './pages/Dashboard';
@@ -39,9 +41,11 @@ function App() {
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="admin" element={<AdminHorarios />} />
+          <Route path="admin" element={<Dashboard />} />
           <Route path="admin/horarios" element={<AdminHorarios />} />
-          <Route path="admin/docentes" element={<EstadoDocentes />} />
+          <Route path="admin/asignaciones" element={<AdminAsignaciones />} />
+          <Route path="admin/docentes" element={<AdminDocentes />} />
+          <Route path="admin/estado-docentes" element={<EstadoDocentes />} />
           <Route path="admin/demo" element={<DemoPanel />} />
           <Route path="admin/dashboard" element={<Dashboard />} />
           <Route path="admin/horarios-general" element={<Horarios />} />

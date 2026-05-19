@@ -12,22 +12,22 @@ const LaboratorioModel = {
   },
 
   create: async (data) => {
-    const { codigo, nombre, capacidad, ubicacion, especialidad } = data;
+    const { codigo, nombre, capacidad, ubicacion } = data;
     const result = await pool.query(
-      `INSERT INTO laboratorios (codigo, nombre, capacidad, ubicacion, especialidad)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [codigo, nombre, capacidad, ubicacion, especialidad]
+      `INSERT INTO laboratorios (codigo, nombre, capacidad, ubicacion)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [codigo, nombre, capacidad, ubicacion]
     );
     return result.rows[0];
   },
 
   update: async (id, data) => {
-    const { codigo, nombre, capacidad, ubicacion, especialidad, activo } = data;
+    const { codigo, nombre, capacidad, ubicacion, activo } = data;
     const result = await pool.query(
-      `UPDATE laboratorios 
-       SET codigo = $1, nombre = $2, capacidad = $3, ubicacion = $4, especialidad = $5, activo = $6
-       WHERE id = $7 RETURNING *`,
-      [codigo, nombre, capacidad, ubicacion, especialidad, activo, id]
+      `UPDATE laboratorios
+       SET codigo = $1, nombre = $2, capacidad = $3, ubicacion = $4, activo = $5
+       WHERE id = $6 RETURNING *`,
+      [codigo, nombre, capacidad, ubicacion, activo, id]
     );
     return result.rows[0] || null;
   },

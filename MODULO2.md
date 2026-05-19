@@ -106,7 +106,7 @@ Body esperado:
 
 ```json
 {
-  "semestre": "2024-1",
+  "semestre": "2026-1",
   "forzar": true
 }
 ```
@@ -143,7 +143,7 @@ Filtros soportados:
 Ejemplo:
 
 ```http
-GET /api/horarios?semestre=2024-1&docente_id=1
+GET /api/horarios?semestre=2026-1&docente_id=1
 ```
 
 La respuesta incluye información relacionada de docente, curso, aula o laboratorio.
@@ -198,7 +198,7 @@ GET /api/estadisticas
 También acepta filtro por semestre:
 
 ```http
-GET /api/estadisticas?semestre=2024-1
+GET /api/estadisticas?semestre=2026-1
 ```
 
 Devuelve:
@@ -395,7 +395,7 @@ Body:
 
 ```json
 {
-  "semestre": "2024-1",
+  "semestre": "2026-1",
   "forzar": true
 }
 ```
@@ -403,13 +403,13 @@ Body:
 ### 10.7 Consultar horarios
 
 ```http
-GET http://localhost:3001/api/horarios?semestre=2024-1
+GET http://localhost:3001/api/horarios?semestre=2026-1
 ```
 
 ### 10.8 Consultar estadísticas
 
 ```http
-GET http://localhost:3001/api/estadisticas?semestre=2024-1
+GET http://localhost:3001/api/estadisticas?semestre=2026-1
 ```
 
 ### 10.9 Ejecutar frontend

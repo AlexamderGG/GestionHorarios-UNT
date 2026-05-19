@@ -18,6 +18,8 @@ import {
   PanelLeft,
   PlayCircle,
   User,
+  Link2,
+  BarChart3,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
@@ -53,7 +55,9 @@ const Navbar = () => {
 
   const adminLinks = [
     { to: '/admin/horarios', label: 'Horarios', icon: Calendar },
+    { to: '/admin/asignaciones', label: 'Asignaciones', icon: Link2 },
     { to: '/admin/docentes', label: 'Docentes', icon: Users },
+    { to: '/admin/estado-docentes', label: 'Estado Doc.', icon: BarChart3 },
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
     { to: '/admin/reportes', label: 'Reportes', icon: FileText },

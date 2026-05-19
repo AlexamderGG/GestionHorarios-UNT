@@ -3,10 +3,11 @@ const { success, error } = require('../utils/responseHelper');
 
 const CATEGORIAS_VALIDAS = ['Principal', 'Asociado', 'Auxiliar', 'Jefe de practica'];
 const TIPOS_NOMBRAMIENTO = ['Nombrado', 'Contratado'];
+const SEMESTRE_REGEX = /^\d{4}-[12]$/;
 
 const validarDocente = (data, isUpdate = false) => {
   const errores = [];
-  const { nombres, apellidos, email, categoria, tipo_nombramiento, antiguedad_anios } = data;
+  const { nombres, apellidos, email, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios } = data;
 
   if (!isUpdate || nombres !== undefined) {
     if (!nombres || nombres.trim().length < 2) errores.push('nombres es requerido (min 2 caracteres)');
@@ -27,6 +28,9 @@ const validarDocente = (data, isUpdate = false) => {
     if (antiguedad_anios === undefined || antiguedad_anios < 0 || !Number.isInteger(Number(antiguedad_anios))) {
       errores.push('antiguedad_anios debe ser un entero >= 0');
     }
+  }
+  if (semestre_contrato !== undefined && semestre_contrato !== null && String(semestre_contrato).trim() !== '' && !SEMESTRE_REGEX.test(String(semestre_contrato).trim())) {
+    errores.push('semestre_contrato debe tener formato YYYY-1 o YYYY-2');
   }
 
   return errores;
@@ -84,7 +88,6 @@ const DocenteController = {
         if (existe) return error(res, 'Ya existe otro docente con ese email', 409);
       }
 
-      // Mergear datos existentes con los nuevos
       const data = { ...docenteExistente, ...req.body };
       const docente = await DocenteModel.update(id, data);
       success(res, docente, 'Docente actualizado correctamente');
@@ -104,6 +107,24 @@ const DocenteController = {
       success(res, null, 'Docente eliminado correctamente');
     } catch (err) {
       error(res, 'Error al eliminar docente', 500);
+    }
+  },
+
+  // Endpoint para obtener docentes disponibles por especialidad
+  getDisponibles: async (req, res) => {
+    try {
+      const { especialidad } = req.query;
+      
+      if (especialidad) {
+        const docentes = await DocenteModel.getDisponiblesPorEspecialidad(especialidad);
+        success(res, docentes, 'Docentes disponibles obtenidos');
+      } else {
+        const docentes = await DocenteModel.getDisponiblesPorSemestre();
+        success(res, docentes, 'Docentes disponibles obtenidos');
+      }
+    } catch (err) {
+      console.error(err);
+      error(res, 'Error al obtener docentes disponibles', 500);
     }
   }
 };

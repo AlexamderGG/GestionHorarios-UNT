@@ -107,6 +107,26 @@ const SeleccionarHorario = () => {
   const opcionesHora = generarOpcionesHora();
   const asignacionSeleccionada = cursos.find(c => String(c.id) === String(asignacionId));
 
+  const calcularHoraFin = (inicio) => {
+    if (!inicio || !asignacionSeleccionada) return '';
+    const [h, m] = inicio.split(':').map(Number);
+    const horasCurso = asignacionSeleccionada.tipo === 'Teoria'
+      ? (Number(asignacionSeleccionada.curso_horas_aula) || 0)
+      : (Number(asignacionSeleccionada.curso_horas_lab) || 0);
+    const totalMinutos = h * 60 + m + horasCurso * 60;
+    const hf = String(Math.floor(totalMinutos / 60)).padStart(2, '0');
+    const mf = String(totalMinutos % 60).padStart(2, '0');
+    return `${hf}:${mf}`;
+  };
+
+  const horasCurso = (asignacion) => {
+    if (!asignacion) return '';
+    if (asignacion.tipo === 'Teoria') {
+      return asignacion.curso_horas_aula ? `${asignacion.curso_horas_aula}h` : '';
+    }
+    return asignacion.curso_horas_lab ? `${asignacion.curso_horas_lab}h` : '';
+  };
+
   if (loading) {
     return (
       <div className="animate-fade-in max-w-xl">
@@ -166,6 +186,9 @@ const SeleccionarHorario = () => {
                 {cursos.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.curso_codigo} — {c.curso_nombre} ({c.tipo})
+                    {c.tipo === 'Teoria'
+                      ? (c.curso_horas_aula ? ` · ${c.curso_horas_aula}h` : '')
+                      : (c.curso_horas_lab ? ` · ${c.curso_horas_lab}h` : '')}
                   </option>
                 ))}
               </select>
@@ -193,7 +216,11 @@ const SeleccionarHorario = () => {
                 </label>
                 <select
                   value={horaInicio}
-                  onChange={(e) => setHoraInicio(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setHoraInicio(val);
+                    setHoraFin(calcularHoraFin(val));
+                  }}
                   className="input"
                 >
                   <option value="">Seleccionar</option>

@@ -1,16 +1,16 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const pool = require('../config/db');
-const { success, error } = require('../utils/responseHelper');
+const pool = require("../config/db");
+const { success, error } = require("../utils/responseHelper");
 
 /**
  * @route   GET /api/reportes/operacional
  * @desc    Reporte operacional: horarios agrupados por aula/laboratorio, día y hora
  * @module  Modulo 4 - Reportes
  */
-router.get('/operacional', async (req, res) => {
-  const semestre = req.query.semestre || '2024-1';
-  
+router.get("/operacional", async (req, res) => {
+  const semestre = req.query.semestre || "2026-1";
+
   try {
     const query = `
       SELECT 
@@ -43,31 +43,36 @@ router.get('/operacional', async (req, res) => {
         END, 
         h.hora_inicio;
     `;
-    
+
     const { rows } = await pool.query(query, [semestre]);
-    
+
     const reportestructurado = {};
-    
-    rows.forEach(row => {
-      const ambienteKey = row.aula_codigo ? `Aula ${row.aula_codigo}` : `Laboratorio ${row.lab_codigo}`;
-      
+
+    rows.forEach((row) => {
+      const ambienteKey = row.aula_codigo
+        ? `Aula ${row.aula_codigo}`
+        : `Laboratorio ${row.lab_codigo}`;
+
       if (!reportestructurado[ambienteKey]) {
         reportestructurado[ambienteKey] = [];
       }
-      
+
       reportestructurado[ambienteKey].push({
         dia: row.dia,
         hora_inicio: row.hora_inicio.slice(0, 5),
         hora_fin: row.hora_fin.slice(0, 5),
         curso: { nombre: row.curso_nombre },
-        docente: { apellidos: row.docente_apellidos, nombres: row.docente_nombres }
+        docente: {
+          apellidos: row.docente_apellidos,
+          nombres: row.docente_nombres,
+        },
       });
     });
-    
-    success(res, reportestructurado, 'Reporte operacional generado con éxito');
+
+    success(res, reportestructurado, "Reporte operacional generado con éxito");
   } catch (err) {
-    console.error('Error en reporte operacional:', err);
-    error(res, 'Error al compilar el reporte operacional', 500);
+    console.error("Error en reporte operacional:", err);
+    error(res, "Error al compilar el reporte operacional", 500);
   }
 });
 
@@ -76,8 +81,8 @@ router.get('/operacional', async (req, res) => {
  * @desc    Reporte de gestion: resumen por docente (categoria, antiguedad, carga horaria)
  * @module  Modulo 4 - Reportes
  */
-router.get('/gestion', async (req, res) => {
-  const semestre = req.query.semestre || '2024-1';
+router.get("/gestion", async (req, res) => {
+  const semestre = req.query.semestre || "2026-1";
 
   try {
     const query = `
@@ -94,12 +99,12 @@ router.get('/gestion', async (req, res) => {
       GROUP BY d.id, d.apellidos, d.nombres, d.categoria, d.antiguedad_anios
       ORDER BY horas DESC, d.apellidos;
     `;
-    
+
     const { rows } = await pool.query(query, [semestre]);
-    success(res, rows, 'Reporte de gestión de docentes generado con éxito');
+    success(res, rows, "Reporte de gestión de docentes generado con éxito");
   } catch (err) {
-    console.error('Error en reporte de gestion:', err);
-    error(res, 'Error al compilar el reporte de gestión', 500);
+    console.error("Error en reporte de gestion:", err);
+    error(res, "Error al compilar el reporte de gestión", 500);
   }
 });
 
@@ -108,10 +113,10 @@ router.get('/gestion', async (req, res) => {
  * @desc    Horario individual detallado de un docente
  * @module  Modulo 4 - Reportes
  */
-router.get('/docente/:docente_id', async (req, res) => {
+router.get("/docente/:docente_id", async (req, res) => {
   const { docente_id } = req.params;
-  const semestre = req.query.semestre || '2024-1';
-  
+  const semestre = req.query.semestre || "2026-1";
+
   try {
     const query = `
       SELECT 
@@ -141,23 +146,23 @@ router.get('/docente/:docente_id', async (req, res) => {
         END, 
         h.hora_inicio;
     `;
-    
+
     const { rows } = await pool.query(query, [Number(docente_id), semestre]);
-    
-    const result = rows.map(row => ({
+
+    const result = rows.map((row) => ({
       id: row.id,
       dia: row.dia,
       hora_inicio: row.hora_inicio.slice(0, 5),
       hora_fin: row.hora_fin.slice(0, 5),
       curso: { codigo: row.curso_codigo, nombre: row.curso_nombre },
       aula: row.aula_codigo ? { codigo: row.aula_codigo } : null,
-      laboratorio: row.lab_codigo ? { codigo: row.lab_codigo } : null
+      laboratorio: row.lab_codigo ? { codigo: row.lab_codigo } : null,
     }));
-    
-    success(res, result, 'Horario individual de docente recuperado con éxito');
+
+    success(res, result, "Horario individual de docente recuperado con éxito");
   } catch (err) {
-    console.error('Error en reporte individual:', err);
-    error(res, 'Error al recuperar el horario del docente', 500);
+    console.error("Error en reporte individual:", err);
+    error(res, "Error al recuperar el horario del docente", 500);
   }
 });
 

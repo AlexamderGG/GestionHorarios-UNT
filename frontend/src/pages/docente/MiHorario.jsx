@@ -51,7 +51,8 @@ const MiHorario = () => {
     if (!config) return [];
     const inicio = config.hora_inicio || '07:00';
     const fin = config.hora_fin || '22:00';
-    const duracion = Number(config.duracion_bloque) || 120;
+    // Grilla de visualización: bloques de 1 hora para mayor precisión
+    const duracion = 60;
     const [hIni, mIni] = inicio.split(':').map(Number);
     const [hFin] = fin.split(':').map(Number);
     const inicioMin = hIni * 60 + mIni;
@@ -68,11 +69,24 @@ const MiHorario = () => {
   };
 
   const bloques = generarBloques();
-  const horariosIndex = {};
-  horarios.forEach(h => {
-    const key = `${h.dia}|${h.hora_inicio}`;
-    horariosIndex[key] = h;
-  });
+
+  // Función para verificar si un horario cubre un bloque de tiempo
+  const timeToMinutes = (t) => {
+    const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const horarioEnBloque = (dia, bloqueInicio, bloqueFin) => {
+    const bloqueIniMin = timeToMinutes(bloqueInicio);
+    const bloqueFinMin = timeToMinutes(bloqueFin);
+    return horarios.find(h => {
+      if (h.dia !== dia) return false;
+      const hIniMin = timeToMinutes(h.hora_inicio);
+      const hFinMin = timeToMinutes(h.hora_fin);
+      // El horario cubre este bloque si su inicio <= inicio del bloque y su fin >= fin del bloque
+      return hIniMin <= bloqueIniMin && hFinMin >= bloqueFinMin;
+    });
+  };
 
   if (loading) {
     return (
@@ -150,15 +164,20 @@ const MiHorario = () => {
                         {bloque.label}
                       </td>
                       {DIAS.map(dia => {
-                        const key = `${dia}|${bloque.inicio}`;
-                        const h = horariosIndex[key];
+                        const h = horarioEnBloque(dia, bloque.inicio, bloque.fin);
                         return (
                           <td key={`${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 p-1.5 align-top last:border-r-0">
                             {h ? (
                               <div className="bg-primary-50/60 border-l-3 border-l-primary-500 rounded-lg p-2.5 group">
                                 <p className="text-xs font-semibold text-primary-800">{h.curso?.codigo}</p>
                                 <p className="text-xs text-neutral-600 truncate">{h.curso?.nombre}</p>
-                                <div className="flex items-center gap-1 mt-1.5">
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Clock className="w-3 h-3 text-neutral-400" />
+                                  <span className="text-2xs text-neutral-500">
+                                    {h.hora_inicio?.slice(0, 5)} - {h.hora_fin?.slice(0, 5)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 mt-0.5">
                                   <MapPin className="w-3 h-3 text-neutral-400" />
                                   <span className="text-2xs text-neutral-500">
                                     {h.aula?.codigo || h.laboratorio?.codigo || 'Sin ambiente'}

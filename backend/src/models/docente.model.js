@@ -14,29 +14,28 @@ const DocenteModel = {
   },
 
   create: async (data) => {
-    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, antiguedad_anios } = data;
+    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios } = data;
     const result = await pool.query(
-      `INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, antiguedad_anios)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, antiguedad_anios]
+      `INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad || null, escuela || 'Ingenieria de Sistemas', semestre_contrato || null, antiguedad_anios]
     );
     return result.rows[0];
   },
 
   update: async (id, data) => {
-    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, antiguedad_anios, activo } = data;
+    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, activo } = data;
     const result = await pool.query(
       `UPDATE docentes 
        SET nombres = $1, apellidos = $2, email = $3, telefono = $4, 
-           categoria = $5, tipo_nombramiento = $6, antiguedad_anios = $7, activo = $8, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $9 RETURNING *`,
-      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, antiguedad_anios, activo, id]
+           categoria = $5, tipo_nombramiento = $6, especialidad = $7, escuela = $8, semestre_contrato = $9, antiguedad_anios = $10, activo = $11, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12 RETURNING *`,
+      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, activo, id]
     );
     return result.rows[0] || null;
   },
 
   delete: async (id) => {
-    // Soft delete
     const result = await pool.query(
       'UPDATE docentes SET activo = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
       [id]
@@ -51,6 +50,47 @@ const DocenteModel = {
     const params = excludeId ? [email, excludeId] : [email];
     const result = await pool.query(query, params);
     return result.rowCount > 0;
+  },
+
+  // Obtener docentes disponibles segun especialidad
+  // Solo docentes cuya especialidad coincida con la del curso
+  getDisponiblesPorEspecialidad: async (especialidad) => {
+    const result = await pool.query(
+      `SELECT * FROM docentes 
+       WHERE activo = TRUE 
+         AND especialidad = $1
+       ORDER BY 
+         CASE tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END,
+         CASE categoria
+           WHEN 'Principal' THEN 1
+           WHEN 'Asociado' THEN 2
+           WHEN 'Auxiliar' THEN 3
+           WHEN 'Jefe de practica' THEN 4
+           ELSE 5
+         END,
+         antiguedad_anios DESC`,
+      [especialidad]
+    );
+    return result.rows;
+  },
+
+  // Obtener todos los docentes activos ordenados por prioridad
+  getDisponiblesPorSemestre: async () => {
+    const result = await pool.query(
+      `SELECT * FROM docentes 
+       WHERE activo = TRUE 
+       ORDER BY 
+         CASE tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END,
+         CASE categoria
+           WHEN 'Principal' THEN 1
+           WHEN 'Asociado' THEN 2
+           WHEN 'Auxiliar' THEN 3
+           WHEN 'Jefe de practica' THEN 4
+           ELSE 5
+         END,
+         antiguedad_anios DESC`
+    );
+    return result.rows;
   }
 };
 

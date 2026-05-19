@@ -7,7 +7,14 @@
 
 ## Descripción General
 
-Aplicación web para la gestión automática de horarios académicos. El sistema asigna horarios respetando la jerarquía docente (nombrados vs contratados, categoría y antigüedad), evita cruces de horarios y doble reserva de ambientes, y proporciona dashboard con gráficos y reportes en PDF.
+Aplicación web para la gestión automática de horarios académicos. El sistema asigna horarios respetando la jerarquía docente (nombrados vs contratados, categoría y antigüedad), evita cruces de horarios y doble reserva de ambientes, distribuye la carga horaria equitativamente, y proporciona dashboard con gráficos y reportes.
+
+**Funcionalidades clave:**
+
+- Semestre activo configurable (impar/par) que determina ciclos activos.
+- Asignación manual y automática de cursos a docentes respetando especialidad y límite de 20h semanales.
+- Docentes seleccionan sus horarios desde su portal personal.
+- Scheduler con prioridad: Nombrados > Contratados; Principal > Asociado > Auxiliar > Jefe de práctica.
 
 ---
 
@@ -18,10 +25,10 @@ scheduling-unt/
 ├── backend/
 │   ├── src/
 │   │   ├── config/        # Configuración (DB, etc.)
-│   │   ├── controllers/   # Lógica de negocio (a implementar por módulos)
+│   │   ├── controllers/   # Lógica de negocio
 │   │   ├── models/        # Modelos / queries SQL
 │   │   ├── routes/        # Definición de endpoints API
-│   │   ├── services/      # Servicios auxiliares
+│   │   ├── services/      # Servicios auxiliares (scheduler, demo)
 │   │   ├── utils/         # Helpers (responseHelper, etc.)
 │   │   └── app.js         # Configuración de Express
 │   ├── .env               # Variables de entorno (NO subir a git)
@@ -31,25 +38,30 @@ scheduling-unt/
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/    # Componentes reutilizables (Layout, Navbar)
-│   │   ├── pages/         # Vistas principales (Home, Dashboard, Horarios, Reportes, Configuracion)
-│   │   ├── hooks/         # Hooks personalizados (useApi)
+│   │   ├── components/    # Componentes reutilizables (Layout, Navbar, etc.)
+│   │   ├── pages/         # Vistas principales
+│   │   │   ├── admin/     # Dashboard, Asignaciones, Docentes, Horarios, Configuración, Reportes
+│   │   │   └── docente/   # Mis Cursos, Mi Horario, Seleccionar Horario
+│   │   ├── hooks/         # Hooks personalizados
 │   │   ├── services/      # Cliente Axios (api.js)
-│   │   ├── utils/         # Helpers frontend
 │   │   ├── App.jsx        # Router principal
 │   │   ├── main.jsx       # Punto de entrada React
 │   │   └── index.css      # Estilos base + Tailwind
-│   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js     # Proxy a backend en desarrollo
-│   ├── tailwind.config.js # Configuración de Tailwind
+│   ├── tailwind.config.js
 │   └── postcss.config.js
 ├── database/
 │   ├── migrations/
-│   │   └── 001_init.sql   # Creación de tablas
+│   │   ├── 001_init.sql              # Creación de tablas iniciales
+│   │   ├── 002_alter_cursos.sql      # Reestructura ciclos y semestres
+│   │   └── 003_labs_genericos.sql    # Laboratorios genéricos + horas en cursos
 │   └── seeds/
-│       └── 001_test_data.sql  # Datos de prueba
-├── API_CONTRACTS.md       # Contratos de API para desarrollo paralelo
+│       ├── 001_test_data.sql         # 20 docentes con especialidades, aulas y labs
+│       ├── 002_demo_config.sql       # Configuración de modo demo
+│       └── 003_cursos_documento.sql  # 77 cursos reales de la EIS (10 ciclos, con horas)
+├── API_CONTRACTS.md       # Contratos de API
+├── MODULO1.md             # Docs del Módulo 1 implementado
 └── README.md              # Este archivo
 ```
 
@@ -59,7 +71,7 @@ scheduling-unt/
 
 - **Node.js** >= 18.x
 - **PostgreSQL** >= 14.x
-- **npm** o **yarn**
+- **npm**
 
 ---
 
@@ -72,40 +84,40 @@ git clone https://github.com/tu-usuario/scheduling-unt.git
 cd scheduling-unt
 ```
 
-### 2. Configurar Base de Datos (PostgreSQL)
-
-Crear la base de datos:
+### 2. Crear base de datos y ejecutar migraciones
 
 ```bash
-psql -U postgres -c "CREATE DATABASE scheduling_unt;"
-```
+# Crear la base de datos (solicitará contraseña de postgres)
+createdb -U postgres scheduling_unt
 
-> Nota: Puedes usar pgAdmin, DBeaver o la consola `psql`.
-
-Ejecutar migraciones:
-
-```bash
+# Ejecutar migraciones en orden
 psql -U postgres -d scheduling_unt -f database/migrations/001_init.sql
+psql -U postgres -d scheduling_unt -f database/migrations/002_alter_cursos.sql
+psql -U postgres -d scheduling_unt -f database/migrations/003_labs_genericos.sql
 ```
 
-Cargar datos de prueba:
+### 3. Cargar datos de prueba (seeds)
 
 ```bash
+# En orden:
 psql -U postgres -d scheduling_unt -f database/seeds/001_test_data.sql
+psql -U postgres -d scheduling_unt -f database/seeds/002_demo_config.sql
+psql -U postgres -d scheduling_unt -f database/seeds/003_cursos_documento.sql
 ```
 
-### 3. Configurar Backend
+> **Nota:** `001_test_data.sql` inserta 20 docentes, 6 aulas y 5 laboratorios.  
+> `003_cursos_documento.sql` inserta 77 cursos reales de la EIS con `horas_aula` y `horas_lab`.
+
+### 4. Configurar Backend
 
 ```bash
 cd backend
-cp .env.example .env   # Editar .env con tus credenciales de PostgreSQL
+cp .env.example .env
 npm install
-npm run dev             # Inicia en modo desarrollo (nodemon)
+npm run dev
 ```
 
-El backend estará disponible en: `http://localhost:3001`
-
-**Variables de entorno del backend (.env):**
+**Archivo `.env` obligatorio:**
 
 ```env
 DB_HOST=localhost
@@ -115,9 +127,22 @@ DB_PASS=tu_password
 DB_NAME=scheduling_unt
 PORT=3001
 NODE_ENV=development
+
+# JWT (cualquier string secreto)
+JWT_SECRET=mi_clave_secreta_123
+JWT_EXPIRES_IN=8h
+
+# Credenciales de admin
+ADMIN_USER=admin
+ADMIN_PASS=admin123
+
+# Contraseña única para todos los docentes
+DOCENTE_PASSWORD=docente123
 ```
 
-### 4. Configurar Frontend
+> El backend estará en: `http://localhost:3001`
+
+### 5. Configurar Frontend
 
 ```bash
 cd frontend
@@ -125,116 +150,97 @@ npm install
 npm run dev
 ```
 
-El frontend estará disponible en: `http://localhost:5173`
+> El frontend estará en: `http://localhost:5173`
+> El proxy de Vite redirige `/api` al backend automáticamente.
 
-> El proxy de Vite redirige automáticamente las peticiones `/api` al backend (`http://localhost:3001`).
+### 6. Acceder al sistema
 
-### 5. Verificar funcionamiento
+Abre `http://localhost:5173` en el navegador.
 
-- Abre el navegador en `http://localhost:5173`
-- Deberías ver la página de inicio de Scheduling UNT.
-- Puedes probar la salud del backend en `http://localhost:3001/health`
+#### Credenciales de acceso
+
+| Rol     | Usuario / Email                      | Contraseña   |
+| ------- | ------------------------------------ | ------------ |
+| Admin   | `admin` (campo "Usuario")            | `admin123`   |
+| Docente | Cualquier email de la tabla docentes | `docente123` |
+
+**Emails de docentes de prueba (seed 001):**
+
+- `c.ramirez@unt.edu.pe` (Ing. Sistemas, Nombrado)
+- `j.perez@unt.edu.pe` (Matemáticas, Contratado)
+- `p.sanchez@unt.edu.pe` (Física, Contratado)
+- `c.torres@unt.edu.pe` (Comunicación, Contratado)
+- `f.rojas@unt.edu.pe` (Música, Contratado - electivo)
+- `i.luna@unt.edu.pe` (Danza Folklórica, Contratado - electivo)
+- etc.
+
+---
+
+## Flujo de uso rápido
+
+1. **Admin** entra con `admin / admin123`.
+2. Va a **Configuración** y define el **Semestre Activo** (ej. `2026-1` para ciclos impares, `2026-2` para pares).
+3. Va a **Asignaciones** y asigna cursos a docentes manualmente o presiona **"Asignar Automático"**.
+4. Presiona **"Generar Horarios"** en Dashboard o Horarios para ejecutar el scheduler.
+5. **Docente** entra con su email y `docente123`, va a **"Mis Cursos"** y selecciona horario.
 
 ---
 
 ## Convenciones y Estilo de Código
 
-- **Backend:** ESLint + Prettier recomendados (aún no configurados, cada módulo puede agregarlos).
-- **Frontend:** Tailwind CSS para estilos; componentes funcionales con hooks.
-- **Base de datos:** Nombres de tablas en plural, snake_case. IDs autoincrementales con `SERIAL`.
-- **Git:** Usar ramas por módulo: `modulo1/gestion-datos`, `modulo2/algoritmo`, etc.
+- **Backend:** Modelos SQL directos con `pg` pool (sin ORM). Respuestas estandarizadas con `success()` / `error()`.
+- **Frontend:** React funcional + hooks. Tailwind CSS. `lucide-react` para íconos. `recharts` para gráficos.
+- **Base de datos:** Tablas en plural, snake_case. Soft-delete con `activo`/`activa`. IDs `SERIAL PRIMARY KEY`.
+- **Git:** Usar ramas por feature: `feature/nombre-descriptivo`.
 
 ---
 
 ## Estado de Implementación
 
-| Modulo | Estado | Responsable | Rama |
-|--------|--------|-------------|------|
-| **Modulo 1** | Completado | Eduardo | `modulo1` |
-| **Modulo 2** | Pendiente | Jersson | `modulo2/algoritmo` |
-| **Modulo 3** | Pendiente | Gian Franco | `modulo3/dashboard-frontend` |
-| **Modulo 4** | Pendiente | Alexander | `modulo4/reportes-frontend` |
-
-Consulta `API_CONTRACTS.md` para los contratos de API y `MODULO1.md` para los detalles del Modulo 1 implementado.
-
----
-
-## División de Módulos (Trabajo Paralelo)
-
-Este proyecto está diseñado para ser desarrollado en paralelo por 4 programadores. Consulta `API_CONTRACTS.md` para los contratos de API.
-
-### Módulo 1 – Gestión de datos maestros y configuración (Backend) ✅ COMPLETADO
-
-**Responsable:** _Eduardo_  
-**Rama:** `modulo1`
-
-**Implementado:**
-
-- CRUD completo para `docentes`, `cursos`, `aulas`, `laboratorios` con validaciones y soft-delete.
-- Endpoints de `asignaciones` (asignar curso a docente con tipo y ambiente preferido), con verificacion de duplicados y existencia de entidades relacionadas.
-- Endpoint de `configuracion` (días hábiles, horas, duración de bloques) con parseo de tipos.
-- Modelos SQL directos usando `pg` pool.
-- Script de prueba automatico: `node backend/tests/test_modulo1.js`
-
-**Documentación:** Ver `MODULO1.md`
-
----
-
-### Módulo 2 – Algoritmo de asignación automática de horarios (Backend)
-
-**Responsable:** _Jersson_  
-**Rama sugerida:** `modulo2/algoritmo`
-
-**Tareas:**
-
-- Implementar algoritmo de scheduling que respete jerarquía docente y restricciones de disponibilidad.
-- Endpoint `POST /api/horarios/generar`.
-- Endpoint `GET /api/horarios` con filtros.
-- Endpoint `PUT /api/horarios/:id` para edición manual.
-- Alimentar el endpoint `/api/estadisticas` con datos reales.
-- **Archivos principales a modificar:** `backend/src/routes/horarios.routes.js`, `backend/src/controllers/horarios.controller.js`, `backend/src/services/scheduler.service.js`
-
----
-
-### Módulo 3 – Frontend: Dashboard, visualización y gráficos
-
-**Responsable:** _Gian Franco_  
-**Rama sugerida:** `modulo3/dashboard-frontend`
-
-**Tareas:**
-
-- Enriquecer `Dashboard.jsx` con tarjetas de resumen, estadísticas y gráficos (Recharts).
-- Implementar tabla grid de horarios en `Horarios.jsx` (días x bloques horarios).
-- Botón "Generar Horarios" conectado a `POST /api/horarios/generar`.
-- Selectores de filtro (docente, aula, laboratorio).
-- Consumir endpoints de configuración y datos maestros.
-- **Archivos principales a modificar:** `frontend/src/pages/Dashboard.jsx`, `frontend/src/pages/Horarios.jsx`, componentes de gráficos en `frontend/src/components/`
-
----
-
-### Módulo 4 – Frontend: Reportes PDF y horario individual por docente
-
-**Responsable:** _Alexander_  
-**Rama sugerida:** `modulo4/reportes-frontend`
-
-**Tareas:**
-
-- Implementar generación de PDFs en `Reportes.jsx` usando `jsPDF` + `html2canvas`.
-- Reporte operacional: detalle por aula/lab, día y hora.
-- Reporte de gestión: resumen por docente (categoría, antigüedad, carga horaria).
-- Funcionalidad de seleccionar docente y ver/exportar su horario individual.
-- Opcional: Interfaz simple de edición manual de horarios (conectar con `PUT /api/horarios/:id`).
-- **Archivos principales a modificar:** `frontend/src/pages/Reportes.jsx`, `frontend/src/components/reportes/`, utilidades PDF en `frontend/src/utils/pdf.js`
+| Módulo       | Estado        | Descripción                                                       |
+| ------------ | ------------- | ----------------------------------------------------------------- |
+| **Módulo 1** | ✅ Completado | CRUD maestro, asignaciones, configuración, seeds reales           |
+| **Módulo 2** | ✅ Completado | Scheduler automático con prioridad y distribución equitativa      |
+| **Módulo 3** | ✅ Completado | Dashboard, grilla de horarios, gestión de docentes y asignaciones |
+| **Módulo 4** | ✅ Completado | Vista docente (mis cursos, mi horario, seleccionar horario)       |
 
 ---
 
 ## Supuestos y Decisiones de Diseño
 
-- **Bloques de horario:** 2 horas (120 minutos) por bloque, de 7:00 a 22:00. Esto genera hasta 6 bloques por día (considerando una hora de almuerzo entre 13:00-14:00).
-- **Días hábiles:** Lunes a Viernes por defecto. Configurable en tabla `configuracion`.
-- **Jerarquía docente:** La prioridad está definida por `tipo_nombramiento` (Nombrado > Contratado) y luego por `categoria` (Principal > Asociado > Auxiliar > Jefe de práctica) y finalmente `antiguedad_anios` DESC.
-- **Asignación de ambientes:** Teoría usa `aulas`; Laboratorio usa `laboratorios`. La tabla `horarios` tiene ambos campos (aula_id y laboratorio_id) pero solo uno debe estar poblado según el tipo de asignación.
-- **Reportes PDF:** Se generan desde el frontend capturando DOM con `html2canvas` y exportando a PDF con `jsPDF` (para no agregar peso al backend). Si se requiere generación server-side, se puede discutir como mejora futura.
+- **Ciclo vs Semestre:**
+  - `ciclo` (INTEGER 1-10): ciclo del plan de estudios.
+  - `semestre` (VARCHAR): periodo académico formato `YYYY-N`.
+  - `semestre_activo` en configuración determina ciclos activos: `-1` → impares (1,3,5,7,9); `-2` → pares (2,4,6,8,10).
+- **Especialidad obligatoria:** Todos los docentes deben tener `especialidad` que coincida exactamente con la del curso para poder ser asignados. No hay excepciones por tipo de nombramiento.
+- **Límite de carga:** Máximo **20 horas semanales** por docente. El sistema lo valida en frontend y backend.
+- **Un curso = un docente por tipo:** Solo un docente puede dar Teoría y solo uno Laboratorio del mismo curso. No se permiten duplicados del mismo tipo.
+- **Laboratorios genéricos:** No tienen especialidad. Cualquier curso puede usar cualquier lab.
+- **Horas por curso:** `horas_aula` (teoría/práctica en aula) y `horas_lab` (laboratorio). El scheduler genera sesiones según estas horas.
+- **Asignación automática:** Distribuye cursos buscando el docente con **menor carga horaria actual** primero, luego por prioridad (Nombrado > Contratado, etc.).
+- **Horario docente:** El docente selecciona día e inicio; la hora fin se calcula automáticamente según `horas_aula` o `horas_lab` del curso.
+- **Visualización:** La grilla de horarios usa bloques de 1 hora para que cursos de 3h o 4h ocupen múltiples celdas consecutivas correctamente.
+
+---
+
+## Cambios Recientes (última sesión)
+
+### Backend
+
+- **Asignación automática (`/api/asignaciones/auto`)**: distribución equitativa por carga horaria, respeta límite de 20h.
+- **Endpoint limpiar asignaciones (`POST /api/asignaciones/limpiar`)**: elimina todas las asignaciones del semestre.
+- **Validaciones**: curso ya asignado por tipo, límite de horas, especialidad obligatoria.
+- **Modelo `horario.model.js`**: eliminada referencia a `l.especialidad` (labs son genéricos).
+- **`getMisCursos`**: carga asignaciones con JOINs completos y filtra por semestre actual.
+
+### Frontend
+
+- **Nueva vista `AdminDocentes.jsx`**: CRUD completo de docentes con combo boxes para especialidad y escuela.
+- **Nueva vista `AdminAsignaciones.jsx`**: asignación manual con filtros, indicador de carga horaria por docente, botón "Asignar Automático" y "Limpiar Todo".
+- **Configuración**: semestre activo editable, días hábiles toggles, guardado persistente.
+- **Dashboard/Horarios/EstadoDocentes**: leen semestre activo desde configuración.
+- **SeleccionarHorario (docente)**: combo muestra horas del curso, hora fin calculada automáticamente según duración real del curso.
+- **MiHorario (docente)**: grilla de 1h que permite ver cursos de 2h, 3h, 4h ocupando múltiples bloques.
 
 ---
 
@@ -242,17 +248,23 @@ Este proyecto está diseñado para ser desarrollado en paralelo por 4 programado
 
 ```bash
 # Backend
-npm run dev          # Desarrollo con nodemon
-npm start            # Producción
+cd backend && npm run dev          # Desarrollo (nodemon)
+cd backend && npm start          # Producción
 
 # Frontend
-npm run dev          # Servidor Vite
-npm run build        # Build de producción
-npm run preview      # Previsualizar build
+cd frontend && npm run dev         # Servidor Vite
+cd frontend && npm run build     # Build de producción
+cd frontend && npm run preview   # Previsualizar build
 
-# Base de datos
+# Base de datos (recargar desde cero)
+dropdb -U postgres scheduling_unt
+createdb -U postgres scheduling_unt
 psql -U postgres -d scheduling_unt -f database/migrations/001_init.sql
+psql -U postgres -d scheduling_unt -f database/migrations/002_alter_cursos.sql
+psql -U postgres -d scheduling_unt -f database/migrations/003_labs_genericos.sql
 psql -U postgres -d scheduling_unt -f database/seeds/001_test_data.sql
+psql -U postgres -d scheduling_unt -f database/seeds/002_demo_config.sql
+psql -U postgres -d scheduling_unt -f database/seeds/003_cursos_documento.sql
 ```
 
 ---

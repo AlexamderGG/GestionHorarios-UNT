@@ -29,6 +29,15 @@ CREATE TABLE IF NOT EXISTS docentes (
         'Nombrado', 'Contratado'
     )),
     
+    -- Especialidad (área de conocimiento)
+    especialidad VARCHAR(100),
+    
+    -- Escuela de procedencia
+    escuela VARCHAR(100) NOT NULL DEFAULT 'Ingenieria de Sistemas',
+    
+    -- Semestre específico de contrato (solo para docentes contratados de un solo semestre)
+    semestre_contrato VARCHAR(20),
+    
     -- Antigüedad en años (dentro de la misma categoría)
     antiguedad_anios INTEGER NOT NULL DEFAULT 0 CHECK (antiguedad_anios >= 0),
     
@@ -37,9 +46,12 @@ CREATE TABLE IF NOT EXISTS docentes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON TABLE docentes IS 'Personal docente de la Escuela de Ingenieria de Sistemas';
+COMMENT ON TABLE docentes IS 'Personal docente de diversas escuelas de la UNT';
 COMMENT ON COLUMN docentes.categoria IS 'Jerarquia: Principal > Asociado > Auxiliar > Jefe de practica';
 COMMENT ON COLUMN docentes.antiguedad_anios IS 'Usado para ordenar prioridad dentro de la misma categoria';
+COMMENT ON COLUMN docentes.especialidad IS 'Area de conocimiento del docente (ej: Matematicas, Programacion)';
+COMMENT ON COLUMN docentes.escuela IS 'Escuela de procedencia (ej: Ingenieria de Sistemas, Matematicas)';
+COMMENT ON COLUMN docentes.semestre_contrato IS 'Semestre especifico de contrato (solo para contratados de un semestre). NULL = todos los semestres';
 
 -- --------------------------------------------------------------
 -- 2. Tabla: cursos
@@ -49,11 +61,14 @@ CREATE TABLE IF NOT EXISTS cursos (
     codigo VARCHAR(20) UNIQUE NOT NULL,
     nombre VARCHAR(150) NOT NULL,
     creditos INTEGER NOT NULL DEFAULT 3,
-    semestre INTEGER NOT NULL CHECK (semestre BETWEEN 1 AND 10),
-    ciclo VARCHAR(20) NOT NULL DEFAULT '2024-1',
+    ciclo INTEGER NOT NULL CHECK (ciclo BETWEEN 1 AND 10),
+    semestre VARCHAR(20) NOT NULL DEFAULT '2026-1',
+    especialidad VARCHAR(100) NOT NULL DEFAULT 'Ingenieria de Sistemas',
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+COMMENT ON COLUMN cursos.especialidad IS 'Especialidad del curso. Se usa para validar asignacion a docentes con la misma especialidad';
 
 -- --------------------------------------------------------------
 -- 3. Tabla: aulas
@@ -78,10 +93,11 @@ CREATE TABLE IF NOT EXISTS laboratorios (
     nombre VARCHAR(100),
     capacidad INTEGER NOT NULL DEFAULT 25,
     ubicacion VARCHAR(100),
-    especialidad VARCHAR(100), -- Redes, Programacion, etc.
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+COMMENT ON TABLE laboratorios IS 'Laboratorios de uso general. Cualquier curso puede reservarlos';
 
 -- --------------------------------------------------------------
 -- 5. Tabla: configuracion
@@ -100,7 +116,8 @@ INSERT INTO configuracion (clave, valor, descripcion) VALUES
 ('hora_inicio', '07:00', 'Hora de inicio de jornada (HH:MM)'),
 ('hora_fin', '22:00', 'Hora de fin de jornada (HH:MM)'),
 ('duracion_bloque', '120', 'Duracion de cada bloque de clase en minutos (ej: 120 = 2 horas)'),
-('bloques_por_dia', '6', 'Cantidad de bloques teoricos por dia (7-9, 9-11, 11-13, 14-16, 16-18, 18-20)')
+('bloques_por_dia', '6', 'Cantidad de bloques teoricos por dia (7-9, 9-11, 11-13, 14-16, 16-18, 18-20)'),
+('semestre_activo', '2026-1', 'Semestre academico activo. Formato YYYY-N. Determina ciclos impares (N impar) o pares (N par)')
 ON CONFLICT (clave) DO NOTHING;
 
 -- --------------------------------------------------------------
@@ -119,7 +136,7 @@ CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
     -- Nota: No se usa FK directa porque puede referir a aulas o laboratorios.
     --        Se valida en la aplicacion (backend).
     
-    semestre_asignacion VARCHAR(20) DEFAULT '2024-1',
+    semestre_asignacion VARCHAR(20) DEFAULT '2026-1',
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
@@ -138,7 +155,7 @@ CREATE TABLE IF NOT EXISTS horarios (
     asignacion_id INTEGER NOT NULL REFERENCES asignacion_docente_curso(id) ON DELETE CASCADE,
     
     -- Fecha/periodo academico
-    semestre VARCHAR(20) NOT NULL DEFAULT '2024-1',
+    semestre VARCHAR(20) NOT NULL DEFAULT '2026-1',
     
     -- Dia y hora
     dia VARCHAR(20) NOT NULL CHECK (dia IN (

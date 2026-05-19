@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Clock, Calendar, Save, CheckCircle } from 'lucide-react';
+import { Settings, Clock, Calendar, Save, CheckCircle, RefreshCw } from 'lucide-react';
 import api from '../services/api';
+
+const DIAS_OPCIONES = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
 const Configuracion = () => {
   const [config, setConfig] = useState({
@@ -8,34 +10,94 @@ const Configuracion = () => {
     hora_inicio: '07:00',
     hora_fin: '22:00',
     duracion_bloque: 120,
+    semestre_activo: '2026-1',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     api.get('/configuracion')
       .then((res) => {
-        if (res.data?.data) setConfig(res.data.data);
+        if (res.data?.data) {
+          const data = res.data.data;
+          setConfig((prev) => ({
+            ...prev,
+            ...data,
+            // Ensure dias_habiles is always an array
+            dias_habiles: Array.isArray(data.dias_habiles)
+              ? data.dias_habiles
+              : typeof data.dias_habiles === 'string'
+                ? data.dias_habiles.split(',').filter(Boolean)
+                : prev.dias_habiles,
+          }));
+        }
       })
-      .catch((err) => console.error('Error cargando configuracion:', err))
+      .catch((err) => {
+        console.error('Error cargando configuracion:', err);
+        setError('No se pudo cargar la configuración');
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setConfig((prev) => ({ ...prev, [name]: value }));
+    if (name === 'duracion_bloque') {
+      setConfig((prev) => ({ ...prev, [name]: Number(value) }));
+    } else {
+      setConfig((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const toggleDia = (dia) => {
+    setConfig((prev) => {
+      const existe = prev.dias_habiles.includes(dia);
+      const nuevos = existe
+        ? prev.dias_habiles.filter((d) => d !== dia)
+        : [...prev.dias_habiles, dia];
+      return { ...prev, dias_habiles: nuevos };
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setSaved(false);
+    setError(null);
     try {
-      console.log('Guardar configuracion:', config);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const payload = {
+        configuracion: {
+          dias_habiles: config.dias_habiles.join(','),
+          hora_inicio: config.hora_inicio,
+          hora_fin: config.hora_fin,
+          duracion_bloque: String(config.duracion_bloque),
+          semestre_activo: config.semestre_activo,
+        },
+      };
+      const res = await api.put('/configuracion', payload);
+      if (res.data?.success) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+        // Update local state with server response
+        if (res.data?.data) {
+          const data = res.data.data;
+          setConfig((prev) => ({
+            ...prev,
+            ...data,
+            dias_habiles: Array.isArray(data.dias_habiles)
+              ? data.dias_habiles
+              : typeof data.dias_habiles === 'string'
+                ? data.dias_habiles.split(',').filter(Boolean)
+                : prev.dias_habiles,
+          }));
+        }
+      } else {
+        setError(res.data?.message || 'Error al guardar');
+      }
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.message || 'Error de conexión al guardar');
     } finally {
       setSaving(false);
     }
@@ -46,7 +108,7 @@ const Configuracion = () => {
       <div className="animate-fade-in max-w-2xl">
         <div className="skeleton h-7 w-56 mb-6" />
         <div className="card p-6 space-y-4">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(5)].map((_, i) => (
             <div key={i}>
               <div className="skeleton h-4 w-24 mb-2" />
               <div className="skeleton h-10 w-full" />
@@ -65,10 +127,31 @@ const Configuracion = () => {
           <Settings className="w-6 h-6 text-primary-600" />
           Configuración del Sistema
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">Ajustes generales de horarios y bloques</p>
+        <p className="text-sm text-neutral-500 mt-1">Ajustes generales de horarios, bloques y semestre activo</p>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
+        {/* Semestre Activo */}
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            <Calendar className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400" />
+            Semestre Activo
+          </label>
+          <input
+            type="text"
+            name="semestre_activo"
+            value={config.semestre_activo}
+            onChange={handleChange}
+            className="input w-full sm:w-48"
+            placeholder="2026-1"
+            pattern="^\d{4}-[12]$"
+            required
+          />
+          <p className="text-xs text-neutral-500 mt-1.5">
+            Formato: AAAA-1 (impar) o AAAA-2 (par). Determina qué ciclos están activos.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
@@ -122,17 +205,31 @@ const Configuracion = () => {
             Días Hábiles
           </label>
           <div className="flex flex-wrap gap-2">
-            {['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'].map((dia) => (
-              <span
-                key={dia}
-                className="px-3 py-1.5 bg-neutral-50 text-neutral-700 rounded-lg text-sm border border-neutral-200 font-medium"
-              >
-                {dia}
-              </span>
-            ))}
+            {DIAS_OPCIONES.map((dia) => {
+              const activo = config.dias_habiles.includes(dia);
+              return (
+                <button
+                  key={dia}
+                  type="button"
+                  onClick={() => toggleDia(dia)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border font-medium transition-colors ${
+                    activo
+                      ? 'bg-primary-50 text-primary-700 border-primary-200'
+                      : 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                  }`}
+                >
+                  {dia}
+                </button>
+              );
+            })}
           </div>
-          <p className="text-xs text-neutral-500 mt-1.5">Edición de días se implementará próximamente.</p>
         </div>
+
+        {error && (
+          <div className="text-sm text-danger-600 bg-danger-50 border border-danger-200 rounded-lg px-4 py-2.5">
+            {error}
+          </div>
+        )}
 
         <div className="pt-2 flex items-center gap-3">
           <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
@@ -159,13 +256,5 @@ const Configuracion = () => {
     </div>
   );
 };
-
-const RefreshCw = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" />
-    <polyline points="1 20 1 14 7 14" />
-    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-  </svg>
-);
 
 export default Configuracion;

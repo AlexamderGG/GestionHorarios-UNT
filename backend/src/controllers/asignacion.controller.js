@@ -3,18 +3,23 @@ const DocenteModel = require('../models/docente.model');
 const CursoModel = require('../models/curso.model');
 const AulaModel = require('../models/aula.model');
 const LaboratorioModel = require('../models/laboratorio.model');
+const ConfiguracionModel = require('../models/configuracion.model');
 const { success, error } = require('../utils/responseHelper');
 
 const TIPOS_ASIGNACION = ['Teoria', 'Laboratorio'];
+const MAX_HORAS_POR_DOCENTE = 20; // Límite máximo de horas semanales por docente
 
 const validarAsignacion = (data) => {
   const errores = [];
-  const { docente_id, curso_id, tipo, ambiente_preferido_id, semestre_asignacion } = data;
+  const { docente_id, curso_id, tipo, ambiente_preferido_id, semestre_asignacion, ciclo } = data;
 
   if (!docente_id || !Number.isInteger(Number(docente_id))) errores.push('docente_id es requerido y debe ser entero');
   if (!curso_id || !Number.isInteger(Number(curso_id))) errores.push('curso_id es requerido y debe ser entero');
   if (!TIPOS_ASIGNACION.includes(tipo)) errores.push(`tipo debe ser: ${TIPOS_ASIGNACION.join(', ')}`);
-  if (!semestre_asignacion || semestre_asignacion.trim().length < 1) errores.push('semestre_asignacion es requerido');
+  if (!semestre_asignacion || String(semestre_asignacion).trim().length < 1) errores.push('semestre_asignacion es requerido');
+  if (ciclo !== undefined && ciclo !== null && (!Number.isInteger(Number(ciclo)) || Number(ciclo) < 1 || Number(ciclo) > 10)) {
+    errores.push('ciclo debe ser un entero entre 1 y 10');
+  }
   if (ambiente_preferido_id !== undefined && ambiente_preferido_id !== null && !Number.isInteger(Number(ambiente_preferido_id))) {
     errores.push('ambiente_preferido_id debe ser entero o null');
   }
@@ -48,6 +53,40 @@ const AsignacionController = {
       const curso = await CursoModel.getById(curso_id);
       if (!curso) return error(res, 'El curso no existe', 404);
 
+      // Validar que el ciclo del curso corresponda al semestre activo (impar/par)
+      const cicloNum = Number(curso.ciclo);
+      const semestreNum = parseInt(semestre_asignacion.split('-').pop(), 10);
+      const esCicloImpar = cicloNum % 2 === 1;
+      const esSemestreImpar = semestreNum === 1;
+      if (esCicloImpar !== esSemestreImpar) {
+        const tipoCiclo = esCicloImpar ? 'impar' : 'par';
+        const tipoSemestre = esSemestreImpar ? 'impar' : 'par';
+        return error(res, `El curso pertenece a un ciclo ${tipoCiclo} (${cicloNum}) pero el semestre es ${tipoSemestre}`, 409);
+      }
+
+      // Validar especialidad: docente debe coincidir con especialidad del curso
+      if (docente.especialidad && curso.especialidad && 
+          docente.especialidad.toLowerCase() !== curso.especialidad.toLowerCase()) {
+        return error(res, 
+          `El docente tiene especialidad '${docente.especialidad}' pero el curso requiere '${curso.especialidad}'`, 
+          409);
+      }
+
+      // Validar límite de horas del docente
+      const horasAsignadas = await AsignacionModel.getHorasAsignadasPorDocente(docente_id, semestre_asignacion);
+      const horasCurso = tipo === 'Teoria' ? (Number(curso.horas_aula) || 0) : (Number(curso.horas_lab) || 0);
+      if (horasAsignadas + horasCurso > MAX_HORAS_POR_DOCENTE) {
+        return error(res, 
+          `El docente ya tiene ${horasAsignadas}h asignadas. Con este curso superaría el límite de ${MAX_HORAS_POR_DOCENTE}h semanales.`, 
+          409);
+      }
+
+      // Validar que el curso no tenga ya asignación del mismo tipo (cualquier docente)
+      const cursoYaAsignado = await AsignacionModel.existsCursoAsignado(curso_id, tipo, semestre_asignacion);
+      if (cursoYaAsignado) {
+        return error(res, `El curso ya tiene asignado un docente para ${tipo}. Solo se permite un docente por tipo.`, 409);
+      }
+
       // Validar ambiente preferido si se proporciona
       if (ambiente_preferido_id) {
         if (tipo === 'Teoria') {
@@ -59,9 +98,14 @@ const AsignacionController = {
         }
       }
 
-      // Validar duplicado
+      // Validar duplicado (mismo docente, mismo curso, mismo tipo)
       const duplicado = await AsignacionModel.existsDuplicate(docente_id, curso_id, tipo, semestre_asignacion);
       if (duplicado) return error(res, 'Ya existe una asignación de este tipo para el docente, curso y semestre', 409);
+
+      // Si no se envia ciclo, tomarlo del curso
+      if (!req.body.ciclo && curso.ciclo) {
+        req.body.ciclo = curso.ciclo;
+      }
 
       const asignacion = await AsignacionModel.create(req.body);
       success(res, asignacion, 'Asignación creada correctamente', 201);
@@ -82,7 +126,150 @@ const AsignacionController = {
     } catch (err) {
       error(res, 'Error al eliminar asignación', 500);
     }
+  },
+
+  // Asignación automática de todos los cursos activos a docentes disponibles
+  asignarAutomaticamente: async (req, res) => {
+    try {
+      const { semestre } = req.body || {};
+      const semestre_asignacion = semestre || '2026-1';
+
+      const semestreNum = parseInt(semestre_asignacion.split('-').pop(), 10);
+      const esSemestreImpar = semestreNum === 1;
+
+      // Obtener cursos activos del semestre con ciclos correspondientes
+      const cursos = await CursoModel.getAll();
+      const cursosActivos = cursos.filter(c => {
+        if (!c.activo) return false;
+        const esCicloImpar = Number(c.ciclo) % 2 === 1;
+        return esCicloImpar === esSemestreImpar;
+      });
+
+      // Obtener docentes activos
+      const docentes = await DocenteModel.getAll();
+      const docentesActivos = docentes.filter(d => d.activo !== false);
+
+      // Precalcular horas existentes desde la BD (crítico para respetar el límite)
+      const asignacionesExistentes = await AsignacionModel.getAllBySemestreConCursos(semestre_asignacion);
+      const horasPorDocente = {};
+      for (const a of asignacionesExistentes) {
+        const horas = a.tipo === 'Teoria' ? (Number(a.horas_aula) || 0) : (Number(a.horas_lab) || 0);
+        horasPorDocente[a.docente_id] = (horasPorDocente[a.docente_id] || 0) + horas;
+      }
+
+      const asignacionesCreadas = [];
+      const asignacionesFallidas = [];
+
+      for (const curso of cursosActivos) {
+        // Intentar asignar Teoría si el curso tiene horas_aula > 0
+        if (Number(curso.horas_aula) > 0) {
+          const asignadoTeoria = await AsignacionModel.existsCursoAsignado(curso.id, 'Teoria', semestre_asignacion);
+          if (!asignadoTeoria) {
+            const docente = encontrarDocenteDisponible(docentesActivos, curso, 'Teoria', semestre_asignacion, horasPorDocente);
+            if (docente) {
+              const nueva = await AsignacionModel.create({
+                docente_id: docente.id,
+                curso_id: curso.id,
+                tipo: 'Teoria',
+                semestre_asignacion,
+                ciclo: curso.ciclo,
+              });
+              // Actualizar horas acumuladas en memoria para siguiente iteración
+              const horas = Number(curso.horas_aula) || 0;
+              horasPorDocente[docente.id] = (horasPorDocente[docente.id] || 0) + horas;
+              asignacionesCreadas.push({ ...nueva, docente_nombres: `${docente.nombres} ${docente.apellidos}`, curso_codigo: curso.codigo });
+            } else {
+              asignacionesFallidas.push({ curso: curso.codigo, tipo: 'Teoria', motivo: 'No hay docente disponible (límite de horas o sin especialidad)' });
+            }
+          }
+        }
+
+        // Intentar asignar Laboratorio si el curso tiene horas_lab > 0
+        if (Number(curso.horas_lab) > 0) {
+          const asignadoLab = await AsignacionModel.existsCursoAsignado(curso.id, 'Laboratorio', semestre_asignacion);
+          if (!asignadoLab) {
+            const docente = encontrarDocenteDisponible(docentesActivos, curso, 'Laboratorio', semestre_asignacion, horasPorDocente);
+            if (docente) {
+              const nueva = await AsignacionModel.create({
+                docente_id: docente.id,
+                curso_id: curso.id,
+                tipo: 'Laboratorio',
+                semestre_asignacion,
+                ciclo: curso.ciclo,
+              });
+              const horas = Number(curso.horas_lab) || 0;
+              horasPorDocente[docente.id] = (horasPorDocente[docente.id] || 0) + horas;
+              asignacionesCreadas.push({ ...nueva, docente_nombres: `${docente.nombres} ${docente.apellidos}`, curso_codigo: curso.codigo });
+            } else {
+              asignacionesFallidas.push({ curso: curso.codigo, tipo: 'Laboratorio', motivo: 'No hay docente disponible (límite de horas o sin especialidad)' });
+            }
+          }
+        }
+      }
+
+      success(res, {
+        semestre: semestre_asignacion,
+        creadas: asignacionesCreadas.length,
+        fallidas: asignacionesFallidas.length,
+        asignaciones: asignacionesCreadas,
+        conflictos: asignacionesFallidas,
+      }, `Asignación automática completada: ${asignacionesCreadas.length} creadas, ${asignacionesFallidas.length} fallidas`);
+    } catch (err) {
+      console.error(err);
+      error(res, 'Error en asignación automática', 500);
+    }
+  },
+
+  // Limpiar todas las asignaciones de un semestre
+  limpiarAsignaciones: async (req, res) => {
+    try {
+      const { semestre } = req.body || {};
+      const semestre_asignacion = semestre || '2026-1';
+
+      const eliminadas = await AsignacionModel.deleteAllBySemestre(semestre_asignacion);
+      success(res, { semestre: semestre_asignacion, eliminadas }, `${eliminadas} asignaciones eliminadas correctamente`);
+    } catch (err) {
+      console.error(err);
+      error(res, 'Error al limpiar asignaciones', 500);
+    }
   }
 };
+
+// Función auxiliar para encontrar docente disponible
+// Ordena primero por menor carga horaria (distribución equitativa), luego por prioridad
+function encontrarDocenteDisponible(docentes, curso, tipo, semestre, horasPorDocente) {
+  const cursoEsp = curso.especialidad?.toLowerCase();
+  const horasCurso = tipo === 'Teoria' ? (Number(curso.horas_aula) || 0) : (Number(curso.horas_lab) || 0);
+
+  const candidatos = docentes.filter(d => {
+    // Debe coincidir especialidad
+    if (cursoEsp && d.especialidad?.toLowerCase() !== cursoEsp) return false;
+    // No superar límite de horas
+    const horasActuales = horasPorDocente[d.id] || 0;
+    if (horasActuales + horasCurso > MAX_HORAS_POR_DOCENTE) return false;
+    return true;
+  });
+
+  // Ordenar: PRIMERO por menor carga horaria (distribución equitativa),
+  // luego por prioridad: Nombrados > Contratados, luego categoría, luego antigüedad
+  candidatos.sort((a, b) => {
+    const horasA = horasPorDocente[a.id] || 0;
+    const horasB = horasPorDocente[b.id] || 0;
+    if (horasA !== horasB) return horasA - horasB; // Menor carga primero
+
+    const tipoA = a.tipo_nombramiento === 'Nombrado' ? 1 : 2;
+    const tipoB = b.tipo_nombramiento === 'Nombrado' ? 1 : 2;
+    if (tipoA !== tipoB) return tipoA - tipoB;
+
+    const catOrder = { 'Principal': 1, 'Asociado': 2, 'Auxiliar': 3, 'Jefe de practica': 4 };
+    const catA = catOrder[a.categoria] || 5;
+    const catB = catOrder[b.categoria] || 5;
+    if (catA !== catB) return catA - catB;
+
+    return (b.antiguedad_anios || 0) - (a.antiguedad_anios || 0);
+  });
+
+  return candidatos[0] || null;
+}
 
 module.exports = AsignacionController;

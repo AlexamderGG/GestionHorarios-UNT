@@ -9,14 +9,36 @@ const MisCursos = () => {
   const navigate = useNavigate();
   const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [semestre, setSemestre] = useState("2026-1");
+
+  useEffect(() => {
+    // Cargar semestre activo desde configuración
+    api.get('/configuracion')
+      .then((res) => {
+        if (res.data?.data?.semestre_activo) {
+          setSemestre(res.data.data.semestre_activo);
+        }
+      })
+      .catch((err) => console.error('Error cargando configuración:', err));
+  }, []);
 
   useEffect(() => {
     if (!user) return;
-    api.get('/docente/mis-cursos')
-      .then((res) => setCursos(res.data?.data || []))
-      .catch((err) => console.error('Error cargando cursos:', err))
+    setLoading(true);
+    setErrorMsg(null);
+    api.get('/docente/mis-cursos', { params: { semestre } })
+      .then((res) => {
+        const data = res.data?.data || [];
+        console.log('[MisCursos] Respuesta:', data);
+        setCursos(data);
+      })
+      .catch((err) => {
+        console.error('Error cargando cursos:', err);
+        setErrorMsg(err.response?.data?.message || 'Error al cargar cursos');
+      })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, semestre]);
 
   if (loading) {
     return (
@@ -45,11 +67,18 @@ const MisCursos = () => {
         </h1>
         <p className="text-sm text-neutral-500 mt-1">
           {cursos.length} curso{cursos.length !== 1 ? 's' : ''} asignado{cursos.length !== 1 ? 's' : ''}
+          {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
         </p>
       </div>
 
+      {errorMsg && (
+        <div className="mb-4 p-4 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
+          <strong>Error:</strong> {errorMsg}
+        </div>
+      )}
+
       {cursos.length === 0 ? (
-        <EmptyState />
+        <EmptyState semestre={semestre} />
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -121,15 +150,18 @@ const MisCursos = () => {
   );
 };
 
-const EmptyState = () => (
+const EmptyState = ({ semestre }) => (
   <div className="card">
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
         <Inbox className="w-8 h-8 text-neutral-400" />
       </div>
       <h3 className="text-lg font-semibold text-neutral-800 mb-1">Sin cursos asignados</h3>
-      <p className="text-sm text-neutral-500 text-center">
-        No tienes cursos asignados actualmente. Contacta al administrador si crees que es un error.
+      <p className="text-sm text-neutral-500 text-center mb-2">
+        No tienes cursos asignados para el semestre <strong>{semestre || 'actual'}</strong>.
+      </p>
+      <p className="text-xs text-neutral-400 text-center">
+        Verifica que el administrador te haya asignado cursos y que el semestre sea correcto.
       </p>
     </div>
   </div>

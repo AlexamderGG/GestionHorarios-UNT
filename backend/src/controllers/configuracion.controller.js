@@ -7,7 +7,11 @@ const CLAVES_VALIDAS = [
   'hora_fin',
   'duracion_bloque',
   'bloques_por_dia',
-  'semestre_activo'
+  'semestre_activo',
+  'demo_mode',
+  'demo_turno_actual',
+  'demo_step_minutes',
+  'seleccion_abierta'
 ];
 
 const validarConfiguracion = (data) => {

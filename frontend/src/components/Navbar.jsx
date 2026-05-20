@@ -61,7 +61,7 @@ const Navbar = () => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
     { to: '/admin/reportes', label: 'Reportes', icon: FileText },
-    { to: '/admin/demo', label: 'Demo', icon: PlayCircle },
+    // { to: '/admin/demo', label: 'Demo', icon: PlayCircle },
   ];
 
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'docente' ? docenteLinks : [];

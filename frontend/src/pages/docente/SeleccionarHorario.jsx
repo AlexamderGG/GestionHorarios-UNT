@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -14,6 +14,7 @@ const SeleccionarHorario = () => {
 
   const [cursos, setCursos] = useState([]);
   const [config, setConfig] = useState(null);
+  const [semestre, setSemestre] = useState('');
   const [asignacionId, setAsignacionId] = useState(preselectedAsignacion || '');
   const [dia, setDia] = useState('Lunes');
   const [horaInicio, setHoraInicio] = useState('');
@@ -25,18 +26,28 @@ const SeleccionarHorario = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // 1. Cargar datos secuencialmente: Configuración -> Cursos
   useEffect(() => {
-    Promise.all([
-      api.get('/docente/mis-cursos'),
-      api.get('/configuracion'),
-    ])
-      .then(([resCursos, resConfig]) => {
+    const init = async () => {
+      setLoading(true);
+      try {
+        const resConfig = await api.get('/configuracion');
+        const configData = resConfig.data?.data || null;
+        setConfig(configData);
+        
+        const semestreActivo = configData?.semestre_activo || '2026-1';
+        setSemestre(semestreActivo);
+
+        const resCursos = await api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } });
         const todosCursos = resCursos.data?.data || [];
         setCursos(todosCursos.filter(c => !c.tiene_horario));
-        setConfig(resConfig.data?.data || null);
-      })
-      .catch((err) => console.error('Error:', err))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error('Error inicializando Seleccionar Horario:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const generarOpcionesHora = () => {
@@ -55,14 +66,14 @@ const SeleccionarHorario = () => {
     return opciones;
   };
 
-  const buscarAmbientes = async () => {
-    if (!asignacionId || !dia || !horaInicio || !horaFin) {
+  const buscarAmbientes = useCallback(async () => {
+    if (!asignacionId || !dia || !horaInicio || !horaFin || !semestre) {
       setAmbientes([]);
       return;
     }
     try {
       const res = await api.get('/docente/ambientes-disponibles', {
-        params: { asignacion_id: asignacionId, dia, hora_inicio: horaInicio, hora_fin: horaFin },
+        params: { asignacion_id: asignacionId, dia, hora_inicio: horaInicio, hora_fin: horaFin, semestre },
       });
       setAmbientes(res.data?.data || []);
       setAmbienteId('');
@@ -70,9 +81,9 @@ const SeleccionarHorario = () => {
       console.error('Error buscando ambientes:', err);
       setAmbientes([]);
     }
-  };
+  }, [asignacionId, dia, horaInicio, horaFin, semestre]);
 
-  useEffect(() => { buscarAmbientes(); }, [asignacionId, dia, horaInicio, horaFin]);
+  useEffect(() => { buscarAmbientes(); }, [buscarAmbientes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -119,14 +130,6 @@ const SeleccionarHorario = () => {
     return `${hf}:${mf}`;
   };
 
-  const horasCurso = (asignacion) => {
-    if (!asignacion) return '';
-    if (asignacion.tipo === 'Teoria') {
-      return asignacion.curso_horas_aula ? `${asignacion.curso_horas_aula}h` : '';
-    }
-    return asignacion.curso_horas_lab ? `${asignacion.curso_horas_lab}h` : '';
-  };
-
   if (loading) {
     return (
       <div className="animate-fade-in max-w-xl">
@@ -151,7 +154,10 @@ const SeleccionarHorario = () => {
           <Clock className="w-6 h-6 text-primary-600" />
           Seleccionar Horario
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">Elige día, horario y ambiente para tu curso</p>
+        <p className="text-sm text-neutral-500 mt-1">
+          Elige día, horario y ambiente para tu curso
+          {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
+        </p>
       </div>
 
       <div className="card p-6">
@@ -171,7 +177,7 @@ const SeleccionarHorario = () => {
         {cursos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
             <CheckCircle className="w-10 h-10 mb-3 text-success-400" />
-            <p className="text-sm">Todos tus cursos ya tienen horario asignado.</p>
+            <p className="text-sm">Todos tus cursos ya tienen horario asignado en este semestre.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

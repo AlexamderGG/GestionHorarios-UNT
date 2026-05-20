@@ -9,17 +9,23 @@ const MiHorario = () => {
   const { user } = useAuth();
   const [horarios, setHorarios] = useState([]);
   const [config, setConfig] = useState(null);
+  const [semestre, setSemestre] = useState('');
   const [demoEstado, setDemoEstado] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [resHorarios, resConfig] = await Promise.all([
-        api.get('/docente/mi-horario'),
-        api.get('/configuracion'),
-      ]);
+      // 1. Obtener la configuración primero
+      const resConfig = await api.get('/configuracion');
+      const configuracionData = resConfig.data?.data || null;
+      setConfig(configuracionData);
+      
+      const semestreActivo = configuracionData?.semestre_activo || '2026-1';
+      setSemestre(semestreActivo);
+
+      // 2. Usar ese semestre para obtener los horarios del docente
+      const resHorarios = await api.get('/docente/mi-horario', { params: { semestre: semestreActivo } });
       setHorarios(resHorarios.data?.data || []);
-      setConfig(resConfig.data?.data || null);
 
       try {
         const resDemo = await api.get('/demo/estado');
@@ -51,7 +57,6 @@ const MiHorario = () => {
     if (!config) return [];
     const inicio = config.hora_inicio || '07:00';
     const fin = config.hora_fin || '22:00';
-    // Grilla de visualización: bloques de 1 hora para mayor precisión
     const duracion = 60;
     const [hIni, mIni] = inicio.split(':').map(Number);
     const [hFin] = fin.split(':').map(Number);
@@ -70,13 +75,11 @@ const MiHorario = () => {
 
   const bloques = generarBloques();
 
-  // Función para verificar si un horario cubre un bloque de tiempo
   const timeToMinutes = (t) => {
     const [h, m] = String(t).slice(0, 5).split(':').map(Number);
     return h * 60 + m;
   };
 
-  // Genera un color unico y consistente para cada curso basado en su codigo
   const getColorCurso = (codigo) => {
     let hash = 0;
     for (let i = 0; i < (codigo || '').length; i++) {
@@ -98,7 +101,6 @@ const MiHorario = () => {
       if (h.dia !== dia) return false;
       const hIniMin = timeToMinutes(h.hora_inicio);
       const hFinMin = timeToMinutes(h.hora_fin);
-      // El horario cubre este bloque si su inicio <= inicio del bloque y su fin >= fin del bloque
       return hIniMin <= bloqueIniMin && hFinMin >= bloqueFinMin;
     });
   };
@@ -133,6 +135,7 @@ const MiHorario = () => {
           </h1>
           <p className="text-sm text-neutral-500 mt-1">
             {horarios.length} clase{horarios.length !== 1 ? 's' : ''} asignada{horarios.length !== 1 ? 's' : ''}
+            {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
           </p>
         </div>
         {demoEstado?.turnoActual && (
@@ -150,7 +153,7 @@ const MiHorario = () => {
             </div>
             <h3 className="text-lg font-semibold text-neutral-800 mb-1">Sin horarios asignados</h3>
             <p className="text-sm text-neutral-500 text-center max-w-md">
-              No tienes horarios asignados. Espera a que el administrador genere los horarios o selecciona desde &quot;Mis Cursos&quot;.
+              No tienes horarios asignados para el semestre <strong>{semestre}</strong>. Espera a que el administrador genere los horarios o selecciona desde &quot;Mis Cursos&quot;.
             </p>
           </div>
         </div>

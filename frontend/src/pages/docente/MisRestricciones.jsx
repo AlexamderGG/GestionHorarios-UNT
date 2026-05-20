@@ -8,16 +8,28 @@ const DIAS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 const MisRestricciones = () => {
   const { user } = useAuth();
   const [restricciones, setRestricciones] = useState([]);
+  const [semestre, setSemestre] = useState('');
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ dia: 'Lunes', hora_inicio: '08:00', hora_fin: '10:00', motivo: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const cargar = () => {
-    api.get('/docente/mis-restricciones')
-      .then((res) => setRestricciones(res.data?.data || []))
-      .catch((err) => console.error('Error:', err))
-      .finally(() => setLoading(false));
+  const cargar = async () => {
+    setLoading(true);
+    try {
+      // 1. Obtener la configuración primero
+      const resConfig = await api.get('/configuracion');
+      const semestreActivo = resConfig.data?.data?.semestre_activo || '2026-1';
+      setSemestre(semestreActivo);
+
+      // 2. Usar ese semestre para obtener las restricciones
+      const res = await api.get('/docente/mis-restricciones', { params: { semestre: semestreActivo } });
+      setRestricciones(res.data?.data || []);
+    } catch (err) {
+      console.error('Error cargando restricciones:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { cargar(); }, []);
@@ -37,7 +49,7 @@ const MisRestricciones = () => {
     setError('');
     setSaving(true);
     try {
-      await api.post('/restricciones', form);
+      await api.post('/restricciones', { ...form, semestre });
       setForm({ dia: 'Lunes', hora_inicio: '08:00', hora_fin: '10:00', motivo: '' });
       cargar();
     } catch (err) {
@@ -82,7 +94,10 @@ const MisRestricciones = () => {
           <Lock className="w-6 h-6 text-primary-600" />
           Mis Restricciones Horarias
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">Define horarios en los que no estás disponible</p>
+        <p className="text-sm text-neutral-500 mt-1">
+          Define horarios en los que no estás disponible 
+          {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

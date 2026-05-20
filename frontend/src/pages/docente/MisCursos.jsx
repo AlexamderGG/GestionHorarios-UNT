@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { BookOpen, Calendar, Clock, MapPin, ArrowRight, CheckCircle, AlertCircle, Inbox } from 'lucide-react';
+import { BookOpen, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Inbox } from 'lucide-react';
 
 const MisCursos = () => {
   const { user } = useAuth();
@@ -10,35 +10,32 @@ const MisCursos = () => {
   const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [semestre, setSemestre] = useState("2026-1");
+  const [semestre, setSemestre] = useState('');
 
-  useEffect(() => {
-    // Cargar semestre activo desde configuración
-    api.get('/configuracion')
-      .then((res) => {
-        if (res.data?.data?.semestre_activo) {
-          setSemestre(res.data.data.semestre_activo);
-        }
-      })
-      .catch((err) => console.error('Error cargando configuración:', err));
-  }, []);
-
-  useEffect(() => {
+  const cargarDatos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setErrorMsg(null);
-    api.get('/docente/mis-cursos', { params: { semestre } })
-      .then((res) => {
-        const data = res.data?.data || [];
-        console.log('[MisCursos] Respuesta:', data);
-        setCursos(data);
-      })
-      .catch((err) => {
-        console.error('Error cargando cursos:', err);
-        setErrorMsg(err.response?.data?.message || 'Error al cargar cursos');
-      })
-      .finally(() => setLoading(false));
-  }, [user, semestre]);
+    try {
+      // 1. Primero obtener la configuración para saber el semestre activo
+      const resConfig = await api.get('/configuracion');
+      const semestreActivo = resConfig.data?.data?.semestre_activo || '2026-1';
+      setSemestre(semestreActivo);
+
+      // 2. Luego pedir los cursos de ESE semestre
+      const resCursos = await api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } });
+      setCursos(resCursos.data?.data || []);
+    } catch (err) {
+      console.error('Error cargando cursos:', err);
+      setErrorMsg(err.response?.data?.message || 'Error al cargar cursos');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   if (loading) {
     return (

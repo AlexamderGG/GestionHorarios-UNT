@@ -18,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Horarios from './pages/Horarios';
 import Reportes from './pages/Reportes';
 import Configuracion from './pages/Configuracion';
+import SecretariaPanel from './pages/admin/SecretariaPanel';
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -51,6 +52,7 @@ function App() {
           <Route path="admin/horarios-general" element={<Horarios />} />
           <Route path="admin/configuracion" element={<Configuracion />} />
           <Route path="admin/reportes" element={<Reportes />} />
+          <Route path="/admin/secretaria-turnos" element={<SecretariaPanel />} />
         </Route>
       </Route>
     </Routes>

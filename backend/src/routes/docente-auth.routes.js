@@ -43,4 +43,8 @@ router.get('/ambientes-disponibles', authenticate, requireRole('docente'), Docen
  */
 router.get('/mis-restricciones', authenticate, requireRole('docente'), RestriccionesController.getAll);
 
+router.post('/finalizar-turno', authenticate, requireRole('docente'), DocenteAuthController.finalizarTurno);
+
+
+
 module.exports = router;

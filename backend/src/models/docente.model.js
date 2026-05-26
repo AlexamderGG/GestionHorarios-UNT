@@ -91,6 +91,63 @@ const DocenteModel = {
          antiguedad_anios DESC`
     );
     return result.rows;
+  },
+
+  getDocentesPorEscalafon: async (client = pool) => {
+    const query = `
+      SELECT 
+          id, 
+          nombres, 
+          apellidos, 
+          email, 
+          categoria, 
+          tipo_nombramiento, 
+          antiguedad_anios, 
+          estado_turno
+      FROM docentes
+      WHERE activo = TRUE
+      ORDER BY 
+          antiguedad_anios DESC, -- 1. Prioridad: Mayor antigüedad
+          CASE categoria         -- 2. Desempate: Nueva jerarquía
+              WHEN 'Principal' THEN 1
+              WHEN 'Jefe de practica' THEN 2
+              WHEN 'Asociado' THEN 3
+              WHEN 'Auxiliar' THEN 4
+              ELSE 5
+          END ASC,
+          apellidos ASC,         -- 3. Desempate alfabético por si acaso
+          nombres ASC;
+    `;
+    const result = await client.query(query);
+    return result.rows;
+  },
+
+  // También necesitaremos un método rápido para que Secretaría o el Docente actualicen el estado
+  updateEstadoTurno: async (id, estado_turno, client = pool) => {
+    const query = `
+      UPDATE docentes 
+      SET estado_turno = $1 
+      WHERE id = $2 
+      RETURNING id, nombres, apellidos, estado_turno, email;
+    `;
+    const result = await client.query(query, [estado_turno, id]);
+    return result.rows[0] || null;
+  },
+  updatePassword: async (id, hashedPassword, client = pool) => {
+    const query = `
+      UPDATE docentes 
+      SET password = $1 
+      WHERE id = $2
+    `;
+    await client.query(query, [hashedPassword, id]);
+  },
+
+  resetAllTurnos: async (client = pool) => {
+    const query = `
+      UPDATE docentes 
+      SET estado_turno = 'Pendiente', password = NULL
+    `;
+    await client.query(query);
   }
 };
 

@@ -37,6 +37,25 @@ const MisCursos = () => {
     cargarDatos();
   }, [cargarDatos]);
 
+  const handleFinalizarTurno = async () => {
+    if (!window.confirm('¿Está seguro de finalizar? Ya no podrá modificar sus horarios y cederá el turno al siguiente docente en el escalafón.')) {
+      return;
+    }
+
+    try {
+      const response = await api.post('/docente/finalizar-turno');
+      
+      if (response.data && response.data.success) {
+        alert('¡Horario finalizado con éxito! Su turno ha concluido.');
+        // Opcional: Redirigirlo al dashboard o cerrar sesión para mayor seguridad
+        navigate('/docente/cursos'); 
+      }
+    } catch (err) {
+      console.error('Error al finalizar el turno:', err);
+      alert('Hubo un error al finalizar su turno. Intente nuevamente.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="animate-fade-in">
@@ -143,6 +162,15 @@ const MisCursos = () => {
           </div>
         </div>
       )}
+      <div className="mt-8 flex justify-end border-t pt-4">
+              <button
+                onClick={handleFinalizarTurno}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Confirmar y Finalizar Mi Horario
+              </button>
+            </div>
     </div>
   );
 };

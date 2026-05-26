@@ -1,5 +1,7 @@
 const HorarioModel = require("../models/horario.model");
 const SchedulerService = require("../services/scheduler.service");
+const DocenteModel = require('../models/docente.model');
+const ConfiguracionModel = require('../models/configuracion.model');
 const { success, error } = require("../utils/responseHelper");
 
 const validarFiltros = (query) => {
@@ -142,12 +144,37 @@ const HorariosController = {
       const { semestre } = req.body || {};
       const semestreNormalizado = String(semestre || "2026-1").trim();
       const errorSemestre = SchedulerService.validarSemestre(semestreNormalizado);
+      
       if (errorSemestre) {
         return error(res, errorSemestre, 400);
       }
 
+      // 1. Limpiamos los horarios del semestre solicitado
       const eliminados = await HorarioModel.deleteBySemestre(semestreNormalizado);
-      success(res, { semestre: semestreNormalizado, eliminados }, `${eliminados} horarios eliminados correctamente`);
+
+      // 2. OBTENER EL SEMESTRE ACTIVO CON LA CLAVE CORRECTA
+      const configSemestre = await ConfiguracionModel.getByClave('semestre_activo');
+      
+      const semestreActivoConfigurado = configSemestre && configSemestre.valor 
+        ? String(configSemestre.valor).trim() 
+        : "2026-1";
+
+      let turnosReiniciados = false;
+
+      // 3. VALIDACIÓN PERFECCIONISTA: Solo reinicia turnos si se borra el semestre activo
+      if (semestreNormalizado === semestreActivoConfigurado) {
+        await DocenteModel.resetAllTurnos();
+        turnosReiniciados = true;
+      }
+
+      // 4. Respuesta dinámica
+      success(
+        res, 
+        { semestre: semestreNormalizado, eliminados, turnosReiniciados }, 
+        turnosReiniciados
+          ? `${eliminados} horarios eliminados correctamente. Los turnos de los docentes han sido reiniciados.`
+          : `${eliminados} horarios históricos eliminados correctamente. Los turnos actuales no fueron alterados.`
+      );
     } catch (err) {
       console.error(err);
       error(res, "Error al limpiar horarios", 500);

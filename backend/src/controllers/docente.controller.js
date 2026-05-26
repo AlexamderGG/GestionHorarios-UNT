@@ -126,7 +126,7 @@ const DocenteController = {
       console.error(err);
       error(res, 'Error al obtener docentes disponibles', 500);
     }
-  }
+  },
 };
 
 module.exports = DocenteController;

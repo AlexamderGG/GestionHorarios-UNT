@@ -22,11 +22,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (error.response && error.response.status === 401) {
+      // Verificamos si no estamos ya en la página de login para evitar bucles
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        localStorage.removeItem('token'); // Borramos el token inválido
+        // Puedes borrar otros datos si los tienes, ej: localStorage.removeItem('user');
+        
+        alert('Su sesión ha expirado o su turno fue reiniciado. Por favor, vuelva a iniciar sesión.');
+        window.location.href = '/login'; // Redirigimos al inicio
       }
     }
     return Promise.reject(error);

@@ -3,6 +3,7 @@ const AsignacionModel = require("../models/asignacion.model");
 const AulaModel = require("../models/aula.model");
 const LaboratorioModel = require("../models/laboratorio.model");
 const ConfiguracionModel = require("../models/configuracion.model");
+const DocenteModel = require('../models/docente.model');
 const { success, error } = require("../utils/responseHelper");
 
 const DIAS_VALIDOS = [
@@ -241,17 +242,40 @@ const DocenteAuthController = {
       if (!Number.isInteger(Number(id)))
         return error(res, "id debe ser entero", 400);
 
+      // 1. Verificamos el estado del turno del docente actual
+      const docente = await DocenteModel.getById(req.user.id);
+      
+      if (!docente) return error(res, "Docente no encontrado", 404);
+
+      if (docente.estado_turno === 'Completado') {
+        return error(res, 'Tu turno ya ha finalizado. No puedes modificar tus horarios.', 403);
+      }
+
+      if (docente.estado_turno === 'Pendiente') {
+        return error(res, 'Debes esperar tu turno según el escalafón para editar horarios.', 403);
+      }
+
+      // 2. Buscamos el horario que intenta eliminar
       const horario = await HorarioModel.getById(id);
       if (!horario) return error(res, "Horario no encontrado", 404);
+      
       if (horario.docente?.id !== req.user.id)
         return error(res, "Este horario no te pertenece", 403);
-      if (horario.editado_manualmente)
+      
+      // 3. Regla de protección de edición manual
+      // Si el docente está en su turno activo ('Notificado'), tiene permiso
+      // absoluto para eliminar los bloques que acaba de crear.
+      const esSuTurnoActivo = docente.estado_turno === 'Notificado';
+      
+      if (horario.editado_manualmente && !esSuTurnoActivo) {
         return error(
           res,
-          "No puedes eliminar horarios editados por el administrador",
+          "No puedes eliminar horarios editados manualmente sin un turno activo",
           403,
         );
+      }
 
+      // 4. Si pasa todas las validaciones, procedemos a eliminar
       await HorarioModel.delete(id);
       success(res, null, "Horario eliminado correctamente");
     } catch (err) {
@@ -317,6 +341,25 @@ const DocenteAuthController = {
       error(res, "Error al obtener ambientes disponibles", 500);
     }
   },
+
+  finalizarTurno: async (req, res) => {
+      try {
+        // req.user.id viene del token de autenticación (middleware)
+        const docenteId = req.user.id; 
+  
+        // Cambiamos su estado a 'Completado' usando la función que ya creamos antes
+        const docenteActualizado = await DocenteModel.updateEstadoTurno(docenteId, 'Completado');
+  
+        if (!docenteActualizado) {
+          return error(res, 'No se pudo actualizar el estado del turno', 400);
+        }
+  
+        return success(res, docenteActualizado, 'Turno finalizado correctamente');
+      } catch (err) {
+        console.error('Error al finalizar turno:', err);
+        return error(res, 'Error en el servidor al finalizar el turno', 500);
+      }
+    }
 };
 
 module.exports = DocenteAuthController;

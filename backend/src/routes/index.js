@@ -16,6 +16,7 @@ const configuracionRoutes = require('./configuracion.routes');
 const restriccionesRoutes = require('./restricciones.routes');
 const docenteAuthRoutes = require('./docente-auth.routes');
 const demoRoutes = require('./demo.routes');
+const secretariaRoutes = require('./secretaria.routes');
 
 // Rutas públicas
 router.use('/auth', authRoutes);
@@ -39,5 +40,6 @@ router.use('/docente', docenteAuthRoutes);
 
 // Rutas protegidas - restricciones (docente y admin)
 router.use('/restricciones', restriccionesRoutes);
+router.use('/secretaria', secretariaRoutes);
 
 module.exports = router;

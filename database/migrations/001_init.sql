@@ -53,6 +53,13 @@ COMMENT ON COLUMN docentes.especialidad IS 'Area de conocimiento del docente (ej
 COMMENT ON COLUMN docentes.escuela IS 'Escuela de procedencia (ej: Ingenieria de Sistemas, Matematicas)';
 COMMENT ON COLUMN docentes.semestre_contrato IS 'Semestre especifico de contrato (solo para contratados de un semestre). NULL = todos los semestres';
 
+ALTER TABLE docentes 
+ADD COLUMN estado_turno VARCHAR(20) DEFAULT 'Pendiente'
+CHECK (estado_turno IN ('Pendiente', 'Notificado', 'Completado', 'Automatico'));
+
+ALTER TABLE docentes 
+ADD COLUMN password VARCHAR(255);
+
 -- --------------------------------------------------------------
 -- 2. Tabla: cursos
 -- --------------------------------------------------------------

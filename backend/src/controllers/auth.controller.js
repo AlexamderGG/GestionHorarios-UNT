@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt'); // 1. Importamos bcrypt
 const AuthModel = require('../models/auth.model');
 const DocenteModel = require('../models/docente.model');
 const { success, error } = require('../utils/responseHelper');
@@ -8,6 +9,7 @@ const AuthController = {
     try {
       const { email, password, usuario, role } = req.body;
 
+      // --- LÓGICA DE ADMIN (Se mantiene intacta) ---
       if (role === 'admin') {
         const adminUser = process.env.ADMIN_USER || 'admin';
         const adminPass = process.env.ADMIN_PASS || 'admin123';
@@ -28,13 +30,20 @@ const AuthController = {
         }, 'Login exitoso');
       }
 
+      // --- LÓGICA DE DOCENTE ---
       if (!email) return error(res, 'Email es requerido', 400);
 
       const docente = await AuthModel.findDocenteByEmail(email);
       if (!docente) return error(res, 'Email no registrado', 401);
 
-      const docentePassword = process.env.DOCENTE_PASSWORD || 'docente123';
-      if (password !== docentePassword) {
+      // 2. Verificamos si el docente ya tiene una contraseña asignada por Secretaría
+      if (!docente.password) {
+        return error(res, 'Aún no se han generado credenciales para su cuenta. Por favor, espere su turno.', 401);
+      }
+
+      // 3. Comparamos la contraseña ingresada con la encriptada en la base de datos
+      const validPassword = await bcrypt.compare(password, docente.password);
+      if (!validPassword) {
         return error(res, 'Contraseña incorrecta', 401);
       }
 
@@ -62,6 +71,7 @@ const AuthController = {
   },
 
   me: async (req, res) => {
+    // (Esta sección se mantiene exactamente igual)
     try {
       if (req.user.role === 'admin') {
         return success(res, {

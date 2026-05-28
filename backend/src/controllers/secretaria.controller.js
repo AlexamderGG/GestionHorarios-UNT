@@ -88,6 +88,45 @@ const SecretariaController = {
     } finally {
       client.release();
     }
+  },
+
+  cambiarEstadoManual: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { estado_turno } = req.body;
+
+      // 1. Validar que el estado sea uno de los permitidos en la BD
+      const estadosValidos = ['Pendiente', 'Notificado', 'Completado', 'Automatico'];
+      if (!estadosValidos.includes(estado_turno)) {
+        return res.status(400).json({ success: false, message: 'Estado no válido' });
+      }
+
+      // 2. Actualizamos el estado del docente
+      const docenteActualizado = await DocenteModel.updateEstadoTurno(id, estado_turno);
+
+      if (!docenteActualizado) {
+        return res.status(404).json({ success: false, message: 'Docente no encontrado' });
+      }
+
+      // 3. NUEVO: Si la Secretaria lo regresa a 'Pendiente', invalidamos su sesión
+      // Borramos su contraseña temporal para que el middleware (auth.js) lo expulse 
+      // inmediatamente en su próxima acción.
+      if (estado_turno === 'Pendiente') {
+        if (DocenteModel.updatePassword) {
+          await DocenteModel.updatePassword(id, null);
+        }
+        // NUEVO: Guardamos la hora exacta del castigo/reinicio en segundos
+        await pool.query(
+          'UPDATE docentes SET reset_token_at = EXTRACT(EPOCH FROM NOW()) WHERE id = $1', 
+          [id]
+        );
+      }
+
+      res.json({ success: true, message: 'Estado actualizado manualmente', data: docenteActualizado });
+    } catch (error) {
+      console.error('Error al cambiar estado manualmente:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
   }
 };
 

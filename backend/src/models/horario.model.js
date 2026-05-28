@@ -79,13 +79,18 @@ const selectHorarioCompleto = `
       'nombre', l.nombre,
       'capacidad', l.capacidad,
       'ubicacion', l.ubicacion
-    ) END AS laboratorio
+    ) END AS laboratorio,
+     -- Obtenemos el código asignado por secretaría como respaldo (fallback)
+    COALESCE(a_pref.codigo, l_pref.codigo) AS ambiente_secretaria_codigo
   FROM horarios h
   JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
   JOIN docentes d ON d.id = adc.docente_id
   JOIN cursos c ON c.id = adc.curso_id
   LEFT JOIN aulas a ON a.id = h.aula_id
   LEFT JOIN laboratorios l ON l.id = h.laboratorio_id
+  -- Joins para capturar el ambiente pre-configurado por la secretaría
+  LEFT JOIN aulas a_pref ON a_pref.id = adc.ambiente_preferido_id AND adc.tipo = 'Teoria'
+  LEFT JOIN laboratorios l_pref ON l_pref.id = adc.ambiente_preferido_id AND adc.tipo = 'Laboratorio'
 `;
 
 const HorarioModel = {

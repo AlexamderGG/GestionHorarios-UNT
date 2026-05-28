@@ -2,9 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { Clock, Calendar, MapPin, CheckCircle, AlertCircle, ArrowRight, ChevronDown } from 'lucide-react';
+import { Clock, Calendar, MapPin, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
-const DIAS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+// Función utilitaria
+const timeToMinutes = (t) => {
+  if (!t) return 0;
+  const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+  return h * 60 + m;
+};
 
 const SeleccionarHorario = () => {
   const { user } = useAuth();
@@ -12,6 +17,7 @@ const SeleccionarHorario = () => {
   const [searchParams] = useSearchParams();
   const preselectedAsignacion = searchParams.get('asignacion_id');
 
+  // Estados
   const [cursos, setCursos] = useState([]);
   const [config, setConfig] = useState(null);
   const [semestre, setSemestre] = useState('');
@@ -25,8 +31,14 @@ const SeleccionarHorario = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [horariosGlobales, setHorariosGlobales] = useState([]);
 
-  // 1. Cargar datos secuencialmente: Configuración -> Cursos
+  // Variables calculadas de configuración
+  const DIAS = config?.dias_habiles 
+    ? (Array.isArray(config.dias_habiles) ? config.dias_habiles : config.dias_habiles.split(','))
+    : ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+
+  // Carga inicial (Configuración, Cursos pendientes y Horarios de todos)
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -38,9 +50,14 @@ const SeleccionarHorario = () => {
         const semestreActivo = configData?.semestre_activo || '2026-1';
         setSemestre(semestreActivo);
 
-        const resCursos = await api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } });
+        const [resCursos, resHorarios] = await Promise.all([
+          api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } }),
+          api.get('/horarios', { params: { semestre: semestreActivo } })
+        ]);
+
         const todosCursos = resCursos.data?.data || [];
         setCursos(todosCursos.filter(c => !c.tiene_horario));
+        setHorariosGlobales(resHorarios.data?.data || []);
       } catch (err) {
         console.error('Error inicializando Seleccionar Horario:', err);
       } finally {
@@ -118,16 +135,65 @@ const SeleccionarHorario = () => {
   const opcionesHora = generarOpcionesHora();
   const asignacionSeleccionada = cursos.find(c => String(c.id) === String(asignacionId));
 
+  // 1. CÁLCULO DE HORA FIN (Corregido y blindado)
   const calcularHoraFin = (inicio) => {
     if (!inicio || !asignacionSeleccionada) return '';
     const [h, m] = inicio.split(':').map(Number);
-    const horasCurso = asignacionSeleccionada.tipo === 'Teoria'
-      ? (Number(asignacionSeleccionada.curso_horas_aula) || 0)
-      : (Number(asignacionSeleccionada.curso_horas_lab) || 0);
-    const totalMinutos = h * 60 + m + horasCurso * 60;
+    
+    const horasAula = Number(asignacionSeleccionada.curso_horas_aula || asignacionSeleccionada.horas_aula) || 0;
+    const horasLab = Number(asignacionSeleccionada.curso_horas_lab || asignacionSeleccionada.horas_lab) || 0;
+    const horasCurso = asignacionSeleccionada.tipo === 'Teoria' ? horasAula : horasLab;
+    
+    if (horasCurso === 0) return '';
+    
+    const totalMinutos = h * 60 + m + (horasCurso * 60);
     const hf = String(Math.floor(totalMinutos / 60)).padStart(2, '0');
     const mf = String(totalMinutos % 60).padStart(2, '0');
     return `${hf}:${mf}`;
+  };
+
+  // 2. VERIFICACIÓN DE CONFLICTOS (Corregida: Variables API correctas)
+  const verificarConflicto = (horaIniPropuesta) => {
+    if (!asignacionSeleccionada) return null;
+    const horaFinPropuesta = calcularHoraFin(horaIniPropuesta);
+    if (!horaFinPropuesta) return null;
+
+    const iniPropuestoMin = timeToMinutes(horaIniPropuesta);
+    const finPropuestoMin = timeToMinutes(horaFinPropuesta);
+    
+    // NUEVA VALIDACIÓN: Verifica que la clase no termine después de la hora de cierre
+    const limiteFinMin = timeToMinutes(config?.hora_fin || '22:00');
+    if (finPropuestoMin > limiteFinMin) {
+      // Retorna el mensaje para deshabilitar la opción
+      return `Excede el cierre (${config.hora_fin})`; 
+    }
+    // FIN DE LA NUEVA VALIDACIÓN
+
+    const cicloCursoActual = asignacionSeleccionada.curso_ciclo || asignacionSeleccionada.ciclo;
+
+    for (const h of horariosGlobales) {
+      if (h.dia === dia) { 
+        const hIniMin = timeToMinutes(h.hora_inicio);
+        const hFinMin = timeToMinutes(h.hora_fin);
+
+        // Si hay cruce en el tiempo
+        if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
+          
+          // 1. Verificar si choca con este mismo docente
+          const hDocenteId = h.docente?.id || h.docente_id;
+          if (String(hDocenteId) === String(user?.id)) {
+            return "Cruza con tu horario";
+          }
+          
+          // 2. Verificar si choca con el ciclo de los alumnos
+          const hCiclo = h.curso?.ciclo || h.ciclo;
+          if (hCiclo && cicloCursoActual && String(hCiclo) === String(cicloCursoActual)) {
+            return `Ciclo ${hCiclo} ocupado`;
+          }
+        }
+      }
+    }
+    return null; 
   };
 
   if (loading) {
@@ -185,7 +251,11 @@ const SeleccionarHorario = () => {
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">Curso</label>
               <select
                 value={asignacionId}
-                onChange={(e) => setAsignacionId(e.target.value)}
+                onChange={(e) => {
+                  setAsignacionId(e.target.value);
+                  setHoraInicio('');
+                  setHoraFin('');
+                }}
                 className="input"
               >
                 <option value="">Seleccionar curso</option>
@@ -207,8 +277,13 @@ const SeleccionarHorario = () => {
               </label>
               <select
                 value={dia}
-                onChange={(e) => setDia(e.target.value)}
+                onChange={(e) => {
+                  setDia(e.target.value);
+                  setHoraInicio('');
+                  setHoraFin('');
+                }}
                 className="input"
+                disabled={!asignacionId}
               >
                 {DIAS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
@@ -228,24 +303,30 @@ const SeleccionarHorario = () => {
                     setHoraFin(calcularHoraFin(val));
                   }}
                   className="input"
+                  disabled={!asignacionId}
                 >
-                  <option value="">Seleccionar</option>
-                  {opcionesHora.map(h => <option key={h} value={h}>{h}</option>)}
+                  <option value="">{asignacionId ? "Seleccionar" : "Elija curso primero"}</option>
+                  {opcionesHora.map((h) => {
+                    const conflicto = verificarConflicto(h);
+                    return (
+                      <option key={h} value={h} disabled={!!conflicto}>
+                        {h} {conflicto ? ` - (${conflicto})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  <Clock className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400" />
-                  Hora fin
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5 text-neutral-400">
+                  <Clock className="w-3.5 h-3.5 inline mr-1.5" />
+                  Hora fin (Auto)
                 </label>
-                <select
-                  value={horaFin}
-                  onChange={(e) => setHoraFin(e.target.value)}
-                  className="input"
-                >
-                  <option value="">Seleccionar</option>
-                  {opcionesHora.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
+                <input
+                  type="text"
+                  value={horaFin || "Automático"}
+                  className="input bg-neutral-100 text-neutral-500 font-semibold cursor-not-allowed"
+                  disabled
+                />
               </div>
             </div>
 
@@ -270,8 +351,8 @@ const SeleccionarHorario = () => {
 
             <button
               type="submit"
-              disabled={saving}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+              disabled={saving || !horaInicio || !horaFin}
+              className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-2"
             >
               {saving ? (
                 <>
@@ -291,13 +372,5 @@ const SeleccionarHorario = () => {
     </div>
   );
 };
-
-const RefreshCw = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" />
-    <polyline points="1 20 1 14 7 14" />
-    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-  </svg>
-);
 
 export default SeleccionarHorario;

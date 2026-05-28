@@ -4,7 +4,20 @@ const AulaModel = require("../models/aula.model");
 const LaboratorioModel = require("../models/laboratorio.model");
 const ConfiguracionModel = require("../models/configuracion.model");
 const DocenteModel = require('../models/docente.model');
+const CursoModel = require("../models/curso.model"); // 👇 IMPORTACIÓN INYECTADA CORRECTAMENTE
+const nodemailer = require('nodemailer');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const pool = require('../config/db');
 const { success, error } = require("../utils/responseHelper");
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const DIAS_VALIDOS = [
   "Lunes",
@@ -17,6 +30,13 @@ const DIAS_VALIDOS = [
 ];
 
 const normalizarHora = (hora) => String(hora).slice(0, 5);
+
+//  Función auxiliar para convertir "HH:MM" a valor numérico de horas
+const timeToHours = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours + minutes / 60;
+};
 
 const timeToMinutes = (hora) => {
   const [hours, minutes] = normalizarHora(hora).split(":").map(Number);
@@ -76,6 +96,27 @@ const DocenteAuthController = {
 
   seleccionarHorario: async (req, res) => {
     try {
+      //  BARRERA DE SEGURIDAD CONTRA INTENTOS FUERA DE TURNO
+      const docente = await DocenteModel.getById(req.user.id);
+      if (!docente) return error(res, "Docente no encontrado", 404);
+
+      if (docente.estado_turno === 'Completado') {
+        return error(
+          res, 
+          "Tu turno ya ha finalizado. No puedes seleccionar más horarios. Ponte en contacto con Secretaría Académica si requieres una re-habilitación.", 
+          403
+        );
+      }
+
+      if (docente.estado_turno === 'Pendiente') {
+        return error(res, "Debes esperar tu turno activo según el escalafón para seleccionar horarios.", 403);
+      }
+
+      if (docente.estado_turno === 'Automatico') {
+        return error(res, "Tu horario será asignado de forma automática por el sistema.", 403);
+      }
+      // 👆 FIN DE LA BARRERA DE SEGURIDAD
+
       const {
         asignacion_id,
         dia,
@@ -106,18 +147,50 @@ const DocenteAuthController = {
       if (timeToMinutes(hIni) >= timeToMinutes(hFin))
         return error(res, "hora_inicio debe ser menor que hora_fin", 400);
 
+      // Obtención de la asignación desde la base de datos
       const asignacion = await AsignacionModel.getById(asignacion_id);
       if (!asignacion) return error(res, "Asignación no encontrada", 404);
       if (asignacion.docente_id !== req.user.id)
         return error(res, "Esta asignación no te pertenece", 403);
 
-      const restriccion = await HorarioModel.existeRestriccionDocente({
+      //  SOLUCIÓN REFORZADA: Consultar el curso directamente para asegurar las horas
+      const cursoInfo = await CursoModel.getById(asignacion.curso_id);
+      if (!cursoInfo) return error(res, "El curso asociado a la asignación no existe", 404);
+
+      //  NUEVA BARRERA: VALIDACIÓN DE DURACIÓN ESTRICTA (RESPETAR PLAN DE ESTUDIOS)
+      const tipo = asignacion.tipo; // 'Teoria' o 'Laboratorio'
+      let horasRequeridas = 0;
+
+      if (tipo === 'Teoria') {
+        horasRequeridas = Number(cursoInfo.horas_aula) || 0;
+      } else if (tipo === 'Laboratorio') {
+        horasRequeridas = Number(cursoInfo.horas_lab) || 0;
+      }
+
+      // Si el curso tiene horas definidas, validamos que el bloque coincida exactamente
+      if (horasRequeridas > 0) {
+        const hIniVal = timeToHours(hIni);
+        const hFinVal = timeToHours(hFin);
+        const duracionPropuesta = hFinVal - hIniVal;
+
+        // Comparamos usando un margen de error para tipos flotantes (0.001 horas)
+        if (Math.abs(duracionPropuesta - horasRequeridas) > 0.001) {
+          return error(
+            res, 
+            `Duración inválida: Esta asignatura '${cursoInfo.nombre}' (${tipo}) requiere exactamente ${horasRequeridas} horas semanales según el plan de estudios. El bloque propuesto (${hIni} - ${hFin}) tiene una duración de ${duracionPropuesta.toFixed(1)} horas.`, 
+            400
+          );
+        }
+      }
+      // 👆 FIN VALIDACIÓN DURACIÓN
+
+      const restriction = await HorarioModel.existeRestriccionDocente({
         docente_id: req.user.id,
         dia,
         hora_inicio: hIni,
         hora_fin: hFin,
       });
-      if (restriccion)
+      if (restriction)
         return error(res, "Tienes una restricción horaria en ese rango", 409);
 
       const semestre = asignacion.semestre_asignacion || "2026-1";
@@ -131,6 +204,22 @@ const DocenteAuthController = {
       });
       if (conflictoDocente)
         return error(res, "Ya tienes una clase en ese horario", 409);
+
+      // NUEVA BARRERA: CONFLICTO DE CICLO (Alumnos no pueden duplicarse)
+      const conflictoCiclo = await HorarioModel.existeConflictoCiclo({
+        ciclo: asignacion.ciclo || asignacion.curso_ciclo, 
+        semestre,
+        dia,
+        hora_inicio: hIni,
+        hora_fin: hFin,
+      });
+      if (conflictoCiclo) {
+        return error(
+          res, 
+          `Conflicto de Ciclo: Ya existe otra asignatura programada para el Ciclo ${asignacion.ciclo} en este mismo horario. Los alumnos no pueden estar en dos ambientes a la vez.`, 
+          409
+        );
+      }
 
       const ambientesBase =
         asignacion.tipo === "Teoria"
@@ -242,9 +331,7 @@ const DocenteAuthController = {
       if (!Number.isInteger(Number(id)))
         return error(res, "id debe ser entero", 400);
 
-      // 1. Verificamos el estado del turno del docente actual
       const docente = await DocenteModel.getById(req.user.id);
-      
       if (!docente) return error(res, "Docente no encontrado", 404);
 
       if (docente.estado_turno === 'Completado') {
@@ -255,16 +342,12 @@ const DocenteAuthController = {
         return error(res, 'Debes esperar tu turno según el escalafón para editar horarios.', 403);
       }
 
-      // 2. Buscamos el horario que intenta eliminar
       const horario = await HorarioModel.getById(id);
       if (!horario) return error(res, "Horario no encontrado", 404);
       
       if (horario.docente?.id !== req.user.id)
         return error(res, "Este horario no te pertenece", 403);
       
-      // 3. Regla de protección de edición manual
-      // Si el docente está en su turno activo ('Notificado'), tiene permiso
-      // absoluto para eliminar los bloques que acaba de crear.
       const esSuTurnoActivo = docente.estado_turno === 'Notificado';
       
       if (horario.editado_manualmente && !esSuTurnoActivo) {
@@ -275,7 +358,6 @@ const DocenteAuthController = {
         );
       }
 
-      // 4. Si pasa todas las validaciones, procedemos a eliminar
       await HorarioModel.delete(id);
       success(res, null, "Horario eliminado correctamente");
     } catch (err) {
@@ -286,6 +368,10 @@ const DocenteAuthController = {
 
   getAmbientesDisponibles: async (req, res) => {
     try {
+      const docente = await DocenteModel.getById(req.user.id);
+      if (!docente || docente.estado_turno === 'Completado' || docente.estado_turno === 'Pendiente') {
+        return success(res, [], "No tiene un turno activo para ver ambientes disponibles");
+      }
       const { asignacion_id, dia, hora_inicio, hora_fin, semestre } = req.query;
 
       if (!asignacion_id || !dia || !hora_inicio || !hora_fin) {
@@ -343,23 +429,96 @@ const DocenteAuthController = {
   },
 
   finalizarTurno: async (req, res) => {
-      try {
-        // req.user.id viene del token de autenticación (middleware)
-        const docenteId = req.user.id; 
-  
-        // Cambiamos su estado a 'Completado' usando la función que ya creamos antes
-        const docenteActualizado = await DocenteModel.updateEstadoTurno(docenteId, 'Completado');
-  
-        if (!docenteActualizado) {
-          return error(res, 'No se pudo actualizar el estado del turno', 400);
-        }
-  
-        return success(res, docenteActualizado, 'Turno finalizado correctamente');
-      } catch (err) {
-        console.error('Error al finalizar turno:', err);
-        return error(res, 'Error en el servidor al finalizar el turno', 500);
-      }
+    const docenteId = req.user.id;
+    const docenteActual = await DocenteModel.getById(docenteId);
+
+    if (!docenteActual) {
+      return res.status(404).json({ success: false, message: 'Docente no encontrado.' });
     }
+
+    if (docenteActual.estado_turno === 'Completado') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Acción rechazada: Su turno ya fue finalizado anteriormente.' 
+      });
+    }
+
+    if (docenteActual.estado_turno !== 'Notificado') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Acción rechazada: No tiene un turno activo para finalizar.' 
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await DocenteModel.updateEstadoTurno(docenteId, 'Completado', client);
+
+      const escalafon = await DocenteModel.getDocentesPorEscalafon(client);
+
+      const yaHayDocenteActivo = escalafon.some(d => d.estado_turno === 'Notificado');
+
+      if (!yaHayDocenteActivo) {
+        const siguienteDocente = escalafon.find(d => d.estado_turno === 'Pendiente');
+
+        if (siguienteDocente) {
+          await DocenteModel.updateEstadoTurno(siguienteDocente.id, 'Notificado', client);
+
+          const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+          const saltRounds = 10;
+          const hashedPassword = await bcrypt.hash(passwordTemporal, saltRounds);
+          
+          if (DocenteModel.updatePassword) {
+              await DocenteModel.updatePassword(siguienteDocente.id, hashedPassword, client);
+          }
+
+          const mailOptions = {
+            from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
+            to: siguienteDocente.email,
+            subject: 'Su turno para selección de horarios - UNT',
+            html: `
+              <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+                <h2 style="color: #1a56db;">Estimado/a ${siguienteDocente.nombres} ${siguienteDocente.apellidos},</h2>
+                <p>El docente anterior ha finalizado. <strong>¡Ya es su turno!</strong></p>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                  <p><strong>Usuario:</strong> ${siguienteDocente.email}</p>
+                  <p><strong>Contraseña Temporal:</strong> ${passwordTemporal}</p>
+                </div>
+              </div>
+            `
+          };
+          await transporter.sendMail(mailOptions);
+        }
+      } else {
+        console.log(`[finalizarTurno] Omitiendo avance automático: ya existe un docente activo subsiguiente armando su horario.`);
+      }
+
+      await client.query('COMMIT');
+      return res.status(200).json({ success: true, message: 'Turno finalizado con éxito.' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('Error en transición automática de turno:', err);
+      return res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    } finally {
+      client.release();
+    }
+  },
+
+  getMiEstado: async (req, res) => {
+    try {
+      const docente = await DocenteModel.getById(req.user.id);
+      if (!docente) {
+        return error(res, "Docente no encontrado", 404);
+      }
+      success(res, { estado_turno: docente.estado_turno }, "Estado obtenido correctamente");
+    } catch (err) {
+      console.error(err);
+      error(res, "Error al obtener el estado del docente", 500);
+    }
+  },
+  
 };
 
 module.exports = DocenteAuthController;

@@ -40,4 +40,19 @@ router.post('/limpiar', AsignacionController.limpiarAsignaciones);
  */
 router.delete('/:id', AsignacionController.delete);
 
+/**
+ * @route   PUT /api/asignaciones/:id
+ * @desc    Editar una asignacion
+ * @module  Modulo 1
+ * @body    { docente_id? }
+ */
+router.put('/:id', AsignacionController.editarAsignacion);
+
+/**
+ * @route   GET /api/asignaciones/:id/horario
+ * @desc    Obtener horario de una asignacion
+ * @module  Modulo 1
+ */
+router.get('/:id/horario', AsignacionController.obtenerHorarioAsignacion);
+
 module.exports = router;

@@ -57,6 +57,8 @@ ALTER TABLE docentes
 ADD COLUMN estado_turno VARCHAR(20) DEFAULT 'Pendiente'
 CHECK (estado_turno IN ('Pendiente', 'Notificado', 'Completado', 'Automatico'));
 
+ALTER TABLE docentes ADD COLUMN reset_token_at INT DEFAULT 0;
+
 ALTER TABLE docentes 
 ADD COLUMN password VARCHAR(255);
 

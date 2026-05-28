@@ -61,7 +61,7 @@ const AsignacionController = {
       if (esCicloImpar !== esSemestreImpar) {
         const tipoCiclo = esCicloImpar ? 'impar' : 'par';
         const tipoSemestre = esSemestreImpar ? 'impar' : 'par';
-        return error(res, `El curso pertenece a un ciclo ${tipoCiclo} (${cicloNum}) pero el semestre es ${tipoSemestre}`, 409);
+        return error(res, `El curso belongs to a cycle ${tipoCiclo} (${cicloNum}) but the semester is ${tipoSemestre}`, 409);
       }
 
       // Validar especialidad: docente debe coincidir con especialidad del curso
@@ -128,6 +128,67 @@ const AsignacionController = {
     }
   },
 
+  // 👇 OPTIMIZADO: Asegura tipos numéricos, captura el ambiente y usa responseHelper
+  editarAsignacion: async (req, res) => {
+    try {
+      const { id } = req.params; 
+      const { docente_id, ambiente_preferido_id } = req.body; 
+
+      if (!docente_id) {
+        return error(res, 'El docente es requerido', 400);
+      }
+
+      const idAsignacion = Number(id);
+      const idDocente = Number(docente_id);
+      const idAmbiente = ambiente_preferido_id ? Number(ambiente_preferido_id) : null;
+
+      // Importamos las herramientas necesarias localmente para el chequeo de conflictos
+      const pool = require('../config/db');
+      const HorarioModel = require('../models/horario.model');
+
+      // 1. Obtener la asignación actual para saber el tipo de curso (Teoria/Laboratorio)
+      const asignacion = await AsignacionModel.getById(idAsignacion);
+      if (!asignacion) return error(res, 'Asignación no encontrada', 404);
+
+      // 2. 👇 VALIDACIÓN DE CRUCES: Buscamos si este curso ya cuenta con un horario físico establecido
+      const resHorario = await pool.query('SELECT * FROM horarios WHERE asignacion_id = $1', [idAsignacion]);
+      const horarioExistente = resHorario.rows[0];
+
+      if (horarioExistente && idAmbiente) {
+        // Si ya tiene un horario reservado, verificamos que el nuevo salón esté libre en ese día y rango de horas
+        if (asignacion.tipo === 'Teoria') {
+          const conflicto = await HorarioModel.existeConflictoAula({
+            aula_id: idAmbiente,
+            semestre: horarioExistente.semestre,
+            dia: horarioExistente.dia,
+            hora_inicio: horarioExistente.hora_inicio,
+            hora_fin: horarioExistente.hora_fin,
+            excludeId: horarioExistente.id // Excluimos el registro actual
+          });
+          if (conflicto) return error(res, 'El aula seleccionada ya se encuentra ocupada por otra clase en ese mismo horario.', 409);
+        } else {
+          const conflicto = await HorarioModel.existeConflictoLaboratorio({
+            laboratorio_id: idAmbiente,
+            semestre: horarioExistente.semestre,
+            dia: horarioExistente.dia,
+            hora_inicio: horarioExistente.hora_inicio,
+            hora_fin: horarioExistente.hora_fin,
+            excludeId: horarioExistente.id
+          });
+          if (conflicto) return error(res, 'El laboratorio seleccionado ya se encuentra ocupado por otra clase en ese mismo horario.', 409);
+        }
+      }
+
+      // 3. Si todo está limpio, ejecutamos la actualización en cascada
+      const asignacionActualizada = await AsignacionModel.updateDocente(idAsignacion, idDocente, idAmbiente);
+
+      return success(res, asignacionActualizada, 'Asignación y ambientes actualizados con éxito en el calendario');
+    } catch (err) {
+      console.error('Error detallado en editarAsignacion:', err);
+      return error(res, 'Error al modificar la asignación en el servidor', 500);
+    }
+  },
+
   // Asignación automática de todos los cursos activos a docentes disponibles
   asignarAutomaticamente: async (req, res) => {
     try {
@@ -137,7 +198,6 @@ const AsignacionController = {
       const semestreNum = parseInt(semestre_asignacion.split('-').pop(), 10);
       const esSemestreImpar = semestreNum === 1;
 
-      // Obtener cursos activos del semestre con ciclos correspondientes
       const cursos = await CursoModel.getAll();
       const cursosActivos = cursos.filter(c => {
         if (!c.activo) return false;
@@ -145,11 +205,9 @@ const AsignacionController = {
         return esCicloImpar === esSemestreImpar;
       });
 
-      // Obtener docentes activos
       const docentes = await DocenteModel.getAll();
       const docentesActivos = docentes.filter(d => d.activo !== false);
 
-      // Precalcular horas existentes desde la BD (crítico para respetar el límite)
       const asignacionesExistentes = await AsignacionModel.getAllBySemestreConCursos(semestre_asignacion);
       const horasPorDocente = {};
       for (const a of asignacionesExistentes) {
@@ -161,7 +219,6 @@ const AsignacionController = {
       const asignacionesFallidas = [];
 
       for (const curso of cursosActivos) {
-        // Intentar asignar Teoría si el curso tiene horas_aula > 0
         if (Number(curso.horas_aula) > 0) {
           const asignadoTeoria = await AsignacionModel.existsCursoAsignado(curso.id, 'Teoria', semestre_asignacion);
           if (!asignadoTeoria) {
@@ -174,7 +231,6 @@ const AsignacionController = {
                 semestre_asignacion,
                 ciclo: curso.ciclo,
               });
-              // Actualizar horas acumuladas en memoria para siguiente iteración
               const horas = Number(curso.horas_aula) || 0;
               horasPorDocente[docente.id] = (horasPorDocente[docente.id] || 0) + horas;
               asignacionesCreadas.push({ ...nueva, docente_nombres: `${docente.nombres} ${docente.apellidos}`, curso_codigo: curso.codigo });
@@ -184,7 +240,6 @@ const AsignacionController = {
           }
         }
 
-        // Intentar asignar Laboratorio si el curso tiene horas_lab > 0
         if (Number(curso.horas_lab) > 0) {
           const asignadoLab = await AsignacionModel.existsCursoAsignado(curso.id, 'Laboratorio', semestre_asignacion);
           if (!asignadoLab) {
@@ -220,7 +275,6 @@ const AsignacionController = {
     }
   },
 
-  // Limpiar todas las asignaciones de un semestre
   limpiarAsignaciones: async (req, res) => {
     try {
       const { semestre } = req.body || {};
@@ -232,30 +286,81 @@ const AsignacionController = {
       console.error(err);
       error(res, 'Error al limpiar asignaciones', 500);
     }
-  }
+  },
+
+  // Agregar al objeto AsignacionController en asignacion.controller.js
+  obtenerHorarioAsignacion: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const pool = require('../config/db');
+      
+      // 1. Consultamos si esta asignación ya tiene un horario físico en el calendario
+      const resHorario = await pool.query(
+        `SELECT id, dia, 
+                TO_CHAR(hora_inicio, 'HH24:MI') as hora_inicio, 
+                TO_CHAR(hora_fin, 'HH24:MI') as hora_fin, 
+                semestre 
+         FROM horarios WHERE asignacion_id = $1`, 
+        [Number(id)]
+      );
+      
+      const horario = resHorario.rows[0];
+      
+      // Si el curso no está programado aún, devolvemos listas vacías sin errores
+      if (!horario) {
+        return res.json({ success: true, data: { horario: null, ocupados: [] } });
+      }
+      
+      // 2. Buscamos qué aulas o laboratorios están ocupados en ese mismo rango horario
+      // EXCLUYENDO el ID de este mismo horario para que su salón actual figure libre para él mismo
+      const resOcupados = await pool.query(
+        `SELECT aula_id, laboratorio_id 
+         FROM horarios 
+         WHERE semestre = $1 
+           AND dia = $2 
+           AND hora_inicio < $4::time 
+           AND hora_fin > $3::time
+           AND id != $5`,
+        [horario.semestre, horario.dia, horario.hora_inicio, horario.hora_fin, horario.id]
+      );
+      
+      // Extraemos los IDs de los ambientes ocupados limpios de nulos
+      const ocupadosIds = resOcupados.rows.reduce((acc, row) => {
+        if (row.aula_id) acc.push(Number(row.aula_id));
+        if (row.laboratorio_id) acc.push(Number(row.laboratorio_id));
+        return acc;
+      }, []);
+      
+      // Devolvemos el combo completo a la secretaría
+      return res.json({ 
+        success: true, 
+        data: { 
+          horario, 
+          ocupados: ocupadosIds // Lista negra directa de IDs ocupados
+        } 
+      });
+    } catch (err) {
+      console.error('Error en obtenerHorarioAsignacion:', err);
+      return res.status(500).json({ success: false, message: 'Error al consultar el horario y ocupación' });
+    }
+  },
 };
 
-// Función auxiliar para encontrar docente disponible
-// Ordena primero por menor carga horaria (distribución equitativa), luego por prioridad
 function encontrarDocenteDisponible(docentes, curso, tipo, semestre, horasPorDocente) {
   const cursoEsp = curso.especialidad?.toLowerCase();
   const horasCurso = tipo === 'Teoria' ? (Number(curso.horas_aula) || 0) : (Number(curso.horas_lab) || 0);
 
   const candidatos = docentes.filter(d => {
-    // Debe coincidir especialidad
     if (cursoEsp && d.especialidad?.toLowerCase() !== cursoEsp) return false;
-    // No superar límite de horas
     const horasActuales = horasPorDocente[d.id] || 0;
     if (horasActuales + horasCurso > MAX_HORAS_POR_DOCENTE) return false;
     return true;
   });
 
-  // Ordenar: PRIMERO por menor carga horaria (distribución equitativa),
-  // luego por prioridad: Nombrados > Contratados, luego categoría, luego antigüedad
   candidatos.sort((a, b) => {
     const horasA = horasPorDocente[a.id] || 0;
     const horasB = horasPorDocente[b.id] || 0;
-    if (horasA !== horasB) return horasA - horasB; // Menor carga primero
+    if (horasA !== horasB) return horasA - horasB;
 
     const tipoA = a.tipo_nombramiento === 'Nombrado' ? 1 : 2;
     const tipoB = b.tipo_nombramiento === 'Nombrado' ? 1 : 2;

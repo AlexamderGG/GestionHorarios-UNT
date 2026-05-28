@@ -122,6 +122,7 @@ const AsignacionModel = {
         c.creditos as curso_creditos,
         c.horas_aula as curso_horas_aula,
         c.horas_lab as curso_horas_lab,
+        c.ciclo as curso_ciclo,
         COALESCE(a.codigo, l.codigo) as ambiente_codigo,
         COALESCE(a.nombre, l.nombre) as ambiente_nombre
       FROM asignacion_docente_curso adc
@@ -139,6 +140,40 @@ const AsignacionModel = {
     sql += " ORDER BY adc.id DESC";
     const result = await pool.query(sql, params);
     return result.rows;
+  },
+
+  updateDocente: async (id, nuevoDocenteId, nuevoAmbienteId = null, client = pool) => {
+    // 1. Actualizamos la sugerencia/planificación base
+    const result = await client.query(
+      `UPDATE asignacion_docente_curso 
+       SET docente_id = $1, 
+           ambiente_preferido_id = $2 
+       WHERE id = $3 
+       RETURNING *`,
+      [nuevoDocenteId, nuevoAmbienteId, id]
+    );
+    
+    const asignacion = result.rows[0];
+    if (!asignacion) return null;
+
+    // 2. 👇 EFECTO CASCADA: Si ya hay un horario físico en el calendario, lo sincronizamos en tiempo real
+    if (asignacion.tipo === 'Teoria') {
+      await client.query(
+        `UPDATE horarios 
+         SET aula_id = $1, laboratorio_id = NULL 
+         WHERE asignacion_id = $2`,
+        [nuevoAmbienteId, id]
+      );
+    } else if (asignacion.tipo === 'Laboratorio') {
+      await client.query(
+        `UPDATE horarios 
+         SET laboratorio_id = $1, aula_id = NULL 
+         WHERE asignacion_id = $2`,
+        [nuevoAmbienteId, id]
+      );
+    }
+
+    return asignacion;
   },
 
   // Calcular horas totales asignadas a un docente en un semestre

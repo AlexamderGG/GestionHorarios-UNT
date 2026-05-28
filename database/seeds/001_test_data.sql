@@ -9,14 +9,14 @@
 -- 1. Docentes NOMBRADOS de Ingenieria de Sistemas (mayoria)
 -- -------------------------------------------------------------
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, antiguedad_anios) VALUES
-('Carlos Alberto', 'Ramirez Vega', 'c.ramirez@unt.edu.pe', '999111222', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 15),
-('Maria Elena', 'Santos Paredes', 'm.santos@unt.edu.pe', '999222333', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 12),
-('Luis Fernando', 'Castillo Rojas', 'l.castillo@unt.edu.pe', '999333444', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8),
-('Ana Lucia', 'Mendoza Torres', 'a.mendoza@unt.edu.pe', '999444555', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 5),
-('Jorge Enrique', 'Vasquez Luna', 'j.vasquez@unt.edu.pe', '999555666', 'Auxiliar', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 4),
-('Diana Patricia', 'Fernandez Cruz', 'd.fernandez@unt.edu.pe', '999666777', 'Auxiliar', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 2),
-('Roberto Carlos', 'Diaz Herrera', 'r.diaz@unt.edu.pe', '999777888', 'Jefe de practica', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 3),
-('Patricia Isabel', 'Garcia Leon', 'p.garcia@unt.edu.pe', '999888999', 'Jefe de practica', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 1);
+('Cesar', 'Arellano Salazar', 'c.arellano@unt.edu.pe', '999111222', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10),
+('Marcelino', 'Torres Villanueva', 'm.torres@unt.edu.pe', '999222333', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11),
+('Everson', 'Agreda Gamboa', 'e.agreda@unt.edu.pe', '999333444', 'Auxiliar', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8),
+('Alberto', 'Mendoza de los Santos', 'a.mendoza@unt.edu.pe', '999444555', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9),
+('Luis Enrique', 'Boy Chavil', 'l.boy@unt.edu.pe', '999555666', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 15),
+('Robert Jerry', 'Sanchez Ticona', 'j.gomez@unt.edu.pe', '999666777', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11),
+('Ricardo Dario', 'Mendoza Rivera', 'r.mendoza@unt.edu.pe', '999777888', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8),
+('Juan Carlos', 'Obando Roldan', 'j.obando@unt.edu.pe', '999888999', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9);
 
 -- -------------------------------------------------------------
 -- 2. Docentes CONTRATADOS de diversas escuelas (especialidades)
@@ -77,25 +77,20 @@ INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombr
 -- 3. Aulas de prueba
 -- -------------------------------------------------------------
 INSERT INTO aulas (codigo, nombre, capacidad, ubicacion, tipo) VALUES
-('A101', 'Aula 101 - Pabellon Central', 50, 'Pabellon Central - Planta Baja', 'Teoria'),
-('A102', 'Aula 102 - Pabellon Central', 50, 'Pabellon Central - Planta Baja', 'Teoria'),
-('A201', 'Aula 201 - Pabellon Central', 45, 'Pabellon Central - Segundo Piso', 'Teoria'),
-('A202', 'Aula 202 - Pabellon Central', 45, 'Pabellon Central - Segundo Piso', 'Teoria'),
-('AUD01', 'Auditorio Principal', 120, 'Pabellon Principal - Tercer Piso', 'Auditorio'),
-('A301', 'Aula 301 - Pabellon Norte', 40, 'Pabellon Norte - Tercer Piso', 'Teoria');
+('A201', 'Aula 201 - Postgrado', 50, 'Postgrado - Segundo Piso', 'Teoria'),
+('A202', 'Aula 202 - Postgrado', 50, 'Postgrado - Segundo Piso', 'Teoria'),
+('A301', 'Aula 301 - Postgrado', 45, 'Postgrado - Tercer Piso', 'Teoria'),
+('A302', 'Aula 302 - Postgrado', 45, 'Postgrado - Tercer Piso', 'Teoria'),
+('A306', 'Aula 306 - Postgrado', 50, 'Postgrado - Tercer Piso', 'Teoria'),
+('A307', 'Aula 307 - Postgrado', 40, 'Postgrado - Tercer Piso', 'Teoria');
 
 -- -------------------------------------------------------------
--- 4. Laboratorios de prueba (uso general, sin especialidad)
+-- 4. Laboratorios de prueba
 -- -------------------------------------------------------------
 INSERT INTO laboratorios (codigo, nombre, capacidad, ubicacion) VALUES
-('LAB01', 'Laboratorio 01', 25, 'Pabellon Central - Sotano'),
-('LAB02', 'Laboratorio 02', 25, 'Pabellon Central - Sotano'),
-('LAB03', 'Laboratorio 03', 20, 'Pabellon Norte - Planta Baja'),
-('LAB04', 'Laboratorio 04', 20, 'Pabellon Norte - Planta Baja'),
-('LAB05', 'Laboratorio 05', 20, 'Pabellon Norte - Segundo Piso');
+('LAB01', 'Laboratorio 01', 25, 'Registro Técnico - Segundo Piso'),
+('LAB02', 'Laboratorio 02', 25, 'Registro Técnico - Segundo Piso'),
+('LAB03', 'Laboratorio 03', 20, 'Registro Técnico - Segundo Piso'),
+('LAB04', 'Laboratorio 04', 20, 'Registro Técnico - Segundo Piso');
 
--- -------------------------------------------------------------
--- Fin del seed de prueba
--- Los cursos reales estan en database/seeds/003_cursos_documento.sql
--- Las asignaciones deben crearse manualmente desde la interfaz.
--- -------------------------------------------------------------
+

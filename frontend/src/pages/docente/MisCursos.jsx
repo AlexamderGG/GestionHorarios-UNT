@@ -34,25 +34,46 @@ const MisCursos = () => {
   }, [user]);
 
   useEffect(() => {
-    cargarDatos();
+    cargarDatos(); // Ejecuta tu lógica actual (cargar cursos, asignaciones, etc.)
+
+    // 👇 NUEVO: Consultamos el estado real en la Base de Datos
+    const obtenerEstadoTurno = async () => {
+      try {
+        const responseStatus = await api.get('/docente/mi-estado');
+        if (responseStatus.data && responseStatus.data.success) {
+          setEstadoTurno(responseStatus.data.data.estado_turno); // Guardamos (Pendiente, Notificado, Completado)
+        }
+      } catch (error) {
+        console.error("Error al cargar el estado del turno:", error);
+      }
+    };
+
+    obtenerEstadoTurno();
   }, [cargarDatos]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [estadoTurno, setEstadoTurno] = useState('');
   const handleFinalizarTurno = async () => {
-    if (!window.confirm('¿Está seguro de finalizar? Ya no podrá modificar sus horarios y cederá el turno al siguiente docente en el escalafón.')) {
+    if (!window.confirm('¿Está seguro de finalizar? Ya no podrá modificar sus horarios y cederá el turno al siguiente docente.')) {
       return;
     }
+    setIsSubmitting(true);
 
     try {
       const response = await api.post('/docente/finalizar-turno');
       
       if (response.data && response.data.success) {
+        // 👇 APAGAMOS EL LOADING E INFORMAREMO EL ESTADO AL INSTANTE
+        setIsSubmitting(false); 
+        setEstadoTurno('Completado'); 
+        
         alert('¡Horario finalizado con éxito! Su turno ha concluido.');
-        // Opcional: Redirigirlo al dashboard o cerrar sesión para mayor seguridad
         navigate('/docente/cursos'); 
       }
     } catch (err) {
       console.error('Error al finalizar el turno:', err);
-      alert('Hubo un error al finalizar su turno. Intente nuevamente.');
+      alert(err.response?.data?.message || 'Hubo un error al finalizar su turno. Intente nuevamente.');
+      setIsSubmitting(false); // También se apaga si hay error
     }
   };
 
@@ -119,9 +140,18 @@ const MisCursos = () => {
                         {c.tipo}
                       </span>
                     </td>
-                    <td className="p-3 text-neutral-500 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-neutral-400" />
-                      {c.ambiente_codigo || '—'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                        <span>
+                          {c.horario?.aula?.codigo ||
+                          c.horario?.laboratorio?.codigo ||
+                          c.horario?.ambiente_secretaria_codigo ||
+                          c.aula_codigo ||
+                          c.ambiente_codigo ||
+                          '—'}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-3 text-center">
                       {c.tiene_horario ? (
@@ -165,10 +195,20 @@ const MisCursos = () => {
       <div className="mt-8 flex justify-end border-t pt-4">
               <button
                 onClick={handleFinalizarTurno}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
+                disabled={isSubmitting || estadoTurno === 'Completado'} // 👈 Bloqueo permanente
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isSubmitting || estadoTurno === 'Completado'
+                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                }`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                Confirmar y Finalizar Mi Horario
+                {isSubmitting ? (
+                  'Procesando...'
+                ) : estadoTurno === 'Completado' ? (
+                  '✓ Horario Finalizado y Confirmado' // 👈 Feedback visual elegante
+                ) : (
+                  'Confirmar y Finalizar Mi Horario'
+                )}
               </button>
             </div>
     </div>

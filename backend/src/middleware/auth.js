@@ -17,10 +17,11 @@ const authenticate = async (req, res, next) => { // 2. Convertimos a async
       const docente = await DocenteModel.getById(req.user.id);
       
       // Bloqueamos si el docente ya no existe, si su turno se reinició o si le borraron la clave
-      if (!docente || docente.estado_turno === 'Pendiente' || !docente.password) {
+      if (!docente || docente.estado_turno === 'Pendiente' || !docente.password || 
+        decoded.iat < docente.reset_token_at) {
         return res.status(401).json({ 
           success: false, 
-          message: 'Sesión expirada. Su turno ha sido reiniciado por el administrador.' 
+          message: 'Sesión inválida. Su turno ha sido reiniciado y requiere ingresar con sus nuevas credenciales.'
         });
       }
     }

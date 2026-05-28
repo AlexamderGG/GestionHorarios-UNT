@@ -96,27 +96,35 @@ const DocenteModel = {
   getDocentesPorEscalafon: async (client = pool) => {
     const query = `
       SELECT 
-          id, 
-          nombres, 
-          apellidos, 
-          email, 
-          categoria, 
-          tipo_nombramiento, 
-          antiguedad_anios, 
-          estado_turno
-      FROM docentes
-      WHERE activo = TRUE
+          d.id, 
+          d.nombres, 
+          d.apellidos, 
+          d.email, 
+          d.categoria, 
+          d.tipo_nombramiento, 
+          d.antiguedad_anios, 
+          d.estado_turno
+      FROM docentes d
+      WHERE d.activo = TRUE
+        -- FILTRO MÁGICO: Solo docentes con asignaciones en el semestre activo
+        AND d.id IN (
+            SELECT adc.docente_id 
+            FROM asignacion_docente_curso adc 
+            WHERE adc.semestre_asignacion = (
+                SELECT valor FROM configuracion WHERE clave = 'semestre_activo' LIMIT 1
+            )
+        )
       ORDER BY 
-          antiguedad_anios DESC, -- 1. Prioridad: Mayor antigüedad
-          CASE categoria         -- 2. Desempate: Nueva jerarquía
+          d.antiguedad_anios DESC, -- 1. Prioridad: Mayor antigüedad
+          CASE d.categoria         -- 2. Desempate: Nueva jerarquía
               WHEN 'Principal' THEN 1
               WHEN 'Jefe de practica' THEN 2
               WHEN 'Asociado' THEN 3
               WHEN 'Auxiliar' THEN 4
               ELSE 5
           END ASC,
-          apellidos ASC,         -- 3. Desempate alfabético por si acaso
-          nombres ASC;
+          d.apellidos ASC,         -- 3. Desempate alfabético por si acaso
+          d.nombres ASC;
     `;
     const result = await client.query(query);
     return result.rows;

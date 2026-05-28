@@ -28,13 +28,20 @@ const minutesToTime = (totalMinutes) => {
 };
 
 const generarBloques = (configuracion) => {
-  const dias = Array.isArray(configuracion.dias_habiles)
-    ? configuracion.dias_habiles.filter((dia) => DIAS_VALIDOS.includes(dia))
-    : ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
+  // BLINDAJE 1: Soporta que los días vengan como String o Array
+  let diasParseados = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
+  if (configuracion.dias_habiles) {
+    diasParseados = Array.isArray(configuracion.dias_habiles) 
+      ? configuracion.dias_habiles 
+      : configuracion.dias_habiles.split(',');
+  }
+  const dias = diasParseados.map(d => d.trim()).filter((dia) => DIAS_VALIDOS.includes(dia));
 
+  // BLINDAJE 2: Toma la hora de fin dinámicamente de la configuración
   const horaInicio = normalizarHora(configuracion.hora_inicio || "07:00");
-  const horaFin = "22:00";
+  const horaFin = normalizarHora(configuracion.hora_fin || "22:00"); 
   const duracion = Number(configuracion.duracion_bloque || 60);
+  
   const bloques = [];
   const inicio = timeToMinutes(horaInicio);
   const fin = timeToMinutes(horaFin);
@@ -105,7 +112,6 @@ const SchedulerService = {
     try {
       await client.query("BEGIN");
 
-      // CAMBIO AQUÍ: Contar solo los horarios automáticos existentes
       const existentesAuto = await HorarioModel.countAutomaticosBySemestre(
         semestreNormalizado,
         client,
@@ -122,7 +128,6 @@ const SchedulerService = {
 
       let eliminados = 0;
       if (forzar && existentesAuto > 0) {
-        // CAMBIO AQUÍ: Eliminar ÚNICAMENTE los horarios automáticos
         eliminados = await HorarioModel.deleteAutomaticosBySemestre(
           semestreNormalizado,
           client,
@@ -132,7 +137,6 @@ const SchedulerService = {
       const configuracion = await ConfiguracionModel.getConfiguracionCompleta();
       const bloques = generarBloques(configuracion);
       
-      // Obtiene solo las asignaciones que NO tienen ningún horario establecido (ni manual)
       const asignaciones = await HorarioModel.getAsignacionesParaScheduling(
         semestreNormalizado,
         client,
@@ -148,6 +152,10 @@ const SchedulerService = {
           message: "La configuración no genera bloques horarios válidos",
         };
       }
+
+      // Obtenemos la hora máxima de la configuración para limitarlo después
+      const horaFinMaximaStr = configuracion.hora_fin || "22:00";
+      const horaFinMaximaMinutos = timeToMinutes(horaFinMaximaStr);
 
       const generados = [];
       const noAsignados = [];
@@ -207,9 +215,9 @@ const SchedulerService = {
           const finMin = inicioMin + minutosRequeridos;
           const horaFinStr = minutesToTime(finMin);
 
-          const horaFinMaxima = 22 * 60;
-          if (finMin > horaFinMaxima) {
-            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} excede el horario máximo de 22:00`;
+          // BLINDAJE 3: Validación estricta con la configuración
+          if (finMin > horaFinMaximaMinutos) {
+            ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} termina a las ${horaFinStr}, excediendo el cierre (${horaFinMaximaStr})`;
             continue;
           }
 
@@ -235,7 +243,6 @@ const SchedulerService = {
             continue;
           }
 
-          // Estos métodos validarán contra la BD (donde los manuales siguen existiendo)
           const conflictoDocente = await HorarioModel.existeConflictoDocente(
             {
               docente_id: asignacion.docente_id,
@@ -364,6 +371,7 @@ const SchedulerService = {
     }
   },
 
+  // ... [El resto de tu método validarEdicionManual se mantiene intacto, no requería cambios] ...
   validarEdicionManual: async (id, body) => {
     const horario = await HorarioModel.getById(id);
     if (!horario) {

@@ -45,6 +45,6 @@ router.get('/mis-restricciones', authenticate, requireRole('docente'), Restricci
 
 router.post('/finalizar-turno', authenticate, requireRole('docente'), DocenteAuthController.finalizarTurno);
 
-
+router.get('/mi-estado', authenticate, requireRole('docente'), DocenteAuthController.getMiEstado);
 
 module.exports = router;

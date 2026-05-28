@@ -5,6 +5,7 @@ import {
   BookOpen,
   Plus,
   Trash2,
+  Pencil, // Inyectado para el botón de edición
   CheckCircle,
   AlertCircle,
   RefreshCw,
@@ -39,6 +40,7 @@ const AdminAsignaciones = () => {
 
   // Assignment modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [asignacionEdicion, setAsignacionEdicion] = useState(null); // 👇 NUEVO: Estado para controlar el modo edición
   const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
   const [docenteSeleccionado, setDocenteSeleccionado] = useState("");
   const [tipoAsignacion, setTipoAsignacion] = useState("Teoria");
@@ -46,6 +48,9 @@ const AdminAsignaciones = () => {
   const [aulas, setAulas] = useState([]);
   const [laboratorios, setLaboratorios] = useState([]);
   const [guardando, setGuardando] = useState(false);
+
+  const [ambientesOcupados, setAmbientesOcupados] = useState([]);
+  const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
 
   const semestre = config?.semestre_activo || "2026-1";
 
@@ -84,12 +89,7 @@ const AdminAsignaciones = () => {
     const part = semestre.split("-");
     if (part.length !== 2) return [];
     const num = parseInt(part[1], 10);
-    if (num === 1) {
-      return [1, 3, 5, 7, 9];
-    } else if (num === 2) {
-      return [2, 4, 6, 8, 10];
-    }
-    return [];
+    return num === 1 ? [1, 3, 5, 7, 9] : [2, 4, 6, 8, 10];
   };
 
   const ciclosActivos = getCiclosActivos();
@@ -125,8 +125,37 @@ const AdminAsignaciones = () => {
     setDocenteSeleccionado("");
     setTipoAsignacion("Teoria");
     setAmbientePreferido("");
+    setAsignacionEdicion(null); // Desactiva modo edición
     setModalOpen(true);
     setMensaje(null);
+  };
+
+  // 👇 NUEVO: Función para abrir el modal precargado en Modo Edición
+  const abrirModalEditar = async (asig, curso) => {
+    setCursoSeleccionado(curso);
+    setDocenteSeleccionado(asig.docente_id);
+    setTipoAsignacion(asig.tipo);
+    setAmbientePreferido(asig.ambiente_preferido_id || "");
+    setAsignacionEdicion(asig);
+    setModalOpen(true);
+    setMensaje(null);
+    setAmbientesOcupados([]); // Limpiar estados previos
+
+    setCargandoDisponibilidad(true);
+    try {
+      // Llamamos al nuevo endpoint unificado de secretaría
+      const res = await api.get(`/asignaciones/${asig.id}/horario`);
+      const data = res.data?.data;
+
+      // Si el backend nos devuelve la lista negra de ocupados, la cargamos directamente
+      if (data && data.ocupados) {
+        setAmbientesOcupados(data.ocupados);
+      }
+    } catch (err) {
+      console.error("Error al verificar disponibilidad de ambientes:", err);
+    } finally {
+      setCargandoDisponibilidad(false);
+    }
   };
 
   const getDocentesDisponibles = () => {
@@ -138,15 +167,21 @@ const AdminAsignaciones = () => {
 
     return docentes.filter((d) => {
       if (d.deleted_at) return false;
-      // All teachers must match the course specialty
       if (cursoEsp && d.especialidad?.toLowerCase() !== cursoEsp) return false;
-      // Check hour limit
-      const horasActuales = horasPorDocente[d.id] || 0;
+      
+      // MODIFICADO: Si estamos editando y evaluamos al docente actual, le restamos el peso
+      // de la asignación antigua para que no se autodescarte por sobrecarga de horas.
+      let horasActuales = horasPorDocente[d.id] || 0;
+      if (asignacionEdicion && asignacionEdicion.docente_id === d.id && asignacionEdicion.tipo === tipoAsignacion) {
+        horasActuales -= horasCurso;
+      }
+
       if (horasActuales + horasCurso > MAX_HORAS_DOCENTE) return false;
       return true;
     });
   };
 
+  // MODIFICADO: Soporta peticiones POST (Crear) y PUT (Editar) de forma transparente
   const handleGuardar = async () => {
     if (!docenteSeleccionado || !cursoSeleccionado) return;
     setGuardando(true);
@@ -159,18 +194,31 @@ const AdminAsignaciones = () => {
         semestre_asignacion: semestre,
         ambiente_preferido_id: ambientePreferido ? Number(ambientePreferido) : null,
       };
-      const res = await api.post("/asignaciones", payload);
+
+      let res;
+      if (asignacionEdicion) {
+        // MODO EDICIÓN
+        res = await api.put(`/asignaciones/${asignacionEdicion.id}`, payload);
+      } else {
+        // MODO CREACIÓN
+        res = await api.post("/asignaciones", payload);
+      }
+
       if (res.data?.success) {
-        setMensaje({ tipo: "exito", texto: "Asignación creada correctamente" });
+        setMensaje({ 
+          tipo: "exito", 
+          texto: asignacionEdicion ? "Asignación modificada correctamente" : "Asignación creada correctamente" 
+        });
         setModalOpen(false);
+        setAsignacionEdicion(null);
         cargarDatos();
       } else {
-        setMensaje({ tipo: "error", texto: res.data?.message || "Error al crear asignación" });
+        setMensaje({ tipo: "error", texto: res.data?.message || "Error al procesar la asignación" });
       }
     } catch (err) {
       setMensaje({
         tipo: "error",
-        texto: err.response?.data?.message || "Error al crear asignación",
+        texto: err.response?.data?.message || "Error al procesar la asignación",
       });
     } finally {
       setGuardando(false);
@@ -251,8 +299,14 @@ const AdminAsignaciones = () => {
 
   const getHorasDocente = (id) => horasPorDocente[id] || 0;
 
+  // MODIFICADO: Excluye la asignación actual en edición para que no cause falsos positivos consigo misma
   const isTipoYaAsignado = (cursoId, tipo) => {
-    return asignaciones.some((a) => a.curso_id === cursoId && a.semestre_asignacion === semestre && a.tipo === tipo);
+    return asignaciones.some((a) => 
+      a.curso_id === cursoId && 
+      a.semestre_asignacion === semestre && 
+      a.tipo === tipo &&
+      (!asignacionEdicion || a.id !== asignacionEdicion.id)
+    );
   };
 
   if (loading) {
@@ -450,10 +504,20 @@ const AdminAsignaciones = () => {
                                 <FlaskConical className="w-3 h-3" />
                               )}
                               {getNombreDocente(a.docente_id)}
+                              
+                              {/* 👇 NUEVO: Botón de Editar integrado sutilmente */}
+                              <button
+                                onClick={() => abrirModalEditar(a, curso)}
+                                className="ml-1 text-neutral-400 hover:text-primary-600 transition-colors"
+                                title="Editar asignación"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+
                               <button
                                 onClick={() => handleEliminar(a.id)}
-                                className="ml-1 text-neutral-400 hover:text-danger-500"
-                                title="Eliminar"
+                                className="ml-0.5 text-neutral-400 hover:text-danger-500 transition-colors"
+                                title="Eliminar asignación"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -506,7 +570,8 @@ const AdminAsignaciones = () => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary-600" />
-                Asignar Docente
+                {/* MODIFICADO: Título dinámico según el modo */}
+                {asignacionEdicion ? "Modificar Asignación" : "Asignar Docente"}
               </h2>
               <button
                 onClick={() => setModalOpen(false)}
@@ -599,12 +664,19 @@ const AdminAsignaciones = () => {
                     const horasCurso = tipoAsignacion === "Teoria"
                       ? (Number(cursoSeleccionado.horas_aula) || 0)
                       : (Number(cursoSeleccionado.horas_lab) || 0);
+                    
+                    // Ajuste de texto para simular la carga real en modo edición
+                    let horasBaseCalculo = horas;
+                    if (asignacionEdicion && asignacionEdicion.docente_id === d.id && asignacionEdicion.tipo === tipoAsignacion) {
+                      horasBaseCalculo -= horasCurso;
+                    }
+
                     return (
                       <option key={d.id} value={d.id}>
                         {d.nombres} {d.apellidos} — {d.tipo_nombramiento} ({d.categoria})
                         {d.especialidad ? ` · ${d.especialidad}` : ""}
-                        {` · ${horas}h/${MAX_HORAS_DOCENTE}h`}
-                        {` +${horasCurso}h = ${horas + horasCurso}h`}
+                        {` · ${horasBaseCalculo}h/${MAX_HORAS_DOCENTE}h`}
+                        {` +${horasCurso}h = ${horasBaseCalculo + horasCurso}h`}
                       </option>
                     );
                   })}
@@ -621,14 +693,18 @@ const AdminAsignaciones = () => {
                   <div className="flex items-center gap-2 text-sm text-primary-700">
                     <Clock className="w-4 h-4" />
                     <span className="font-medium">
-                      Carga actual: {getHorasDocente(Number(docenteSeleccionado))}h / {MAX_HORAS_DOCENTE}h semanales
+                      Carga calculada: {
+                        // Lógica visual adaptativa para el progreso real en la barra de carga
+                        (getHorasDocente(Number(docenteSeleccionado)) - 
+                        (asignacionEdicion && asignacionEdicion.docente_id === Number(docenteSeleccionado) && asignacionEdicion.tipo === tipoAsignacion ? (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0)) : 0))
+                      }h / {MAX_HORAS_DOCENTE}h semanales
                     </span>
                   </div>
                   <div className="w-full bg-primary-200 rounded-full h-2 mt-2">
                     <div
                       className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                       style={{
-                        width: `${Math.min(100, ((getHorasDocente(Number(docenteSeleccionado)) + (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0))) / MAX_HORAS_DOCENTE) * 100)}%`,
+                        width: `${Math.min(100, (((getHorasDocente(Number(docenteSeleccionado)) - (asignacionEdicion && asignacionEdicion.docente_id === Number(docenteSeleccionado) && asignacionEdicion.tipo === tipoAsignacion ? (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0)) : 0)) + (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0))) / MAX_HORAS_DOCENTE) * 100)}%`,
                       }}
                     />
                   </div>
@@ -637,31 +713,52 @@ const AdminAsignaciones = () => {
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  Ambiente preferido (opcional)
+                  Ambiente preferido (opcional) {cargandoDisponibilidad && <span className="text-xs text-primary-500 animate-pulse">(Validando disponibilidad...)</span>}
                 </label>
                 <select
                   value={ambientePreferido}
                   onChange={(e) => setAmbientePreferido(e.target.value)}
-                  className="input w-full"
-                  disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion)}
+                  className="input w-full font-medium text-neutral-800"
+                  disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion) || cargandoDisponibilidad}
                 >
                   <option value="">Sin preferencia</option>
                   {tipoAsignacion === "Teoria"
-                    ? aulas.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.codigo} — Cap: {a.capacidad}
-                        </option>
-                      ))
-                    : laboratorios.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.codigo} — Cap: {l.capacidad}
-                        </option>
-                      ))}
+                    ? aulas.map((a) => {
+                        // El aula está ocupada si su ID está explícitamente en la lista negra
+                        const estaOcupado = ambientesOcupados.includes(Number(a.id));
+                        return (
+                          <option 
+                            key={a.id} 
+                            value={a.id} 
+                            disabled={estaOcupado}
+                          >
+                            {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO EN ESTE HORARIO)" : "✅ (DISPONIBLE)"}
+                          </option>
+                        );
+                      })
+                    : laboratorios.map((l) => {
+                        const estaOcupado = ambientesOcupados.includes(Number(l.id));
+                        return (
+                          <option 
+                            key={l.id} 
+                            value={l.id} 
+                            disabled={estaOcupado}
+                          >
+                            {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO EN ESTE HORARIO)" : "✅ (DISPONIBLE)"}
+                          </option>
+                        );
+                      })}
                 </select>
               </div>
 
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setModalOpen(false)} className="btn-ghost">
+                <button 
+                  onClick={() => {
+                    setModalOpen(false);
+                    setAsignacionEdicion(null);
+                  }} 
+                  className="btn-ghost"
+                >
                   Cancelar
                 </button>
                 <button
@@ -677,7 +774,7 @@ const AdminAsignaciones = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Guardar Asignación
+                      {asignacionEdicion ? "Actualizar Asignación" : "Guardar Asignación"}
                     </>
                   )}
                 </button>

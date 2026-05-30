@@ -133,7 +133,7 @@ const AdminHorarios = () => {
     setLoading(true);
     try {
       const [resHor, resDoc, resConf, resCur, resAsig, resAulas, resLabs] = await Promise.all([
-        api.get("/horarios", { params: { semestre, docente_id: filtroDocente || undefined } }),
+        api.get("/horarios", { params: { semestre } }),
         api.get("/docentes"),
         api.get("/configuracion"),
         api.get("/cursos"),
@@ -153,7 +153,7 @@ const AdminHorarios = () => {
     } finally {
       setLoading(false);
     }
-  }, [semestre, filtroDocente]);
+  }, [semestre]);
 
   useEffect(() => {
     cargarDatos();
@@ -838,10 +838,17 @@ const AdminHorarios = () => {
     setCreateForm({ dia: "Lunes", hora_inicio: "", hora_fin: "", ambiente_id: "" });
     setAmbientesValidadosAPI([]);
     
+    // Como 'horarios' ahora tiene los de TODOS, esta lista de IDs será exacta
     const idsConHorario = horarios.map(h => h.asignacion_id);
-    const pendientes = asignaciones.filter(
+    
+    let pendientes = asignaciones.filter(
       a => a.semestre_asignacion === semestre && !idsConHorario.includes(a.id)
     );
+
+    //  CORRECCIÓN 3: Si hay un docente filtrado, mostramos solo sus asignaturas pendientes
+    if (filtroDocente) {
+      pendientes = pendientes.filter(a => String(a.docente_id) === String(filtroDocente));
+    }
 
     pendientes.sort((a, b) => {
       const docA = docentes.find(d => d.id === a.docente_id) || {};
@@ -915,13 +922,18 @@ const AdminHorarios = () => {
   const horariosPorCiclo = useMemo(() => {
     const map = {};
     for (const h of horarios) {
+      //  CORRECCIÓN 2: Filtro local. Si hay un docente seleccionado, ignoramos visualmente a los demás
+      if (filtroDocente && String(h.docente?.id || h.docente_id) !== String(filtroDocente)) {
+        continue;
+      }
+      
       const cicloCurso = h.curso?.ciclo;
       if (!cicloCurso) continue;
       if (!map[cicloCurso]) map[cicloCurso] = [];
       map[cicloCurso].push(h);
     }
     return map;
-  }, [horarios]);
+  }, [horarios, filtroDocente]); // <-- Se agregó filtroDocente aquí
 
   const horarioEnBloque = (diaStr, bloquesInicio, bloqueFin, horariosDelCiclo) => {
     const blockIniMin = timeToMinutes(bloquesInicio);

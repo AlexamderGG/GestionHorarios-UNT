@@ -19,12 +19,9 @@ import {
   Building2,
   FlaskConical,
   BarChart3,
-  Zap,
   Calendar,
   FileDown,
-  RefreshCw,
   TrendingUp,
-  ArrowRight,
   X,
 } from "lucide-react";
 import api from "../services/api";
@@ -51,69 +48,36 @@ const Dashboard = () => {
     uso_por_ambiente: [],
   });
   const [loading, setLoading] = useState(true);
-  const [generando, setGenerando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
-  const [semestre, setSemestre] = useState("2026-1");
-
-  const cargarEstadisticas = () => {
-    setLoading(true);
-    api
-      .get("/estadisticas")
-      .then((res) => {
-        if (res.data?.data) setStats(res.data.data);
-      })
-      .catch((err) => {
-        console.error("Error cargando estadísticas:", err);
-        setMensaje({ tipo: "error", texto: "Error al cargar estadísticas" });
-      })
-      .finally(() => setLoading(false));
-  };
+  const [semestre, setSemestre] = useState("");
 
   useEffect(() => {
-    // Load active semester from configuration
-    api
-      .get("/configuracion")
-      .then((res) => {
-        if (res.data?.data?.semestre_activo) {
-          setSemestre(res.data.data.semestre_activo);
+    const cargarDatos = async () => {
+      setLoading(true);
+      try {
+        // 1. Obtenemos estrictamente el semestre de la configuración
+        const resConf = await api.get("/configuracion");
+        const semestreActivo = resConf.data?.data?.semestre_activo || "2026-1";
+        setSemestre(semestreActivo);
+
+        // 2. Pedimos las estadísticas filtradas SOLO por ese semestre
+        const resStats = await api.get("/estadisticas", {
+          params: { semestre: semestreActivo }
+        });
+        
+        if (resStats.data?.data) {
+          setStats(resStats.data.data);
         }
-      })
-      .catch((err) => console.error("Error cargando configuración:", err));
-
-    cargarEstadisticas();
-  }, []);
-
-  const handleGenerar = async () => {
-    setGenerando(true);
-    setMensaje(null);
-    try {
-      const res = await api.post("/horarios/generar", {
-        semestre,
-        forzar: true,
-      });
-      if (res.data?.success) {
-        setMensaje({
-          tipo: "exito",
-          texto: `Horarios generados: ${res.data.data?.generados || 0} clases asignadas.`,
-        });
-        cargarEstadisticas();
-      } else {
-        setMensaje({
-          tipo: "error",
-          texto: res.data?.message || "Error al generar horarios",
-        });
+      } catch (err) {
+        console.error("Error cargando el dashboard:", err);
+        setMensaje({ tipo: "error", texto: "Error al cargar las estadísticas del semestre." });
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setMensaje({
-        tipo: "error",
-        texto:
-          err.response?.data?.message ||
-          "Error de conexión al generar horarios",
-      });
-    } finally {
-      setGenerando(false);
-    }
-  };
+    };
+
+    cargarDatos();
+  }, []);
 
   const dataCargaDocente = (stats.carga_por_docente || []).map((d) => ({
     nombre: d.nombre || d.docente || `Docente ${d.docente_id}`,
@@ -171,73 +135,24 @@ const Dashboard = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <StatCard
-          label="Docentes"
-          value={stats.total_docentes}
-          icon={Users}
-          color="primary"
-        />
-        <StatCard
-          label="Cursos"
-          value={stats.total_cursos}
-          icon={BookOpen}
-          color="indigo"
-        />
-        <StatCard
-          label="Aulas"
-          value={stats.total_aulas}
-          icon={Building2}
-          color="success"
-        />
-        <StatCard
-          label="Laboratorios"
-          value={stats.total_laboratorios}
-          icon={FlaskConical}
-          color="warning"
-        />
-        <StatCard
-          label="Ocupación"
-          value={`${stats.ocupacion_aulas}%`}
-          icon={TrendingUp}
-          color="danger"
-        />
+        <StatCard label="Docentes" value={stats.total_docentes} icon={Users} color="primary" />
+        <StatCard label="Cursos" value={stats.total_cursos} icon={BookOpen} color="indigo" />
+        <StatCard label="Aulas" value={stats.total_aulas} icon={Building2} color="success" />
+        <StatCard label="Laboratorios" value={stats.total_laboratorios} icon={FlaskConical} color="warning" />
+        <StatCard label="Ocupación" value={`${stats.ocupacion_aulas}%`} icon={TrendingUp} color="danger" />
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions & Semestre */}
       <div className="card p-5 mb-6">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              Semestre
-            </label>
-            <input
-              type="text"
-              value={semestre}
-              onChange={(e) => setSemestre(e.target.value)}
-              className="input w-32"
-              placeholder="2026-1"
-            />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="bg-primary-50 text-primary-700 px-4 py-2 rounded-lg border border-primary-200 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            <span className="text-sm font-bold">Semestre Activo: {semestre}</span>
           </div>
+
           <button
-            onClick={handleGenerar}
-            disabled={generando}
-            className="btn-primary flex items-center gap-2"
-          >
-            {generando ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Generando...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                Generar Horarios
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => navigate("/admin/horarios-general")}
-            className="btn-secondary flex items-center gap-2"
+            onClick={() => navigate("/admin/horarios")}
+            className="btn-primary flex items-center gap-2 ml-auto sm:ml-0"
           >
             <Calendar className="w-4 h-4" />
             Ver Horarios
@@ -291,7 +206,7 @@ const Dashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyChart message="Sin datos de carga horaria. Genere horarios primero." />
+            <EmptyChart message="Sin datos de carga horaria en este semestre." />
           )}
         </div>
 
@@ -329,7 +244,7 @@ const Dashboard = () => {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyChart message="Sin datos de distribución. Genere horarios primero." />
+            <EmptyChart message="Sin datos de distribución en este semestre." />
           )}
         </div>
 
@@ -370,7 +285,7 @@ const Dashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyChart message="Sin datos de uso de ambientes. Genere horarios primero." />
+            <EmptyChart message="Sin datos de uso de ambientes en este semestre." />
           )}
         </div>
       </div>
@@ -379,31 +294,11 @@ const Dashboard = () => {
 };
 
 const colorMap = {
-  primary: {
-    bg: "bg-primary-50",
-    icon: "text-primary-600",
-    border: "border-l-primary-500",
-  },
-  indigo: {
-    bg: "bg-indigo-50",
-    icon: "text-indigo-600",
-    border: "border-l-indigo-500",
-  },
-  success: {
-    bg: "bg-success-50",
-    icon: "text-success-600",
-    border: "border-l-success-500",
-  },
-  warning: {
-    bg: "bg-warning-50",
-    icon: "text-warning-600",
-    border: "border-l-warning-500",
-  },
-  danger: {
-    bg: "bg-danger-50",
-    icon: "text-danger-600",
-    border: "border-l-danger-500",
-  },
+  primary: { bg: "bg-primary-50", icon: "text-primary-600", border: "border-l-primary-500" },
+  indigo: { bg: "bg-indigo-50", icon: "text-indigo-600", border: "border-l-indigo-500" },
+  success: { bg: "bg-success-50", icon: "text-success-600", border: "border-l-success-500" },
+  warning: { bg: "bg-warning-50", icon: "text-warning-600", border: "border-l-warning-500" },
+  danger: { bg: "bg-danger-50", icon: "text-danger-600", border: "border-l-danger-500" },
 };
 
 const StatCard = ({ label, value, icon: Icon, color }) => {
@@ -412,9 +307,7 @@ const StatCard = ({ label, value, icon: Icon, color }) => {
     <div className={`card-hover p-4 border-l-4 ${c.border}`}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm text-neutral-500 font-medium">{label}</p>
-        <div
-          className={`w-9 h-9 rounded-lg ${c.bg} flex items-center justify-center`}
-        >
+        <div className={`w-9 h-9 rounded-lg ${c.bg} flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${c.icon}`} />
         </div>
       </div>
@@ -449,7 +342,6 @@ const DashboardSkeleton = () => (
     </div>
     <div className="card p-5 mb-6">
       <div className="flex gap-3">
-        <div className="skeleton h-10 w-32" />
         <div className="skeleton h-10 w-36" />
         <div className="skeleton h-10 w-28" />
       </div>

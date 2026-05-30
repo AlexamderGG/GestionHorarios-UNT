@@ -1131,7 +1131,7 @@ const AdminHorarios = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse table-fixed">
+              <table className="w-full border-collapse min-w-max">
                 <thead>
                   <tr className="bg-neutral-50">
                     <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-28 sticky left-0 bg-neutral-50 z-10">

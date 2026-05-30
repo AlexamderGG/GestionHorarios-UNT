@@ -2,6 +2,7 @@ const HorarioModel = require("../models/horario.model");
 const SchedulerService = require("../services/scheduler.service");
 const DocenteModel = require('../models/docente.model');
 const ConfiguracionModel = require('../models/configuracion.model');
+const pool = require('../config/db'); // 🌟 CORREGIDO: Importación única y global en el top
 const { success, error } = require("../utils/responseHelper");
 
 const timeToHours = (timeStr) => {
@@ -54,10 +55,10 @@ const HorariosController = {
         return error(res, "Validación fallida", 400, errores);
 
       const horarios = await HorarioModel.getAll(req.query);
-      success(res, horarios, "Horarios obtenidos correctamente");
+      return success(res, horarios, "Horarios obtenidos correctamente");
     } catch (err) {
       console.error(err);
-      error(res, "Error al obtener horarios", 500);
+      return error(res, "Error al obtener horarios", 500);
     }
   },
 
@@ -65,10 +66,10 @@ const HorariosController = {
     try {
       const semestre = req.query.semestre || "2026-1";
       const estado = await HorarioModel.getEstadoSeleccion(semestre);
-      success(res, estado, "Estado de selección obtenido correctamente");
+      return success(res, estado, "Estado de selección obtenido correctamente");
     } catch (err) {
       console.error(err);
-      error(res, "Error al obtener estado de selección", 500);
+      return error(res, "Error al obtener estado de selección", 500);
     }
   },
 
@@ -89,14 +90,13 @@ const HorariosController = {
         );
       }
 
-      success(res, resultado.data, resultado.message, resultado.status || 201);
+      return success(res, resultado.data, resultado.message, resultado.status || 201);
     } catch (err) {
       console.error(err);
-      error(res, "Error al generar horarios", 500);
+      return error(res, "Error al generar horarios", 500);
     }
   },
 
-  // 👇 NUEVO: Endpoint para que la secretaría obtenga las aulas activas
   getAulas: async (req, res) => {
     try {
       const aulas = await HorarioModel.getAulasActivas();
@@ -107,7 +107,6 @@ const HorariosController = {
     }
   },
 
-  // 👇 NUEVO: Endpoint para que la secretaría obtenga los laboratorios activos
   getLaboratorios: async (req, res) => {
     try {
       const laboratorios = await HorarioModel.getLaboratoriosActivos();
@@ -118,7 +117,6 @@ const HorariosController = {
     }
   },
 
-  // 👇 NUEVO: Endpoint de creación manual blindada
   create: async (req, res) => {
     try {
       const { asignacion_id, dia, hora_inicio, hora_fin, aula_id, laboratorio_id } = req.body;
@@ -132,8 +130,6 @@ const HorariosController = {
       if (!hora_inicio || !hora_fin) {
         return error(res, "La hora de inicio y fin son requeridas", 400);
       }
-
-      const pool = require('../config/db');
       
       const matchCurso = await pool.query(
         `SELECT c.horas_aula, c.horas_lab, a.tipo, c.nombre, c.ciclo, a.docente_id, a.semestre_asignacion
@@ -265,7 +261,6 @@ const HorariosController = {
         );
       }
 
-      const pool = require('../config/db');
       const matchCurso = await pool.query(
         `SELECT c.horas_aula, c.horas_lab, a.tipo, c.nombre, c.ciclo, h.semestre
          FROM horarios h
@@ -287,8 +282,13 @@ const HorariosController = {
         const hIniStr = validacion.data.hora_inicio || horarioExistente.hora_inicio;
         const hFinStr = validacion.data.hora_fin || horarioExistente.hora_fin;
 
-        const hIniVal = timeToHours(hIniStr);
-        const hFinVal = timeToHours(hFinStr);
+        const parseTimeToHours = (tStr) => {
+          const [h, m] = String(tStr).slice(0, 5).split(':').map(Number);
+          return h + (m / 60);
+        };
+
+        const hIniVal = parseTimeToHours(hIniStr);
+        const hFinVal = parseTimeToHours(hFinStr);
         const duracionPropuesta = hFinVal - hIniVal;
 
         if (Math.abs(duracionPropuesta - horasRequeridas) > 0.001) {
@@ -325,14 +325,17 @@ const HorariosController = {
 
       await HorarioModel.update(id, validacion.data);
       const horarioActualizado = await HorarioModel.getById(id);
-      success(
+      
+      return success(
         res,
         horarioActualizado,
         "Horario actualizado manualmente correctamente",
       );
     } catch (err) {
-      console.error(err);
-      error(res, "Error al actualizar horario", 500);
+      console.error("Error crítico en actualización manual:", err);
+      if (!res.headersSent) {
+        return error(res, "Error al actualizar horario", 500);
+      }
     }
   },
 
@@ -346,10 +349,10 @@ const HorariosController = {
       if (!horario) return error(res, "Horario no encontrado", 404);
 
       await HorarioModel.delete(id);
-      success(res, null, "Horario eliminado correctamente");
+      return success(res, null, "Horario eliminado correctamente");
     } catch (err) {
       console.error(err);
-      error(res, "Error al eliminar horario", 500);
+      return error(res, "Error al eliminar horario", 500);
     }
   },
 
@@ -363,30 +366,21 @@ const HorariosController = {
         return error(res, errorSemestre, 400);
       }
 
+      // 1. Elimina los horarios (Esto se mantiene)
       const eliminados = await HorarioModel.deleteBySemestre(semestreNormalizado);
-      const configSemestre = await ConfiguracionModel.getByClave('semestre_activo');
-      const semestreActivoConfigurado = configSemestre && configSemestre.valor ? String(configSemestre.valor).trim() : "2026-1";
 
-      let turnosReiniciados = false;
-      if (semestreNormalizado === semestreActivoConfigurado) {
-        await DocenteModel.resetAllTurnos();
-        turnosReiniciados = true;
-      }
-
-      success(
+      // 2. Retorna la respuesta de éxito directa (Mensaje limpio y sin condiciones)
+      return success(
         res, 
-        { semestre: semestreNormalizado, eliminados, turnosReiniciados }, 
-        turnosReiniciados
-          ? `${eliminados} horarios eliminados correctamente. Los turnos han sido reiniciados.`
-          : `${eliminados} horarios históricos eliminados correctamente.`
+        { semestre: semestreNormalizado, eliminados }, 
+        `${eliminados} horarios del semestre ${semestreNormalizado} han sido eliminados correctamente.`
       );
     } catch (err) {
       console.error(err);
-      error(res, "Error al limpiar horarios", 500);
+      return error(res, "Error al limpiar horarios", 500);
     }
   },
 
-  // INYECTAR ESTE MÉTODO al final de HorariosController (antes del module.exports)
   resetTurnosDesdePanel: async (req, res) => {
     try {
       await DocenteModel.resetAllTurnos();
@@ -409,14 +403,12 @@ const HorariosController = {
 
       if (!Number.isInteger(Number(id))) return error(res, "id debe ser entero", 400);
 
-      // 1. GUARDIA DE TURNO: Solo puede editar si su turno está activo ('Notificado')
       const docente = await DocenteModel.getById(req.user.id);
       if (!docente) return error(res, "Docente no encontrado", 404);
       if (docente.estado_turno !== 'Notificado') {
         return error(res, "Acción rechazada: No puedes modificar horarios fuera de tu turno activo.", 403);
       }
 
-      // 2. GUARDIA DE PROPIEDAD: Verificar que el horario exista y le pertenezca
       const horarioExistente = await HorarioModel.getById(id);
       if (!horarioExistente) return error(res, "Horario no encontrado", 404);
       
@@ -425,8 +417,6 @@ const HorariosController = {
         return error(res, "Acción rechazada: Este bloque de horario no te pertenece", 403);
       }
 
-      // 3. CONSULTA RELACIONAL DIRECTA: Traer las horas requeridas oficiales del curso
-      const pool = require('../config/db');
       const matchCurso = await pool.query(
         `SELECT c.horas_aula, c.horas_lab, a.tipo, c.nombre, c.ciclo, h.semestre
          FROM horarios h
@@ -450,7 +440,6 @@ const HorariosController = {
       const hFin = normalizarHoraLocal(hora_fin || horarioExistente.hora_fin);
       const elDia = dia || horarioExistente.dia;
 
-      // 4. BARRERA DE DURACIÓN ESTRICTA
       const horasRequeridas = tipo === 'Teoria' ? Number(infoCurso.horas_aula) : Number(infoCurso.horas_lab);
       if (horasRequeridas > 0) {
         const duracionPropuesta = timeToHours(hFin) - timeToHours(hIni);
@@ -459,8 +448,6 @@ const HorariosController = {
         }
       }
 
-      // 5. BLINDAJE ANTI-CRUCES (Excluyendo el ID actual para evitar falsos positivos)
-      // Agenda del Profesor
       const conflictoDocente = await pool.query(
         `SELECT h.id FROM horarios h 
          JOIN asignacion_docente_curso a ON h.asignacion_id = a.id
@@ -470,7 +457,6 @@ const HorariosController = {
       );
       if (conflictoDocente.rows.length > 0) return error(res, "Ya tienes otra clase programada en este rango horario", 409);
 
-      // Agenda del Ciclo (Alumnos)
       const conflictoCiclo = await pool.query(
         `SELECT h.id FROM horarios h
          JOIN asignacion_docente_curso a ON h.asignacion_id = a.id
@@ -481,7 +467,7 @@ const HorariosController = {
       );
       if (conflictoCiclo.rows.length > 0) return error(res, "Conflicto de Ciclo: Los alumnos ya tienen otra clase en este horario", 409);
 
-      // Agenda de Infraestructura (Ambientes)
+      // 🌟 CORREGIDO: Removido el "h." de la condición final de la consulta de Aula y Lab
       if (tipo === 'Teoria') {
         const targetAula = aula_id || horarioExistente.aula_id || (horarioExistente.aula?.id);
         const conflictoAula = await pool.query(
@@ -498,7 +484,6 @@ const HorariosController = {
         if (conflictoLab.rows.length > 0) return error(res, "El laboratorio seleccionado ya se encuentra ocupado", 409);
       }
 
-      // 6. ACTUALIZACIÓN EN LA BD
       await HorarioModel.update(id, {
         dia: elDia,
         hora_inicio: hIni,
@@ -514,6 +499,128 @@ const HorariosController = {
     } catch (err) {
       console.error("Error crítico en edición de horario por docente:", err);
       return error(res, "Error interno al intentar guardar las modificaciones", 500);
+    }
+  },
+
+  //  NUEVO: Lógica unificada exacta del Docente adaptada para el Admin
+  verificarDisponibilidadAmbiente: async (req, res) => {
+    try {
+      const { dia, hora_inicio, hora_fin, tipo, excludeId, semestre } = req.query;
+
+      if (!dia || !hora_inicio || !hora_fin || !tipo || !semestre) {
+        return error(res, "Faltan parámetros obligatorios para la validación.", 400);
+      }
+
+      const idExcluir = (excludeId && !isNaN(Number(excludeId))) ? Number(excludeId) : -1;
+      const pool = require('../config/db');
+
+      let sql = "";
+      if (tipo === "Teoria") {
+        //  CORRECCIÓN: Eliminamos "a.deleted_at IS NULL" porque esa columna no existe
+        sql = `
+          SELECT a.id, a.codigo, a.capacidad,
+            EXISTS (
+              SELECT 1 FROM horarios 
+              WHERE aula_id = a.id 
+                AND semestre = $1 
+                AND dia = $2 
+                AND hora_inicio < $4 
+                AND hora_fin > $3 
+                AND id <> $5
+            ) as esta_ocupado
+          FROM aulas a
+          ORDER BY a.codigo ASC;
+        `;
+      } else {
+        //  CORRECCIÓN: Eliminamos "l.deleted_at IS NULL" porque esa columna no existe
+        sql = `
+          SELECT l.id, l.codigo, l.capacidad,
+            EXISTS (
+              SELECT 1 FROM horarios 
+              WHERE laboratorio_id = l.id 
+                AND semestre = $1 
+                AND dia = $2 
+                AND hora_inicio < $4 
+                AND hora_fin > $3 
+                AND id <> $5
+            ) as esta_ocupado
+          FROM laboratorios l
+          ORDER BY l.codigo ASC;
+        `;
+      }
+
+      const result = await pool.query(sql, [semestre, dia, hora_inicio, hora_fin, idExcluir]);
+      
+      const dataNormalizada = result.rows.map(r => ({
+        id: r.id,
+        codigo: r.codigo,
+        capacidad: r.capacidad,
+        esta_ocupado: r.esta_ocupado
+      }));
+
+      return success(res, dataNormalizada, "Disponibilidad de ambientes calculada con éxito");
+    } catch (err) {
+      console.error("Error en validación viva de ambientes:", err);
+      return error(res, "Error al verificar ambientes", 500);
+    }
+  },
+
+  // 🌟 NUEVO ENDPOINT: Validación de infraestructura idéntica a la lógica del Docente
+  getDisponibilidadAmbientesAdmin: async (req, res) => {
+    try {
+      const { dia, hora_inicio, hora_fin, tipo, semestre, excludeId } = req.query;
+
+      if (!dia || !hora_inicio || !hora_fin || !tipo || !semestre) {
+        return error(res, "Faltan parámetros de tiempo obligatorios para el cálculo.", 400);
+      }
+
+      const idHorarioExcluir = excludeId && !isNaN(Number(excludeId)) ? Number(excludeId) : -1;
+      const normalizarHora = (h) => String(h).slice(0, 5);
+      
+      const hIni = normalizarHora(hora_inicio);
+      const hFin = normalizarHora(hora_fin);
+      const elDia = String(dia).trim();
+
+      let sql = "";
+      if (tipo === "Teoria" || tipo === "Teoría") {
+        sql = `
+          SELECT a.id, a.codigo, a.capacidad,
+            EXISTS (
+              SELECT 1 FROM horarios h
+              WHERE h.aula_id = a.id
+                AND h.semestre = $1
+                AND TRIM(h.dia) = $2
+                AND h.hora_inicio < $4
+                AND h.hora_fin > $3
+                AND h.id <> $5
+            ) as esta_ocupado
+          FROM aulas a
+          WHERE a.deleted_at IS NULL
+          ORDER BY a.codigo ASC;
+        `;
+      } else {
+        sql = `
+          SELECT l.id, l.codigo, l.capacidad,
+            EXISTS (
+              SELECT 1 FROM horarios h
+              WHERE h.laboratorio_id = l.id
+                AND h.semestre = $1
+                AND TRIM(h.dia) = $2
+                AND h.hora_inicio < $4
+                AND h.hora_fin > $3
+                AND h.id <> $5
+            ) as esta_ocupado
+          FROM laboratorios l
+          WHERE l.deleted_at IS NULL
+          ORDER BY l.codigo ASC;
+        `;
+      }
+
+      const result = await pool.query(sql, [semestre, elDia, hIni, hFin, idHorarioExcluir]);
+      return success(res, result.rows, "Disponibilidades de infraestructura calculadas correctamente.");
+    } catch (err) {
+      console.error("Error crítico calculando disponibilidad:", err);
+      return error(res, "Error interno en el cálculo de infraestructura", 500);
     }
   },
 };

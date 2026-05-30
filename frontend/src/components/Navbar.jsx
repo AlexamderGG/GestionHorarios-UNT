@@ -21,6 +21,7 @@ import {
   Link2,
   BarChart3,
   ListOrdered,
+  HelpCircle,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
@@ -51,7 +52,7 @@ const Navbar = () => {
     { to: '/docente/cursos', label: 'Mis Cursos', icon: BookOpen },
     { to: '/docente/horario', label: 'Mi Horario', icon: Calendar },
     { to: '/docente/seleccionar', label: 'Seleccionar', icon: Clock },
-    { to: '/docente/restricciones', label: 'Restricciones', icon: Lock },
+    { to: '/docente/excepciones', label: 'Excepciones', icon: Lock },
   ];
 
   const adminLinks = [
@@ -62,7 +63,8 @@ const Navbar = () => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
     { to: '/admin/reportes', label: 'Reportes', icon: FileText },
-    { to: "/admin/secretaria-turnos", label: 'Gestión de Turnos', icon: ListOrdered}
+    { to: "/admin/secretaria-turnos", label: 'Gestión de Turnos', icon: ListOrdered},
+    { to: "/admin/excepciones", label: 'Excepciones', icon: HelpCircle}
   ];
 
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'docente' ? docenteLinks : [];

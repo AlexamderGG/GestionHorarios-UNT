@@ -13,10 +13,10 @@ const horariosRoutes = require('./horarios.routes');
 const estadisticasRoutes = require('./estadisticas.routes');
 const reportesRoutes = require('./reportes.routes');
 const configuracionRoutes = require('./configuracion.routes');
-const restriccionesRoutes = require('./restricciones.routes');
 const docenteAuthRoutes = require('./docente-auth.routes');
 const demoRoutes = require('./demo.routes');
 const secretariaRoutes = require('./secretaria.routes');
+const excepcionRoutes = require('./excepcion.routes');
 
 // Rutas públicas
 router.use('/auth', authRoutes);
@@ -35,11 +35,14 @@ router.use('/demo', demoRoutes);
 // Rutas protegidas - horarios (GET abierto, el resto en el propio router)
 router.use('/horarios', horariosRoutes);
 
-// Rutas protegidas - docente autenticado
+// Rutas protegidas - docente autenticado (Maneja mis-cursos, perfil, etc.)
 router.use('/docente', docenteAuthRoutes);
 
-// Rutas protegidas - restricciones (docente y admin)
-router.use('/restricciones', restriccionesRoutes);
+// CORRECCIÓN: Separamos las excepciones a su propio prefijo limpio
+// Esto evitará conflictos con docenteAuthRoutes y se mapeará en el front como /api/excepciones
+router.use('/excepciones', excepcionRoutes);
+
+// Rutas protegidas - secretaría
 router.use('/secretaria', secretariaRoutes);
 
 module.exports = router;

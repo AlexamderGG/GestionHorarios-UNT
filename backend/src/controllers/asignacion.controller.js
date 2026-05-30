@@ -344,6 +344,7 @@ const AsignacionController = {
       return res.status(500).json({ success: false, message: 'Error al consultar el horario y ocupación' });
     }
   },
+  
 };
 
 function encontrarDocenteDisponible(docentes, curso, tipo, semestre, horasPorDocente) {
@@ -375,6 +376,6 @@ function encontrarDocenteDisponible(docentes, curso, tipo, semestre, horasPorDoc
   });
 
   return candidatos[0] || null;
-}
+};
 
 module.exports = AsignacionController;

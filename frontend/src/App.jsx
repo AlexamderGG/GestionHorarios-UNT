@@ -8,7 +8,7 @@ import Login from './pages/Login';
 import MisCursos from './pages/docente/MisCursos';
 import MiHorario from './pages/docente/MiHorario';
 import SeleccionarHorario from './pages/docente/SeleccionarHorario';
-import MisRestricciones from './pages/docente/MisRestricciones';
+import Excepciones from './pages/docente/Excepciones';
 import AdminHorarios from './pages/admin/AdminHorarios';
 import AdminAsignaciones from './pages/admin/AdminAsignaciones';
 import AdminDocentes from './pages/admin/AdminDocentes';
@@ -19,6 +19,7 @@ import Horarios from './pages/Horarios';
 import Reportes from './pages/Reportes';
 import Configuracion from './pages/Configuracion';
 import SecretariaPanel from './pages/admin/SecretariaPanel';
+import AdminExcepciones from "./pages/admin/AdminExcepciones";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -38,7 +39,7 @@ function App() {
           <Route path="docente/cursos" element={<MisCursos />} />
           <Route path="docente/horario" element={<MiHorario />} />
           <Route path="docente/seleccionar" element={<SeleccionarHorario />} />
-          <Route path="docente/restricciones" element={<MisRestricciones />} />
+          <Route path="docente/excepciones" element={<Excepciones />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
@@ -53,6 +54,7 @@ function App() {
           <Route path="admin/configuracion" element={<Configuracion />} />
           <Route path="admin/reportes" element={<Reportes />} />
           <Route path="/admin/secretaria-turnos" element={<SecretariaPanel />} />
+          <Route path="admin/excepciones" element={<AdminExcepciones />} />
         </Route>
       </Route>
     </Routes>

@@ -90,4 +90,6 @@ router.put('/:id', authenticate, requireRole('admin'), HorariosController.update
  */
 router.delete('/:id', authenticate, requireRole('admin'), HorariosController.remove);
 
+router.get("/ambientes-disponibilidad", authenticate, HorariosController.verificarDisponibilidadAmbiente);
+
 module.exports = router;

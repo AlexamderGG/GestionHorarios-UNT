@@ -14,7 +14,6 @@ import {
   Save    
 } from 'lucide-react';
 
-// 🛡️ Nunca falla aunque reciba valores nulos o corruptos
 const timeToMinutes = (t) => {
   if (!t || typeof t !== 'string') return 0;
   const parts = t.slice(0, 5).split(':').map(Number);
@@ -23,7 +22,6 @@ const timeToMinutes = (t) => {
   return h * 60 + m;
 };
 
-// 🛡️ Protegido contra códigos numéricos o vacíos
 const getColorCurso = (codigo) => {
   let hash = 0;
   const safeCodigo = String(codigo || 'SC');
@@ -39,7 +37,6 @@ const getColorCurso = (codigo) => {
   };
 };
 
-// Convierte formato de 24h a formato legible AM/PM de forma segura
 const formatAMPM = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return "Sin hora";
   const parts = timeStr.split(":");
@@ -63,11 +60,12 @@ const MiHorario = () => {
 
   const [editando, setEditando] = useState(null);
   const [editForm, setEditForm] = useState({ dia: "Lunes", hora_inicio: "", hora_fin: "", aula_id: "", laboratorio_id: "" });
-  const [aulas, setAulas] = useState([]);
-  const [laboratorios, setLaboratorios] = useState([]);
   const [guardando, setGuardando] = useState(false);
+  
+  // 🌟 LÓGICA DE API IGUAL QUE EL ADMIN (Infalible)
+  const [ambientesValidadosAPI, setAmbientesValidadosAPI] = useState([]);
+  const [cargandoAmbientes, setCargandoAmbientes] = useState(false);
 
-  // DÍAS DINÁMICOS: Esto repara el problema de que no se mostraba el Sábado
   const dias = config?.dias_habiles 
     ? (Array.isArray(config.dias_habiles) ? config.dias_habiles : config.dias_habiles.split(','))
     : ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
@@ -86,19 +84,15 @@ const MiHorario = () => {
         api.get('/horarios', { params: { semestre: semestreActivo } })
       ]);
 
-      const dataDocente = resHorariosDocente?.data?.data;
-      const dataGlobal = resHorariosGlobales?.data?.data;
-      
-      setHorarios(Array.isArray(dataDocente) ? dataDocente : []);
-      setHorariosGlobales(Array.isArray(dataGlobal) ? dataGlobal : []); 
+      setHorarios(Array.isArray(resHorariosDocente?.data?.data) ? resHorariosDocente.data.data : []);
+      setHorariosGlobales(Array.isArray(resHorariosGlobales?.data?.data) ? resHorariosGlobales.data.data : []); 
 
       try {
         const resDemo = await api.get('/demo/estado');
-        const demoData = resDemo?.data?.data?.config;
-        if (demoData?.demo_mode) {
+        if (resDemo?.data?.data?.config?.demo_mode) {
           setDemoEstado(resDemo?.data?.data?.turnos || null);
         }
-      } catch { /* Ignorado en silencio */ }
+      } catch { /* Ignorado */ }
     } catch (err) {
       console.error('Error cargando horario:', err);
     } finally {
@@ -107,6 +101,47 @@ const MiHorario = () => {
   }, []);
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
+
+  // 🌟 FUNCIÓN QUE LLAMA A POSTGRESQL (Resuelve el bug del A201)
+  const refrescarDisponibilidadAmbientesAPI = useCallback(async (diaStr, hIni, hFin, tipoAsig, idHorario) => {
+    if (!diaStr || !hIni || !hFin || !tipoAsig) return;
+    setCargandoAmbientes(true);
+    try {
+      const idParaExcluir = idHorario ? Number(idHorario) : -1;
+      const tipoLimpio = String(tipoAsig).includes("Laboratorio") ? "Laboratorio" : "Teoria";
+      
+      const res = await api.get("/horarios/ambientes-disponibilidad", {
+        params: {
+          dia: String(diaStr).trim(),
+          hora_inicio: String(hIni).slice(0, 5),
+          hora_fin: String(hFin).slice(0, 5),
+          tipo: tipoLimpio,
+          semestre: semestre || "2026-1",
+          excludeId: idParaExcluir
+        }
+      });
+      setAmbientesValidadosAPI(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (err) {
+      console.error("Error consultando disponibilidad de ambientes:", err);
+      setAmbientesValidadosAPI([]);
+    } finally {
+      setCargandoAmbientes(false);
+    }
+  }, [semestre]);
+
+  // Disparador reactivo que actualiza los ambientes al cambiar la hora o día en el modal
+  useEffect(() => {
+    if (editando && editForm.dia && editForm.hora_inicio && editForm.hora_fin) {
+      const tipoCursoActual = editando.tipo || editando.tipo_asignacion || editando.curso?.tipo || "Teoria";
+      refrescarDisponibilidadAmbientesAPI(
+        editForm.dia,
+        editForm.hora_inicio,
+        editForm.hora_fin,
+        tipoCursoActual,
+        editando.id
+      );
+    }
+  }, [editForm.dia, editForm.hora_inicio, editForm.hora_fin, editando, refrescarDisponibilidadAmbientesAPI]);
 
   const horasDisponibles = useMemo(() => {
     const inicio = config?.hora_inicio || "07:00";
@@ -121,61 +156,30 @@ const MiHorario = () => {
     return lista;
   }, [config]);
 
-  const ambientesOcupadosEnEdicion = useMemo(() => {
-    if (!editando) return [];
-    const dia = editForm?.dia;
-    const hora_inicio = editForm?.hora_inicio;
-    const hora_fin = editForm?.hora_fin;
-    
-    if (!dia || !hora_inicio || !hora_fin) return [];
-
-    const inicioPropuesto = timeToMinutes(hora_inicio);
-    const finPropuesta = timeToMinutes(hora_fin);
-
-    const ocupados = [];
-    (horariosGlobales || []).forEach((h) => {
-      if (h && h.id !== editando.id && h.dia === dia) {
-        const hIni = timeToMinutes(h.hora_inicio);
-        const hFin = timeToMinutes(h.hora_fin);
-
-        if (hIni < finPropuesta && hFin > inicioPropuesto) {
-          if (h.aula?.id) ocupados.push(Number(h.aula.id));
-          if (h.laboratorio?.id) ocupados.push(Number(h.laboratorio.id));
-        }
-      }
-    });
-    return ocupados;
-  }, [editForm, horariosGlobales, editando]);
-
-  const abrirEdicion = async (h) => {
+  // 🌟 ABRIR EDICIÓN: Limpia datos y dispara la carga de la API inmediatamente
+  const abrirEdicion = (h) => {
     if (!h) return;
+    
+    const hIniLimpia = h.hora_inicio ? String(h.hora_inicio).slice(0, 5) : "";
+    const hFinLimpia = h.hora_fin ? String(h.hora_fin).slice(0, 5) : "";
+    const tipoCursoActual = h.tipo || h.tipo_asignacion || h.curso?.tipo || "Teoria";
+
     setEditando(h);
     setEditForm({
-      dia: h.dia || "Lunes",
-      hora_inicio: h.hora_inicio ? String(h.hora_inicio).slice(0, 5) : "",
-      hora_fin: h.hora_fin ? String(h.hora_fin).slice(0, 5) : "",
-      aula_id: h.aula?.id || "",
-      laboratorio_id: h.laboratorio?.id || "",
+      dia: h.dia ? String(h.dia).trim() : "Lunes",
+      hora_inicio: hIniLimpia,
+      hora_fin: hFinLimpia,
+      aula_id: h.aula_id || h.aula?.id || "",
+      laboratorio_id: h.laboratorio_id || h.laboratorio?.id || "",
     });
 
-    try {
-      const [resAulas, resLabs] = await Promise.all([
-        api.get("/horarios/aulas"),
-        api.get("/horarios/laboratorios")
-      ]);
-      setAulas(Array.isArray(resAulas?.data?.data) ? resAulas.data.data : []);
-      setLaboratorios(Array.isArray(resLabs?.data?.data) ? resLabs.data.data : []);
-    } catch (err) {
-      console.error("Error cargando infraestructura:", err);
-      alert("Aviso: No se pudo sincronizar la lista de ambientes.");
-      setEditando(null); 
-    }
+    // Llamada directa al abrir para que el combo no espere
+    refrescarDisponibilidadAmbientesAPI(h.dia || "Lunes", hIniLimpia, hFinLimpia, tipoCursoActual, h.id);
   };
 
   const handleCambioHoraInicioEdit = (horaIni) => {
     if (!editando || !horaIni) return;
     
-    // Calcula la diferencia real en minutos (Soporta horas y medias horas)
     const hIniMin = timeToMinutes(editando.hora_inicio);
     const hFinMin = timeToMinutes(editando.hora_fin);
     const minutosRequeridos = hFinMin - hIniMin; 
@@ -194,7 +198,6 @@ const MiHorario = () => {
     });
   };
 
-  // 👇 NUEVA FUNCIÓN: Verifica cruces y límite de cierre al EDITAR
   const verificarConflictoEdit = (horaIniPropuesta) => {
     if (!editando) return null;
 
@@ -205,30 +208,30 @@ const MiHorario = () => {
     const iniPropuestoMin = timeToMinutes(horaIniPropuesta);
     const finPropuestoMin = iniPropuestoMin + minutosRequeridos;
 
-    // 1. Validar límite de hora de cierre
     const limiteFinMin = timeToMinutes(config?.hora_fin || "22:00");
     if (finPropuestoMin > limiteFinMin) {
       return `Excede el cierre (${config?.hora_fin})`;
     }
 
-    // 2. Validar cruces con el propio docente o el ciclo
     const cicloCursoActual = editando.curso?.ciclo;
+    const targetDia = String(editForm?.dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
     for (const h of horariosGlobales) {
-      if (h && h.id !== editando.id && h.dia === editForm?.dia) {
-        const hIniMin = timeToMinutes(h.hora_inicio);
-        const hFinMin = timeToMinutes(h.hora_fin);
+      if (h && h.id !== editando.id) {
+        const currentDia = String(h.dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+        if (currentDia === targetDia) {
+          const hIniMin = timeToMinutes(h.hora_inicio);
+          const hFinMin = timeToMinutes(h.hora_fin);
 
-        if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
-          
-          const hDocenteId = h.docente?.id || h.docente_id;
-          if (String(hDocenteId) === String(user?.id)) {
-            return "Cruza con tu horario";
-          }
-          
-          const hCiclo = h.curso?.ciclo || h.ciclo;
-          if (hCiclo && cicloCursoActual && String(hCiclo) === String(cicloCursoActual)) {
-            return `Ciclo ${hCiclo} ocupado`;
+          if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
+            const hDocenteId = h.docente?.id || h.docente_id;
+            if (String(hDocenteId) === String(user?.id)) {
+              return "Cruza con tu horario";
+            }
+            const hCiclo = h.curso?.ciclo || h.ciclo;
+            if (hCiclo && cicloCursoActual && String(hCiclo) === String(cicloCursoActual)) {
+              return `Ciclo ${hCiclo} ocupado`;
+            }
           }
         }
       }
@@ -251,8 +254,8 @@ const MiHorario = () => {
       setEditando(null); 
       await cargarDatos(); 
     } catch (err) {
-      console.error("Error detallado:", err.response?.data || err);
-      alert(err.response?.data?.message || "Error al modificar el horario.");
+      console.error("Error detallado:", err);
+      alert(err?.response?.data?.message || "Error al modificar el horario.");
     } finally {
       setGuardando(false);
     }
@@ -264,11 +267,11 @@ const MiHorario = () => {
       await api.delete(`/docente/horario/${id}`);
       cargarDatos();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error al eliminar');
+      alert(err?.response?.data?.message || 'Error al eliminar');
     }
   };
 
-  const generarBloques = () => {
+  const bloques = useMemo(() => {
     if (!config) return [];
     const inicio = config.hora_inicio || '07:00';
     const fin = config.hora_fin || '22:00';
@@ -280,25 +283,28 @@ const MiHorario = () => {
     
     const inicioMin = hIni * 60 + mIni;
     const finMin = hFin * 60;
-    const bloques = [];
+    const bloquesLista = [];
     
     for (let i = inicioMin; i + duracion <= finMin; i += duracion) {
       const h1 = String(Math.floor(i / 60)).padStart(2, '0');
       const m1 = String(i % 60).padStart(2, '0');
       const h2 = String(Math.floor((i + duracion) / 60)).padStart(2, '0');
       const m2 = String((i + duracion) % 60).padStart(2, '0');
-      bloques.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
+      bloquesLista.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
     }
-    return bloques;
-  };
-
-  const bloques = generarBloques();
+    return bloquesLista;
+  }, [config]);
 
   const horarioEnBloque = (dia, bloqueInicio, bloqueFin) => {
     const bloqueIniMin = timeToMinutes(bloqueInicio);
     const bloqueFinMin = timeToMinutes(bloqueFin);
+    const targetDia = String(dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
     return (horarios || []).find(h => {
-      if (!h || h.dia !== dia) return false;
+      if (!h) return false;
+      const currentDia = String(h.dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      if (currentDia !== targetDia) return false;
+
       const hIniMin = timeToMinutes(h.hora_inicio);
       const hFinMin = timeToMinutes(h.hora_fin);
       return hIniMin <= bloqueIniMin && hFinMin >= bloqueFinMin;
@@ -324,6 +330,10 @@ const MiHorario = () => {
       </div>
     );
   }
+
+  // 🌟 Variable segura para el renderizado del select
+  const tipoAsignacion = editando?.tipo || editando?.tipo_asignacion || editando?.curso?.tipo || "Teoria";
+  const esTeoria = String(tipoAsignacion).includes("Teoria") || String(tipoAsignacion).includes("Teoría");
 
   return (
     <div className="animate-fade-in">
@@ -376,7 +386,7 @@ const MiHorario = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(bloques || []).map((bloque, idx) => (
+                  {bloques.map((bloque, idx) => (
                     <tr key={`tr-${bloque.label}-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/30'}>
                       <td className="border-b border-r border-neutral-200 p-3 text-neutral-600 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
                         {bloque.label}
@@ -437,7 +447,13 @@ const MiHorario = () => {
           {/* Mobile List */}
           <div className="md:hidden space-y-4">
             {dias.map(dia => {
-              const horariosDelDia = (horarios || []).filter(h => h && h.dia === dia);
+              const targetDia = String(dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+              const horariosDelDia = (horarios || []).filter(h => {
+                if (!h) return false;
+                const currentDia = String(h.dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+                return currentDia === targetDia;
+              });
+
               if (horariosDelDia.length === 0) return null;
               return (
                 <div key={`mob-${dia}`} className="card overflow-hidden">
@@ -542,42 +558,37 @@ const MiHorario = () => {
                 </div>
               </div>
 
+              {/* 🌟 SELECTOR INFALIBLE CONECTADO A LA API COMO EL ADMIN 🌟 */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  {editando?.tipo === "Teoria" || editando?.tipo_asignacion === "Teoria" ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
+                  {esTeoria ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
+                  {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
                 </label>
-                {editando?.tipo === "Teoria" || editando?.tipo_asignacion === "Teoria" ? (
-                  <select value={editForm?.aula_id || ""} onChange={(e) => setEditForm({ ...editForm, aula_id: e.target.value, laboratorio_id: null })} className="input w-full font-medium">
-                    <option value="">Seleccione un aula...</option>
-                    {(aulas || []).map(a => {
-                      if (!a) return null;
-                      const estaOcupado = ambientesOcupadosEnEdicion.includes(Number(a.id));
-                      return (
-                        <option key={`aula-${a.id}`} value={a.id} disabled={estaOcupado}>
-                          {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                ) : (
-                  <select value={editForm?.laboratorio_id || ""} onChange={(e) => setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null })} className="input w-full font-medium">
-                    <option value="">Seleccione un laboratorio...</option>
-                    {(laboratorios || []).map(l => {
-                      if (!l) return null;
-                      const estaOcupado = ambientesOcupadosEnEdicion.includes(Number(l.id));
-                      return (
-                        <option key={`lab-${l.id}`} value={l.id} disabled={estaOcupado}>
-                          {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
+                
+                <select 
+                  value={esTeoria ? (editForm.aula_id ? String(editForm.aula_id) : "") : (editForm.laboratorio_id ? String(editForm.laboratorio_id) : "")} 
+                  onChange={(e) => {
+                    if (esTeoria) {
+                      setEditForm({ ...editForm, aula_id: e.target.value, laboratorio_id: null });
+                    } else {
+                      setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null });
+                    }
+                  }} 
+                  className="input w-full font-medium bg-white text-neutral-800 border border-neutral-300 rounded p-2"
+                  disabled={cargandoAmbientes}
+                >
+                  <option value="">Seleccione el ambiente físico...</option>
+                  {(ambientesValidadosAPI || []).map(amb => (
+                    <option key={amb.id} value={String(amb.id)} disabled={amb.esta_ocupado}>
+                      {amb.codigo} — Cap: {amb.capacidad} {amb.esta_ocupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100">
-                <button onClick={() => setEditando(null)} className="btn-ghost" disabled={guardando}>Cancelar</button>
-                <button onClick={handleGuardarEdicion} disabled={guardando || !editForm?.hora_inicio} className="btn-primary flex items-center gap-2">
+                <button onClick={() => setEditando(null)} className="btn-ghost" disabled={guardando || cargandoAmbientes}>Cancelar</button>
+                <button onClick={handleGuardarEdicion} disabled={guardando || !editForm?.hora_inicio || cargandoAmbientes} className="btn-primary flex items-center gap-2">
                   {guardando ? (
                     <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</>
                   ) : (

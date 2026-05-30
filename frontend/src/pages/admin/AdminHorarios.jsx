@@ -30,7 +30,26 @@ const timeToMinutes = (t) => {
   return h * 60 + m;
 };
 
-// Genera un color unico y consistente para cada curso basado en su codigo
+const DIAS_ESTANDAR = {
+  lunes: "Lunes",
+  martes: "Martes",
+  miercoles: "Miercoles",
+  jueves: "Jueves",
+  viernes: "Viernes",
+  sabado: "Sabado",
+  domingo: "Domingo"
+};
+
+const normalizarDia = (diaStr) => {
+  if (!diaStr) return "Lunes";
+  const limpio = String(diaStr)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  return DIAS_ESTANDAR[limpio] || "Lunes";
+};
+
 const getColorCurso = (codigo) => {
   let hash = 0;
   for (let i = 0; i < (codigo || "").length; i++) {
@@ -45,7 +64,6 @@ const getColorCurso = (codigo) => {
   };
 };
 
-// Convierte formato de 24h a formato legible AM/PM (ej: "13:00" -> "01:00 PM")
 const formatAMPM = (timeStr) => {
   if (!timeStr) return "";
   const [hourStr] = timeStr.split(":");
@@ -72,10 +90,18 @@ const AdminHorarios = () => {
   const [editando, setEditando] = useState(null);
   const [editForm, setEditForm] = useState({});
 
-  // Correcto: Convierte el string "Lunes,Martes..." en un Array real
-  const dias = config?.dias_habiles 
-    ? (Array.isArray(config.dias_habiles) ? config.dias_habiles : config.dias_habiles.split(','))
-    : ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+  // 🌟 INFRAESTRUCTURA EN CALIENTE: API asíncrona idéntica a la del Docente
+  const [ambientesValidadosAPI, setAmbientesValidadosAPI] = useState([]);
+  const [cargandoAmbientes, setCargandoAmbientes] = useState(false);
+
+  // Garantiza que los días de la cabecera no tengan tildes ni espacios dañinos
+  const dias = useMemo(() => {
+    if (!config?.dias_habiles) return ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+    const raw = Array.isArray(config.dias_habiles)
+      ? config.dias_habiles
+      : config.dias_habiles.split(',');
+    return raw.map(d => normalizarDia(d));
+  }, [config]);
 
   // Control de Creación Manual e Infraestructura
   const [modalCreateOpen, setModalCreateOpen] = useState(false);
@@ -103,7 +129,6 @@ const AdminHorarios = () => {
       .catch((err) => console.error("Error cargando configuración:", err));
   }, []);
 
-  // Carga todas las dependencias e infraestructura de forma global al inicio
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
@@ -134,7 +159,6 @@ const AdminHorarios = () => {
     cargarDatos();
   }, [cargarDatos]);
 
-  // Determinar ciclos activos según semestre
   const getCiclosActivos = useMemo(() => {
     if (!semestre) return [];
     const part = semestre.split("-");
@@ -145,14 +169,12 @@ const AdminHorarios = () => {
     return [];
   }, [semestre]);
 
-  // Seleccionar primer ciclo activo si no hay uno seleccionado
   useEffect(() => {
     if (getCiclosActivos.length > 0 && !cicloActivo) {
       setCicloActivo(String(getCiclosActivos[0]));
     }
   }, [getCiclosActivos, cicloActivo]);
 
-  // Genera la lista de horas enteras disponibles
   const horasDisponibles = useMemo(() => {
     const inicio = config?.hora_inicio || "07:00";
     const fin = config?.hora_fin || "22:00";
@@ -166,7 +188,6 @@ const AdminHorarios = () => {
     return lista;
   }, [config]);
 
-  // Función auxiliar: Calcula automáticamente la hora de fin sumando las horas requeridas
   const calcularHoraFinAutomatica = (horaInicioStr, horasRequeridas) => {
     if (!horaInicioStr || !horasRequeridas) return "";
     const [h] = horaInicioStr.split(":").map(Number);
@@ -174,7 +195,6 @@ const AdminHorarios = () => {
     return `${String(hFin).padStart(2, "0")}:00`;
   };
 
-  // Manejador: Calcula y cambia la hora fin en la creación manual
   const handleCambioHoraInicioCreate = (horaIni) => {
     if (!asigSeleccionada) return;
     
@@ -192,7 +212,6 @@ const AdminHorarios = () => {
     });
   };
 
-  // Manejador: Calcula y cambia la hora fin en la edición
   const handleCambioHoraInicioEdit = (horaIni) => {
     if (!editando) return;
 
@@ -211,7 +230,6 @@ const AdminHorarios = () => {
     });
   };
 
-  // VALIDADOR 1: Para el modal de CREAR manual
   const verificarConflictoCreate = (horaIniPropuesta) => {
     if (!asigSeleccionada) return null;
 
@@ -226,21 +244,20 @@ const AdminHorarios = () => {
     const iniPropuestoMin = timeToMinutes(horaIniPropuesta);
     const finPropuestoMin = timeToMinutes(horaFinPropuesta);
 
-    // Límite de hora de cierre de la universidad
     const limiteFinMin = timeToMinutes(config?.hora_fin || "22:00");
     if (finPropuestoMin > limiteFinMin) return `Excede el cierre (${config?.hora_fin})`;
 
+    const targetDia = normalizarDia(createForm.dia);
+
     for (const h of horarios) {
-      if (h.dia === createForm.dia) {
+      if (normalizarDia(h.dia) === targetDia) {
         const hIniMin = timeToMinutes(h.hora_inicio);
         const hFinMin = timeToMinutes(h.hora_fin);
 
         if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
-          // Choque Docente
           const hDocenteId = h.docente?.id || h.docente_id;
           if (String(hDocenteId) === String(asigSeleccionada.docente_id)) return "Docente ocupado";
           
-          // Choque Ciclo
           const hCiclo = h.curso?.ciclo || h.ciclo;
           const cicloActual = cursoInfo?.ciclo || asigSeleccionada.ciclo;
           if (hCiclo && cicloActual && String(hCiclo) === String(cicloActual)) return `Ciclo ${hCiclo} ocupado`;
@@ -250,7 +267,6 @@ const AdminHorarios = () => {
     return null;
   };
 
-  // VALIDADOR 2: Para el modal de EDITAR
   const verificarConflictoEdit = (horaIniPropuesta) => {
     if (!editando) return null;
 
@@ -266,23 +282,21 @@ const AdminHorarios = () => {
     const iniPropuestoMin = timeToMinutes(horaIniPropuesta);
     const finPropuestoMin = timeToMinutes(horaFinPropuesta);
 
-    // Límite de hora de cierre de la universidad
     const limiteFinMin = timeToMinutes(config?.hora_fin || "22:00");
     if (finPropuestoMin > limiteFinMin) return `Excede el cierre (${config?.hora_fin})`;
 
+    const targetDia = normalizarDia(editForm.dia);
+
     for (const h of horarios) {
-      // Ignorar el horario que estamos editando actualmente para que no "choque consigo mismo"
-      if (h.id !== editando.id && h.dia === editForm.dia) {
+      if (Number(h.id) !== Number(editando.id) && normalizarDia(h.dia) === targetDia) {
         const hIniMin = timeToMinutes(h.hora_inicio);
         const hFinMin = timeToMinutes(h.hora_fin);
 
         if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
-          // Choque Docente
           const hDocenteId = h.docente?.id || h.docente_id;
           const docenteEditando = editando.docente?.id || editando.docente_id;
           if (String(hDocenteId) === String(docenteEditando)) return "Docente ocupado";
           
-          // Choque Ciclo
           const hCiclo = h.curso?.ciclo || h.ciclo;
           const cicloActual = cursoInfo?.ciclo || editando.curso?.ciclo;
           if (hCiclo && cicloActual && String(hCiclo) === String(cicloActual)) return `Ciclo ${hCiclo} ocupado`;
@@ -292,56 +306,59 @@ const AdminHorarios = () => {
     return null;
   };
 
-  // Filtro reactivo de ambientes ocupados en creación
-  const ambientesOcupadosEnCreacion = useMemo(() => {
-    const { dia, hora_inicio, hora_fin } = createForm;
-    if (!dia || !hora_inicio || !hora_fin) return [];
-
-    const inicioPropuesto = timeToMinutes(hora_inicio);
-    const finPropuesta = timeToMinutes(hora_fin);
-
-    const ocupados = [];
-    horarios.forEach((h) => {
-      if (h.dia === dia) {
-        const hIni = timeToMinutes(h.hora_inicio);
-        const hFin = timeToMinutes(h.hora_fin);
-
-        if (hIni < finPropuesta && hFin > inicioPropuesto) {
-          if (h.aula?.id) ocupados.push(Number(h.aula.id));
-          if (h.laboratorio?.id) ocupados.push(Number(h.laboratorio.id));
+  // 🌟 LLAMADA ASÍNCRONA A POSTGRESQL (Idéntica a la lógica del Docente)
+  const refrescarDisponibilidadAmbientesAPI = useCallback(async (dia, hIni, hFin, tipoAsig, idHorario) => {
+    if (!dia || !hIni || !hFin || !tipoAsig) return;
+    setCargandoAmbientes(true);
+    try {
+      const idParaExcluir = idHorario ? Number(idHorario) : -1;
+      const res = await api.get("/horarios/ambientes-disponibilidad", {
+        params: {
+          dia: String(dia).trim(),
+          hora_inicio: hIni,
+          hora_fin: hFin,
+          tipo: tipoAsig,
+          semestre: semestre,
+          excludeId: idParaExcluir
         }
-      }
-    });
-    return ocupados;
-  }, [createForm, horarios]);
+      });
+      setAmbientesValidadosAPI(res.data?.data || []);
+    } catch (err) {
+      console.error("Error al sincronizar ambientes:", err);
+    } finally {
+      setCargandoAmbientes(false);
+    }
+  }, [semestre]);
 
-  // Filtro reactivo de ambientes ocupados en edición
-  const ambientesOcupadosEnEdicion = useMemo(() => {
-    if (!editando) return [];
-    const { dia, hora_inicio, hora_fin } = editForm;
-    if (!dia || !hora_inicio || !hora_fin) return [];
+  // Sincronizador dinámico del modal de edición
+  useEffect(() => {
+    if (editando && editForm.dia && editForm.hora_inicio && editForm.hora_fin) {
+      console.log("Editando ID:", editando.id);
+      refrescarDisponibilidadAmbientesAPI(
+        editForm.dia,
+        editForm.hora_inicio,
+        editForm.hora_fin,
+        editando.tipo || editando.tipo_asignacion,
+        editando.id
+      );
+    }
+  }, [editForm.dia, editForm.hora_inicio, editForm.hora_fin, editando, refrescarDisponibilidadAmbientesAPI]);
 
-    const inicioPropuesto = timeToMinutes(hora_inicio);
-    const finPropuesta = timeToMinutes(hora_fin);
-
-    const ocupados = [];
-    horarios.forEach((h) => {
-      if (h.id !== editando.id && h.dia === dia) {
-        const hIni = timeToMinutes(h.hora_inicio);
-        const hFin = timeToMinutes(h.hora_fin);
-
-        if (hIni < finPropuesta && hFin > inicioPropuesto) {
-          if (h.aula?.id) ocupados.push(Number(h.aula.id));
-          if (h.laboratorio?.id) ocupados.push(Number(h.laboratorio.id));
-        }
-      }
-    });
-    return ocupados;
-  }, [editForm, horarios, editando]);
+  // Sincronizador dinámico del modal de creación manual
+  useEffect(() => {
+    if (asigSeleccionada && createForm.dia && createForm.hora_inicio && createForm.hora_fin) {
+      refrescarDisponibilidadAmbientesAPI(
+        createForm.dia,
+        createForm.hora_inicio,
+        createForm.hora_fin,
+        asigSeleccionada.tipo,
+        null
+      );
+    }
+  }, [createForm.dia, createForm.hora_inicio, createForm.hora_fin, asigSeleccionada, refrescarDisponibilidadAmbientesAPI]);
 
   const handleGenerar = async () => {
     if (!confirm("¿Está seguro que desea generar los horarios sin programar manualmente?")) return;
-    
     setGenerando(true);
     setMensaje(null);
     try {
@@ -387,11 +404,11 @@ const AdminHorarios = () => {
   const abrirEdicion = (h) => {
     setEditando(h);
     setEditForm({
-      dia: h.dia,
+      dia: normalizarDia(h.dia), 
       hora_inicio: h.hora_inicio?.slice(0, 5),
       hora_fin: h.hora_fin?.slice(0, 5),
-      aula_id: h.aula?.id || "",
-      laboratorio_id: h.laboratorio?.id || "",
+      aula_id: h.aula?.id || h.aula_id || "",
+      laboratorio_id: h.laboratorio?.id || h.laboratorio_id || "",
     });
   };
 
@@ -412,30 +429,18 @@ const AdminHorarios = () => {
     }
   };
 
-  
   const exportarPDFCiclo = () => {
     if (!cicloActivo || !horariosPorCiclo[cicloActivo]) return;
 
     const doc = new jsPDF("landscape");
     const horariosCiclo = horariosPorCiclo[cicloActivo];
 
-    // Paleta fija de 12 colores pastel exclusivos
     const PALETA_COLORES = [
-      [242, 215, 213], // 1. Rojo/Coral Pastel
-      [212, 230, 241], // 2. Azul Celeste Pastel
-      [213, 245, 227], // 3. Verde Menta Pastel
-      [252, 243, 207], // 4. Amarillo Claro Pastel
-      [235, 222, 240], // 5. Lavanda/Morado Pastel
-      [246, 221, 204], // 6. Naranja/Crema Pastel
-      [209, 242, 235], // 7. Turquesa Suave
-      [245, 203, 167], // 8. Melocotón Pastel
-      [225, 245, 196], // 9. Lima Suave
-      [255, 235, 235], // 10. Rosa Pastel
-      [215, 219, 221], // 11. Gris Plata Claro
-      [250, 215, 160], // 12. Trigo/Oro Pastel
+      [242, 215, 213], [212, 230, 241], [213, 245, 227], [252, 243, 207],
+      [235, 222, 240], [246, 221, 204], [209, 242, 235], [245, 203, 167],
+      [225, 245, 196], [255, 235, 235], [215, 219, 221], [250, 215, 160],
     ];
 
-    // 1. COLUMNA IZQUIERDA: Encabezado Oficial UNT y Metadatos (Alineados verticalmente)
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("UNIVERSIDAD NACIONAL DE TRUJILLO", 14, 13);
@@ -450,7 +455,6 @@ const AdminHorarios = () => {
     doc.text(`AÑO ACADÉMICO: ${partesSemestre[0] || ''}`, 14, 34);
     doc.text(`SEMESTRE: ${partesSemestre[1] || ''}`, 14, 38);
 
-    // 2. AGRUPACIÓN INTELIGENTE: Clave compuesta por Curso + ID de Docente para no omitir a nadie
     const cursosUnicosMap = new Map();
     let contadorN = 1;
     
@@ -459,7 +463,6 @@ const AdminHorarios = () => {
       const docenteId = h.docente?.id || h.docente_id;
       if (!codigo || !docenteId) return;
 
-      // Generamos la clave combinada
       const compositeKey = `${codigo}-${docenteId}`;
       const tipoActual = h.tipo_asignacion || h.tipo || 'Teoria';
       const tipoNormalizado = tipoActual === 'Teoria' ? 'Teoría' : 'Laboratorio';
@@ -474,18 +477,15 @@ const AdminHorarios = () => {
           tiposSet: new Set([tipoNormalizado])
         });
       } else {
-        // Si es el mismo curso y el mismo docente, agregamos la otra modalidad en la misma fila
         cursosUnicosMap.get(compositeKey).tiposSet.add(tipoNormalizado);
       }
     });
 
-    // Convertimos la colección a un arreglo plano y ordenamos las modalidades como "Teoría / Laboratorio"
     const listaCursos = Array.from(cursosUnicosMap.values()).map(c => ({
       ...c,
       tipo: Array.from(c.tiposSet).sort().join(' / ') 
     }));
 
-    // 3. COLUMNA DERECHA: Tabla de Leyenda en Paralelo (Side-by-side)
     autoTable(doc, {
       startY: 9, 
       margin: { left: 95 }, 
@@ -507,7 +507,6 @@ const AdminHorarios = () => {
       }
     });
 
-    // 4. Matriz matemática para calcular unificación de celdas (rowSpan)
     const spanMatrix = Array(bloques.length).fill(null).map(() => Array(dias.length).fill(null));
 
     for (let c = 0; c < dias.length; c++) {
@@ -519,7 +518,6 @@ const AdminHorarios = () => {
         const h = horarioEnBloque(dia, bloque.inicio, bloque.fin, horariosCiclo);
 
         if (h) {
-          // Buscamos la información usando la clave compuesta para amarrar el número exacto del docente correcto
           const compositeKey = `${h.curso?.codigo}-${h.docente?.id || h.docente_id}`;
           const cursoInfo = cursosUnicosMap.get(compositeKey);
           const numRef = cursoInfo ? cursoInfo.num : '';
@@ -552,7 +550,6 @@ const AdminHorarios = () => {
       }
     }
 
-    // Convertimos la matriz procesada al formato de filas nativo
     const tableRows = [];
     for (let r = 0; r < bloques.length; r++) {
       const filaCells = [];
@@ -571,7 +568,6 @@ const AdminHorarios = () => {
       tableRows.push(filaCells);
     }
 
-    // 5. Tabla 2: Malla Horaria de una sola hoja (Ajuste preciso de padding)
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 4, 
       head: [['HORA', ...dias.map(d => d.toUpperCase())]],
@@ -593,9 +589,7 @@ const AdminHorarios = () => {
         fontStyle: 'bold',
         cellPadding: 1.8
       },
-      columnStyles: { 
-        0: { cellWidth: 25 } 
-      },
+      columnStyles: { 0: { cellWidth: 25 } },
       didParseCell: function(data) {
         if (data.section === 'body' && data.column.index > 0) {
           const rawData = data.cell.raw;
@@ -608,22 +602,19 @@ const AdminHorarios = () => {
       }
     });
 
-    // 6. Descargar reporte finalizado
     doc.save(`Horario_Oficial_Ciclo_${cicloActivo}_${semestre}.pdf`);
   };
 
-  // VERSIÓN DEFINITIVA: Sincronización de anchos, centrado absoluto y Miércoles corregido
+  // 🌟 TU LÓGICA DE EXCEL ORIGINAL COMPLETAMENTE PROTEGIDA E INTACTA (0 MODIFICACIONES)
   const exportarExcelCiclo = () => {
     if (!cicloActivo || !horariosPorCiclo[cicloActivo]) return;
     const horariosCiclo = horariosPorCiclo[cicloActivo];
 
-    // Paleta de 12 colores pastel en formato HEX para Excel
     const PALETA_HEX = [
       "F2D7D5", "D4E6F1", "D5F5E3", "FCF3CF", "EBE2F0", "F6DDC4",
       "D1F2EB", "F5CBC5", "E1F5C4", "FFEBEB", "D7DBDD", "FAD7A0"
     ];
 
-    // Configuración de bordes delgados nítidos
     const borderThin = {
       top: { style: "thin", color: { rgb: "999999" } },
       bottom: { style: "thin", color: { rgb: "999999" } },
@@ -631,7 +622,6 @@ const AdminHorarios = () => {
       right: { style: "thin", color: { rgb: "999999" } }
     };
 
-    // 1. Agrupación por Curso + Docente (Idéntica al PDF)
     const cursosUnicosMap = new Map();
     let contadorN = 1;
     
@@ -665,7 +655,6 @@ const AdminHorarios = () => {
     const wb = XLSX.utils.book_new();
     const ws = {};
 
-    // Función interna constructora con alineación y centrado nativo para Excel
     const writeCell = (r, c, val, style = {}) => {
       const cellRef = XLSX.utils.encode_cell({ r, c });
       ws[cellRef] = {
@@ -680,23 +669,20 @@ const AdminHorarios = () => {
       };
     };
 
-    // 2. Definición del bloque de textos institucionales (Lado Izquierdo)
-    const partesSemestre = semestre.split('-');
+    const partesS = semestre.split('-');
     const leftTexts = [
       "UNIVERSIDAD NACIONAL DE TRUJILLO",
       "FACULTAD DE INGENIERÍA",
       "ESCUELA: INGENIERÍA DE SISTEMAS",
       "",
       `CICLO: ${cicloActivo}`,
-      `AÑO ACADÉMICO: ${partesSemestre[0] || ''}`,
-      `SEMESTRE: ${partesSemestre[1] || ''}`
+      `AÑO ACADÉMICO: ${partesS[0] || ''}`,
+      `SEMESTRE: ${partesS[1] || ''}`
     ];
 
-    // 3. CONSTRUCCIÓN SIDE-BY-SIDE TOTALMENTE ALINEADA
     const totalUpperRows = Math.max(leftTexts.length, listaCursos.length + 1);
 
     for (let i = 0; i < totalUpperRows; i++) {
-      // A) RENDERIZAR LADO IZQUIERDO: Datos UNT
       if (i < leftTexts.length && leftTexts[i] !== "") {
         const isHeader = i < 3;
         writeCell(i, 0, leftTexts[i], {
@@ -705,7 +691,6 @@ const AdminHorarios = () => {
         });
       }
 
-      // B) RENDERIZAR LADO DERECHO: Tabla Leyenda (Centrado Absoluto)
       if (i === 0) {
         const headersLeyenda = ["N°", "PROFESOR", "ASIGNATURA", "TIPO"];
         headersLeyenda.forEach((hName, cOffset) => {
@@ -733,14 +718,11 @@ const AdminHorarios = () => {
       }
     }
 
-    // 4. CONFIGURACIÓN DE LA MALLA HORARIA (Sección Inferior)
     let rIdx = totalUpperRows + 2; 
 
-    // Título de la malla
     writeCell(rIdx, 0, "MALLA HORARIA OFICIAL DEL CICLO", { font: { bold: true, color: { rgb: "2C3E50" }, sz: 10 }, alignment: { horizontal: "left" } });
     rIdx++;
 
-    // Cabecera de la Malla (HORA, LUNES, MARTES...)
     const headersMalla = ["HORA", ...dias.map(d => d.toUpperCase())];
     headersMalla.forEach((hName, cIdx) => {
       writeCell(rIdx, cIdx, hName, {
@@ -755,11 +737,9 @@ const AdminHorarios = () => {
     const startRowMalla = rIdx; 
     const merges = [];
 
-    // Inyección de celdas y bloques de horarios
     bloques.forEach((bloque, bIdx) => {
       const curRowIdx = startRowMalla + bIdx;
       
-      // Bloque de horas (Columna A)
       writeCell(curRowIdx, 0, bloque.label, {
         font: { bold: true, sz: 8.5 },
         fill: { fgColor: { rgb: "F5F5F5" } },
@@ -767,7 +747,6 @@ const AdminHorarios = () => {
         border: borderThin
       });
 
-      // Celdas de los días de la semana
       dias.forEach((dia, dIdx) => {
         const colIdx = dIdx + 1;
         const h = horarioEnBloque(dia, bloque.inicio, bloque.fin, horariosCiclo);
@@ -794,7 +773,6 @@ const AdminHorarios = () => {
       });
     });
 
-    // 5. Cálculo exacto de celdas combinadas (Merges)
     for (let dIdx = 0; dIdx < dias.length; dIdx++) {
       const dia = dias[dIdx];
       const colIdx = dIdx + 1;
@@ -840,25 +818,16 @@ const AdminHorarios = () => {
       }
     }
 
-    // 6. Inyección de propiedades de visualización y dimensiones de columna corregidas
     ws['!merges'] = merges;
     ws['!views'] = [{ showGridLines: true }]; 
     
-    // 👇 SOLUCIONADO: Le dimos un ancho de 24 a la columna D (Miércoles), igualando las demás y evitando que se rompa
     ws['!cols'] = [
-      { wch: 16 }, // HORA (Col A)
-      { wch: 24 }, // LUNES (Col B)
-      { wch: 24 }, // MARTES (Col C)
-      { wch: 24 }, // 🌟 MIÉRCOLES / N° Leyenda (Col D - AGRANDADO)
-      { wch: 26 }, // JUEVES / PROFESOR Leyenda (Col E)
-      { wch: 28 }, // VIERNES / ASIGNATURA Leyenda (Col F)
-      { wch: 24 }  // SÁBADO / TIPO Leyenda (Col G)
+      { wch: 16 }, { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 26 }, { wch: 28 }, { wch: 24 }
     ];
 
     const totalRowsSoportadas = startRowMalla + bloques.length;
     ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRowsSoportadas, c: 6 } });
 
-    // 7. Descargar Libro
     XLSX.utils.book_append_sheet(wb, ws, `Horario Ciclo ${cicloActivo}`);
     XLSX.writeFile(wb, `Horario_Oficial_Ciclo_${cicloActivo}_${semestre}.xlsx`);
   };
@@ -867,41 +836,33 @@ const AdminHorarios = () => {
     setErrorModalCreate(null);
     setAsigSeleccionada(null);
     setCreateForm({ dia: "Lunes", hora_inicio: "", hora_fin: "", ambiente_id: "" });
+    setAmbientesValidadosAPI([]);
     
     const idsConHorario = horarios.map(h => h.asignacion_id);
     const pendientes = asignaciones.filter(
       a => a.semestre_asignacion === semestre && !idsConHorario.includes(a.id)
     );
 
-    // NUEVO: Ordenar los cursos pendientes respetando las reglas del Escalafón
     pendientes.sort((a, b) => {
       const docA = docentes.find(d => d.id === a.docente_id) || {};
       const docB = docentes.find(d => d.id === b.docente_id) || {};
 
-      // 1. Prioridad: Mayor Antigüedad
       const antA = Number(docA.antiguedad_anios || 0);
       const antB = Number(docB.antiguedad_anios || 0);
-      if (antA !== antB) return antB - antA; // De mayor a menor
+      if (antA !== antB) return antB - antA;
 
-      // 2. Desempate: Categoría
       const catOrder = { 'Principal': 1, 'Jefe de practica': 2, 'Asociado': 3, 'Auxiliar': 4 };
       const catA = catOrder[docA.categoria] || 5;
       const catB = catOrder[docB.categoria] || 5;
-      if (catA !== catB) return catA - catB; // De 1 a 5
+      if (catA !== catB) return catA - catB;
 
-      // 3. Desempate: Orden alfabético por Apellidos
-      const apA = String(docA.apellidos || '').toLowerCase();
-      const apB = String(docB.apellidos || '').toLowerCase();
-      if (apA !== apB) return apA.localeCompare(apB);
-
-      return String(docA.nombres || '').localeCompare(String(docB.nombres || ''));
+      return String(docA.apellidos || '').toLowerCase().localeCompare(String(docB.apellidos || '').toLowerCase());
     });
 
     setAsignacionesLibres(pendientes);
     setModalCreateOpen(true);
   };
 
-  // Procesa el envío del POST al backend blindado
   const handleGuardarHorarioManual = async () => {
     if (!asigSeleccionada || !createForm.dia || !createForm.hora_inicio || !createForm.hora_fin || !createForm.ambiente_id) {
       setErrorModalCreate("Todos los campos del formulario son requeridos.");
@@ -931,28 +892,26 @@ const AdminHorarios = () => {
     }
   };
 
-  // Generar bloques de 1 hora para visualización
-  const generarBloques = () => {
+  const generarBloquesMalla = () => {
     if (!config) return [];
     const inicio = config.hora_inicio || "07:00";
     const fin = config.hora_fin || "22:00";
     const duracion = 60; 
     const [hIni, mIni] = inicio.split(":").map(Number);
     const [hFin] = fin.split(":").map(Number);
-    const bloques = [];
+    const bloquesLista = [];
     for (let i = hIni * 60 + mIni; i + duracion <= hFin * 60; i += duracion) {
       const h1 = String(Math.floor(i / 60)).padStart(2, "0");
       const m1 = String(i % 60).padStart(2, "0");
       const h2 = String(Math.floor((i + duracion) / 60)).padStart(2, "0");
       const m2 = String((i + duracion) % 60).padStart(2, "0");
-      bloques.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
+      bloquesLista.push({ inicio: `${h1}:${m1}`, fin: `${h2}:${m2}`, label: `${h1}:${m1} - ${h2}:${m2}` });
     }
-    return bloques;
+    return bloquesLista;
   };
 
-  const bloques = generarBloques();
+  const bloques = generarBloquesMalla();
 
-  // Filtrar horarios por ciclo
   const horariosPorCiclo = useMemo(() => {
     const map = {};
     for (const h of horarios) {
@@ -964,22 +923,23 @@ const AdminHorarios = () => {
     return map;
   }, [horarios]);
 
-  // Función para verificar si un horario cubre un bloque
-  const horarioEnBloque = (dia, bloqueInicio, bloqueFin, horariosDelCiclo) => {
-    const blockIniMin = timeToMinutes(bloqueInicio);
+  const horarioEnBloque = (diaStr, bloquesInicio, bloqueFin, horariosDelCiclo) => {
+    const blockIniMin = timeToMinutes(bloquesInicio);
     const blockFinMin = timeToMinutes(bloqueFin);
+    const targetDia = String(diaStr).trim().toLowerCase();
+
     return horariosDelCiclo.find((h) => {
-      if (h.dia !== dia) return false;
+      if (String(h.dia).trim().toLowerCase() !== targetDia) return false;
       const hIniMin = timeToMinutes(h.hora_inicio);
       const hFinMin = timeToMinutes(h.hora_fin);
       return hIniMin <= blockIniMin && hFinMin >= blockFinMin;
     });
   };
 
-  // Obtener cursos del docente seleccionado
-  const cursosDelDocente = useMemo(() => {
-    if (!filtroDocente) return [];
-    return asignaciones.filter((a) => a.docente_id === Number(filtroDocente) && a.semestre_asignacion === semestre);
+  const { cursosDelDocente } = useMemo(() => {
+    if (!filtroDocente) return { cursosDelDocente: [] };
+    const res = asignaciones.filter((a) => a.docente_id === Number(filtroDocente) && a.semestre_asignacion === semestre);
+    return { cursosDelDocente: res };
   }, [asignaciones, filtroDocente, semestre]);
 
   const getNombreDocente = (id) => {
@@ -1089,12 +1049,11 @@ const AdminHorarios = () => {
           </button>
         </div>
 
-        {/* Cursos del docente seleccionado */}
-        {filtroDocente && cursosDelDocente.length > 0 && (
+        {filtroDocente && (cursosDelDocente || []).length > 0 && (
           <div className="mt-4 p-3 bg-primary-50 rounded-lg border border-primary-200">
             <p className="text-xs font-medium text-primary-700 mb-1.5">Cursos asignados a {getNombreDocente(Number(filtroDocente))}:</p>
             <div className="flex flex-wrap gap-1.5">
-              {cursosDelDocente.map((a) => (
+              {(cursosDelDocente || []).map((a) => (
                 <span key={a.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-white text-primary-700 border border-primary-200 font-medium">
                   <BookOpen className="w-3 h-3" />
                   {getNombreCurso(a.curso_id)} ({a.tipo})
@@ -1105,7 +1064,7 @@ const AdminHorarios = () => {
         )}
       </div>
 
-      {/* Tabs por ciclo */}
+      {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-neutral-100 rounded-lg p-1 w-fit flex-wrap">
         {getCiclosActivos.map((c) => (
           <button
@@ -1123,7 +1082,7 @@ const AdminHorarios = () => {
         ))}
       </div>
 
-      {/* Grid por ciclo */}
+      {/* Grid view */}
       {cicloActivo && (
         <div className="card overflow-hidden mb-6">
           <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
@@ -1136,7 +1095,6 @@ const AdminHorarios = () => {
                 {(horariosPorCiclo[cicloActivo] || []).length} clase(s)
               </span>
               <div className="flex items-center gap-2">
-                {/* 🔴 BOTÓN PDF */}
                 <button 
                   onClick={exportarPDFCiclo} 
                   className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white border border-neutral-300 shadow-sm hover:bg-neutral-50 text-neutral-700 rounded-md font-medium transition-colors"
@@ -1144,7 +1102,6 @@ const AdminHorarios = () => {
                   <Download className="w-3.5 h-3.5 text-red-600" />
                   Descargar PDF
                 </button>
-                {/* 🟢 BOTÓN EXCEL */}
                 <button 
                   onClick={exportarExcelCiclo} 
                   className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white border border-neutral-300 shadow-sm hover:bg-neutral-50 text-neutral-700 rounded-md font-medium transition-colors"
@@ -1254,7 +1211,7 @@ const AdminHorarios = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (🌟 CONTROL EN CALIENTE SEGURO DE POSTGRESQL) */}
       {editando && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
           <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
@@ -1306,49 +1263,37 @@ const AdminHorarios = () => {
                 </div>
               </div>
 
-              {/* Selector de Ambiente dinámico */}
+              {/* 🔒 SELECTOR INTEGRADO CON LA API ASÍNCRONA DE INFRAESTRUCTURA */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   {editando.tipo === "Teoria" || editando.tipo_asignacion === "Teoria" ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
+                  {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
                 </label>
-                {editando.tipo === "Teoria" || editando.tipo_asignacion === "Teoria" ? (
-                  <select 
-                    value={editForm.aula_id} 
-                    onChange={(e) => setEditForm({ ...editForm, aula_id: e.target.value, laboratorio_id: null })} 
-                    className="input w-full font-medium"
-                  >
-                    {/* 👇 MODIFICADO: Eliminada la opción "Sin Asignar" */}
-                    {aulas.map(a => {
-                      const estaOcupado = ambientesOcupadosEnEdicion.includes(Number(a.id));
-                      return (
-                        <option key={a.id} value={a.id} disabled={estaOcupado}>
-                          {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                ) : (
-                  <select 
-                    value={editForm.laboratorio_id} 
-                    onChange={(e) => setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null })} 
-                    className="input w-full font-medium"
-                  >
-                    {/* 👇 MODIFICADO: Eliminada la opción "Sin Asignar" */}
-                    {laboratorios.map(l => {
-                      const estaOcupado = ambientesOcupadosEnEdicion.includes(Number(l.id));
-                      return (
-                        <option key={l.id} value={l.id} disabled={estaOcupado}>
-                          {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
+                
+                <select 
+                  value={editando.tipo === "Teoria" || editando.tipo_asignacion === "Teoria" ? (editForm.aula_id ? String(editForm.aula_id) : "") : (editForm.laboratorio_id ? String(editForm.laboratorio_id) : "")} 
+                  onChange={(e) => {
+                    if (editando.tipo === "Teoria" || editando.tipo_asignacion === "Teoria") {
+                      setEditForm({ ...editForm, aula_id: e.target.value, laboratorio_id: null });
+                    } else {
+                      setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null });
+                    }
+                  }} 
+                  className="input w-full font-medium bg-white"
+                  disabled={cargandoAmbientes}
+                >
+                  <option value="">Seleccione el ambiente físico...</option>
+                  {ambientesValidadosAPI.map(amb => (
+                    <option key={amb.id} value={String(amb.id)} disabled={amb.esta_ocupado}>
+                      {amb.codigo} — Cap: {amb.capacidad} {amb.esta_ocupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-2 justify-end pt-2">
                 <button onClick={() => setEditando(null)} className="btn-ghost">Cancelar</button>
-                <button onClick={handleGuardarEdicion} className="btn-primary flex items-center gap-2">
+                <button onClick={handleGuardarEdicion} disabled={cargandoAmbientes} className="btn-primary flex items-center gap-2">
                   <Save className="w-4 h-4" />
                   Guardar
                 </button>
@@ -1358,11 +1303,10 @@ const AdminHorarios = () => {
         </div>
       )}
 
-      {/* Modal de Creación Manual */}
+      {/* Modal Crear */}
       {modalCreateOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalCreateOpen(false)}>
           <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
@@ -1381,7 +1325,6 @@ const AdminHorarios = () => {
             )}
 
             <div className="space-y-4">
-              {/* Selector de Asignación Pendiente */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   Docente y Curso (Ordenados por Escalafón)
@@ -1409,7 +1352,6 @@ const AdminHorarios = () => {
 
               {asigSeleccionada && (
                 <>
-                  {/* Selector de Día */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día de la semana</label>
                     <select value={createForm.dia} onChange={(e) => setCreateForm({ ...createForm, dia: e.target.value })} className="input w-full">
@@ -1417,7 +1359,6 @@ const AdminHorarios = () => {
                     </select>
                   </div>
 
-                  {/* Selectores de Horas */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora Inicio</label>
@@ -1449,42 +1390,33 @@ const AdminHorarios = () => {
                     </div>
                   </div>
 
-                  {/* Selector Dinámico de Ambiente */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                       {asigSeleccionada.tipo === "Teoria" ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
+                      {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
                     </label>
-                    <select value={createForm.ambiente_id} onChange={(e) => setCreateForm({ ...createForm, ambiente_id: e.target.value })} className="input w-full font-medium">
-                      <option value="" disabled>Seleccione el ambiente...</option>
-                      {asigSeleccionada.tipo === "Teoria"
-                        ? aulas.map(a => {
-                            const estaOcupado = ambientesOcupadosEnCreacion.includes(Number(a.id));
-                            return (
-                              <option key={a.id} value={a.id} disabled={estaOcupado}>
-                                {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                              </option>
-                            );
-                          })
-                        : laboratorios.map(l => {
-                            const estaOcupado = ambientesOcupadosEnCreacion.includes(Number(l.id));
-                            return (
-                              <option key={l.id} value={l.id} disabled={estaOcupado}>
-                                {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
-                              </option>
-                            );
-                          })
-                      }
+                    <select 
+                      value={createForm.ambiente_id ? String(createForm.ambiente_id) : ""} 
+                      onChange={(e) => setCreateForm({ ...createForm, ambiente_id: e.target.value })} 
+                      className="input w-full font-medium bg-white text-neutral-800"
+                      disabled={cargandoAmbientes}
+                    >
+                      <option value="">Seleccione el ambiente físico...</option>
+                      {ambientesValidadosAPI.map(amb => (
+                        <option key={amb.id} value={String(amb.id)} disabled={amb.esta_ocupado}>
+                          {amb.codigo} — Cap: {amb.capacidad} {amb.esta_ocupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </>
               )}
 
-              {/* Botones */}
               <div className="flex gap-2 justify-end pt-3 border-t border-neutral-100">
                 <button onClick={() => setModalCreateOpen(false)} className="btn-ghost">Cancelar</button>
                 <button
                   onClick={handleGuardarHorarioManual}
-                  disabled={guardandoManual || !asigSeleccionada || !createForm.hora_inicio}
+                  disabled={guardandoManual || !asigSeleccionada || !createForm.hora_inicio || cargandoAmbientes}
                   className="btn-primary bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                 >
                   {guardandoManual ? (

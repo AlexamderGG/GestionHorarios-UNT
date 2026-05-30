@@ -281,48 +281,48 @@ const HorarioModel = {
     return result.rows[0] || null;
   },
 
-  existeConflictoAula: async ({ aula_id, semestre, dia, hora_inicio, hora_fin, excludeId = null }, client = pool) => {
+  existeConflictoAula: async ({ aula_id, semestre, dia, hora_inicio, hora_fin, excludeId }, client) => {
+    // Base de la consulta
+    let sql = `
+      SELECT 1 FROM horarios 
+      WHERE aula_id = $1 
+        AND semestre = $2 
+        AND dia = $3 
+        AND hora_inicio < $5 
+        AND hora_fin > $4
+    `;
     const params = [aula_id, semestre, dia, hora_inicio, hora_fin];
-    let exclude = '';
+
+    // 🌟 SI VIENE UN ID A EXCLUIR (Modo edición), LO AGREGAMOS DINÁMICAMENTE
     if (excludeId) {
+      sql += ` AND id <> $6`;
       params.push(excludeId);
-      exclude = `AND id != $${params.length}`;
     }
-    const result = await client.query(
-      `SELECT id
-       FROM horarios
-       WHERE aula_id = $1
-         AND semestre = $2
-         AND dia = $3
-         AND hora_inicio < $5::time
-         AND hora_fin > $4::time
-         ${exclude}
-       LIMIT 1`,
-      params
-    );
-    return result.rows[0] || null;
+
+    const executor = client || pool;
+    const result = await executor.query(sql, params);
+    return result.rows.length > 0;
   },
 
-  existeConflictoLaboratorio: async ({ laboratorio_id, semestre, dia, hora_inicio, hora_fin, excludeId = null }, client = pool) => {
+  existeConflictoLaboratorio: async ({ laboratorio_id, semestre, dia, hora_inicio, hora_fin, excludeId }, client) => {
+    let sql = `
+      SELECT 1 FROM horarios 
+      WHERE laboratorio_id = $1 
+        AND semestre = $2 
+        AND dia = $3 
+        AND hora_inicio < $5 
+        AND hora_fin > $4
+    `;
     const params = [laboratorio_id, semestre, dia, hora_inicio, hora_fin];
-    let exclude = '';
+
     if (excludeId) {
+      sql += ` AND id <> $6`;
       params.push(excludeId);
-      exclude = `AND id != $${params.length}`;
     }
-    const result = await client.query(
-      `SELECT id
-       FROM horarios
-       WHERE laboratorio_id = $1
-         AND semestre = $2
-         AND dia = $3
-         AND hora_inicio < $5::time
-         AND hora_fin > $4::time
-         ${exclude}
-       LIMIT 1`,
-      params
-    );
-    return result.rows[0] || null;
+
+    const executor = client || pool;
+    const result = await executor.query(sql, params);
+    return result.rows.length > 0;
   },
 
   existeConflictoCiclo: async ({ ciclo, semestre, dia, hora_inicio, hora_fin, excludeId = null }, client = pool) => {

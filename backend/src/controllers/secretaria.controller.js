@@ -4,15 +4,12 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 
-
-
 // Configuración del transporte de correo
-// (Es altamente recomendado pasar el user y pass a un archivo .env por seguridad)
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Cambiar si usas Outlook u otro proveedor
+  service: 'gmail', 
   auth: {
-    user: process.env.EMAIL_USER, // Ej: 'secretaria.unt@gmail.com'
-    pass: process.env.EMAIL_PASS  // Contraseña de aplicación (no la clave normal)
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS  
   }
 });
 
@@ -31,7 +28,7 @@ const SecretariaController = {
   // 2. Habilitar el turno y enviar credenciales
   habilitarTurno: async (req, res) => {
     const { id } = req.params;
-    const client = await pool.connect(); // Asumiendo que usas pg (PostgreSQL)
+    const client = await pool.connect(); 
 
     try {
       await client.query('BEGIN');
@@ -44,12 +41,12 @@ const SecretariaController = {
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
       }
 
-      // Generar una credencial temporal (Ej: UNT-8F3A2)
+      // b. Generar una credencial temporal (Ej: UNT-8F3A2)
       const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(passwordTemporal, saltRounds);
       
-      // Guardar en la base de datos
+      // Guardar clave temporal en la base de datos
       await DocenteModel.updatePassword(id, hashedPassword, client);
 
       // c. Configurar el correo electrónico
@@ -90,32 +87,31 @@ const SecretariaController = {
     }
   },
 
+  // 3. Cambiar el estado del docente de forma manual
   cambiarEstadoManual: async (req, res) => {
     try {
       const { id } = req.params;
       const { estado_turno } = req.body;
 
-      // 1. Validar que el estado sea uno de los permitidos en la BD
+      // Validar que el estado sea uno de los permitidos en la BD
       const estadosValidos = ['Pendiente', 'Notificado', 'Completado', 'Automatico'];
       if (!estadosValidos.includes(estado_turno)) {
         return res.status(400).json({ success: false, message: 'Estado no válido' });
       }
 
-      // 2. Actualizamos el estado del docente
+      // Actualizamos el estado del docente
       const docenteActualizado = await DocenteModel.updateEstadoTurno(id, estado_turno);
 
       if (!docenteActualizado) {
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
       }
 
-      // 3. NUEVO: Si la Secretaria lo regresa a 'Pendiente', invalidamos su sesión
-      // Borramos su contraseña temporal para que el middleware (auth.js) lo expulse 
-      // inmediatamente en su próxima acción.
+      // Si la Secretaría lo regresa a 'Pendiente', invalidamos su sesión activa
       if (estado_turno === 'Pendiente') {
         if (DocenteModel.updatePassword) {
           await DocenteModel.updatePassword(id, null);
         }
-        // NUEVO: Guardamos la hora exacta del castigo/reinicio en segundos
+        // Guardamos la hora exacta del reinicio en segundos para validación de tokens
         await pool.query(
           'UPDATE docentes SET reset_token_at = EXTRACT(EPOCH FROM NOW()) WHERE id = $1', 
           [id]
@@ -127,7 +123,51 @@ const SecretariaController = {
       console.error('Error al cambiar estado manualmente:', error);
       res.status(500).json({ success: false, message: 'Error interno del servidor' });
     }
+  }, 
+
+  // 4.  CORREGIDO: Mover la función de disponibilidad ADENTRO del objeto controlador
+  getDocentesDisponibles: async (req, res, next) => {
+    try {
+      const { dia, hora_inicio, hora_fin, semestre } = req.query;
+
+      if (!dia || !hora_inicio || !hora_fin || !semestre) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Faltan parámetros obligatorios (dia, hora_inicio, hora_fin, semestre)." 
+        });
+      }
+
+      // Consulta SQL con subconsulta de existencia (EXISTS) para detectar cruces de agenda en tiempo real
+      const sql = `
+        SELECT 
+          d.id, 
+          d.nombres, 
+          d.apellidos,
+          d.categoria,
+          EXISTS (
+            SELECT 1 
+            FROM horarios h
+            JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
+            WHERE adc.docente_id = d.id
+              AND h.dia = $1
+              AND h.hora_inicio < $3  -- La clase inicia antes de que termine la propuesta
+              AND h.hora_fin > $2     -- La clase termina después de que inicie la propuesta
+              AND adc.semestre_asignacion = $4
+          ) as esta_ocupado
+        FROM docentes d
+        ORDER BY d.apellidos ASC, d.nombres ASC;
+      `;
+
+      const result = await pool.query(sql, [dia, hora_inicio, hora_fin, semestre]);
+      
+      return res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
+}; 
 
 module.exports = SecretariaController;

@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const DocenteAuthController = require('../controllers/docente-auth.controller');
-const RestriccionesController = require('../controllers/restricciones.controller');
 const { authenticate, requireRole } = require('../middleware/auth');
 
 /**
@@ -41,7 +40,7 @@ router.get('/ambientes-disponibles', authenticate, requireRole('docente'), Docen
  * @route   GET /api/docente/mis-restricciones
  * @desc    Alias: restricciones del docente autenticado
  */
-router.get('/mis-restricciones', authenticate, requireRole('docente'), RestriccionesController.getAll);
+
 
 router.post('/finalizar-turno', authenticate, requireRole('docente'), DocenteAuthController.finalizarTurno);
 

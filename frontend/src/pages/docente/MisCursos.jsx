@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { BookOpen, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Inbox } from 'lucide-react';
+import { BookOpen, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Inbox, HelpCircle } from 'lucide-react';
 
 const MisCursos = () => {
   const { user } = useAuth();
@@ -11,7 +11,13 @@ const MisCursos = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [semestre, setSemestre] = useState('');
+  
+  // Variables de Estado de Control Académico
+  const [estadoTurno, setEstadoTurno] = useState('');
+  const [docenteEstadoReal, setDocenteEstadoReal] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🌟 MEJORA: Unificamos todas las peticiones aquí para evitar llamadas duplicadas
   const cargarDatos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -22,37 +28,38 @@ const MisCursos = () => {
       const semestreActivo = resConfig.data?.data?.semestre_activo || '2026-1';
       setSemestre(semestreActivo);
 
-      // 2. Luego pedir los cursos de ESE semestre
-      const resCursos = await api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } });
-      setCursos(resCursos.data?.data || []);
+      // 2. Ejecutar peticiones en paralelo para cargar los datos en tiempo real de la Base de Datos
+      const [resCursos, resStatus, resPerfil] = await Promise.all([
+        api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } }),
+        api.get('/docente/mi-estado').catch(() => null),
+        api.get('/auth/me').catch(() => null)
+      ]);
+
+      // Guardar Cursos asignados
+      setCursos(resCursos?.data?.data || []);
+
+      // Sincronizar el estado del turno actual
+      if (resStatus?.data?.success) {
+        setEstadoTurno(resStatus.data.data.estado_turno || '');
+      }
+
+      // Sincronizar el perfil vivo de la BD
+      if (resPerfil?.data?.success) {
+        setDocenteEstadoReal(resPerfil.data.data.estado || '');
+      }
+
     } catch (err) {
-      console.error('Error cargando cursos:', err);
-      setErrorMsg(err.response?.data?.message || 'Error al cargar cursos');
+      console.error('Error cargando componentes de Mis Cursos:', err);
+      setErrorMsg(err.response?.data?.message || 'Error al sincronizar la carga académica');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    cargarDatos(); // Ejecuta tu lógica actual (cargar cursos, asignaciones, etc.)
-
-    // 👇 NUEVO: Consultamos el estado real en la Base de Datos
-    const obtenerEstadoTurno = async () => {
-      try {
-        const responseStatus = await api.get('/docente/mi-estado');
-        if (responseStatus.data && responseStatus.data.success) {
-          setEstadoTurno(responseStatus.data.data.estado_turno); // Guardamos (Pendiente, Notificado, Completado)
-        }
-      } catch (error) {
-        console.error("Error al cargar el estado del turno:", error);
-      }
-    };
-
-    obtenerEstadoTurno();
+    cargarDatos();
   }, [cargarDatos]);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [estadoTurno, setEstadoTurno] = useState('');
   const handleFinalizarTurno = async () => {
     if (!window.confirm('¿Está seguro de finalizar? Ya no podrá modificar sus horarios y cederá el turno al siguiente docente.')) {
       return;
@@ -63,17 +70,16 @@ const MisCursos = () => {
       const response = await api.post('/docente/finalizar-turno');
       
       if (response.data && response.data.success) {
-        // 👇 APAGAMOS EL LOADING E INFORMAREMO EL ESTADO AL INSTANTE
         setIsSubmitting(false); 
         setEstadoTurno('Completado'); 
-        
+        setDocenteEstadoReal('Completado');
         alert('¡Horario finalizado con éxito! Su turno ha concluido.');
         navigate('/docente/cursos'); 
       }
     } catch (err) {
       console.error('Error al finalizar el turno:', err);
       alert(err.response?.data?.message || 'Hubo un error al finalizar su turno. Intente nuevamente.');
-      setIsSubmitting(false); // También se apaga si hay error
+      setIsSubmitting(false);
     }
   };
 
@@ -108,6 +114,17 @@ const MisCursos = () => {
         </p>
       </div>
 
+      {/* 🌟 BLINDAJE: Evaluamos ambas banderas para garantizar la desaparición incluso tras presionar F5 */}
+      {(estadoTurno !== 'Completado' && docenteEstadoReal !== 'Completado') && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs sm:text-sm text-amber-800 flex items-start gap-2.5 shadow-3xs animate-fade-in">
+          <HelpCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-amber-900 mb-0.5">¿Presenta cruces de horario externos?</span>
+            Si no tiene disponibilidad para dictar algunos cursos por cruce de horarios ajenos a la escuela o a la UNT, déjelos en estado <strong className="text-amber-950">"Pendiente"</strong> y finalice su horario general. Posteriormente, diríjase a la sección <strong className="text-amber-950">"Excepciones"</strong> para enviar su justificación y proponer alternativas de permuta.
+          </div>
+        </div>
+      )}
+
       {errorMsg && (
         <div className="mb-4 p-4 bg-danger-50 border border-danger-200 rounded-lg text-sm text-danger-700">
           <strong>Error:</strong> {errorMsg}
@@ -135,7 +152,7 @@ const MisCursos = () => {
                   <tr key={`${c.id}-${c.tipo}`} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
                     <td className="p-3 font-mono text-xs text-neutral-600">{c.curso_codigo || '—'}</td>
                     <td className="p-3 font-medium text-neutral-800">{c.curso_nombre || '—'}</td>
-                    <td className="p-3">
+                    <td>
                       <span className={`badge ${c.tipo === 'Teoria' ? 'badge-primary' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
                         {c.tipo}
                       </span>
@@ -156,13 +173,11 @@ const MisCursos = () => {
                     <td className="p-3 text-center">
                       {c.tiene_horario ? (
                         <span className="badge-success">
-                          <CheckCircle className="w-3 h-3" />
-                          Con horario
+                          <CheckCircle className="w-3 h-3" /> Con horario
                         </span>
                       ) : (
                         <span className="badge-warning">
-                          <AlertCircle className="w-3 h-3" />
-                          Pendiente
+                          <AlertCircle className="w-3 h-3" /> Pendiente
                         </span>
                       )}
                     </td>
@@ -192,25 +207,26 @@ const MisCursos = () => {
           </div>
         </div>
       )}
+
       <div className="mt-8 flex justify-end border-t pt-4">
-              <button
-                onClick={handleFinalizarTurno}
-                disabled={isSubmitting || estadoTurno === 'Completado'} // 👈 Bloqueo permanente
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isSubmitting || estadoTurno === 'Completado'
-                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                }`}
-              >
-                {isSubmitting ? (
-                  'Procesando...'
-                ) : estadoTurno === 'Completado' ? (
-                  '✓ Horario Finalizado y Confirmado' // 👈 Feedback visual elegante
-                ) : (
-                  'Confirmar y Finalizar Mi Horario'
-                )}
-              </button>
-            </div>
+        <button
+          onClick={handleFinalizarTurno}
+          disabled={isSubmitting || estadoTurno === 'Completado'} 
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            isSubmitting || estadoTurno === 'Completado'
+              ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200' 
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+          }`}
+        >
+          {isSubmitting ? (
+            'Procesando...'
+          ) : estadoTurno === 'Completado' ? (
+            '✓ Horario Finalizado y Confirmado'
+          ) : (
+            'Confirmar y Finalizar Mi Horario'
+          )}
+        </button>
+      </div>
     </div>
   );
 };

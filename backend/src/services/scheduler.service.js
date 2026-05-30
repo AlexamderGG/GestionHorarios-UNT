@@ -14,6 +14,25 @@ const DIAS_VALIDOS = [
   "Domingo",
 ];
 
+// 🌟 UTILIDAD DE NORMALIZACIÓN: Elimina tildes y pasa a minúsculas para evitar que "Sábado" o "Miércoles" se descarten
+const limpiarTextoDia = (str) => {
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+};
+
+const DIAS_MAPEA_SEGURO = {
+  lunes: "Lunes",
+  martes: "Martes",
+  miercoles: "Miercoles",
+  jueves: "Jueves",
+  viernes: "Viernes",
+  sabado: "Sabado",
+  domingo: "Domingo"
+};
+
 const normalizarHora = (hora) => String(hora).slice(0, 5);
 
 const timeToMinutes = (hora) => {
@@ -28,14 +47,22 @@ const minutesToTime = (totalMinutes) => {
 };
 
 const generarBloques = (configuracion) => {
-  // BLINDAJE 1: Soporta que los días vengan como String o Array
+  // BLINDAJE 1 CORREGIDO: Soporta String o Array y limpia tildes (Sábado/Miércoles ya no se rompen)
   let diasParseados = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
+  
   if (configuracion.dias_habiles) {
-    diasParseados = Array.isArray(configuracion.dias_habiles) 
+    const rawDays = Array.isArray(configuracion.dias_habiles) 
       ? configuracion.dias_habiles 
       : configuracion.dias_habiles.split(',');
+      
+    const diasLimpios = rawDays
+      .map(d => DIAS_MAPEA_SEGURO[limpiarTextoDia(d)])
+      .filter(Boolean);
+
+    if (diasLimpios.length > 0) {
+      diasParseados = diasLimpios;
+    }
   }
-  const dias = diasParseados.map(d => d.trim()).filter((dia) => DIAS_VALIDOS.includes(dia));
 
   // BLINDAJE 2: Toma la hora de fin dinámicamente de la configuración
   const horaInicio = normalizarHora(configuracion.hora_inicio || "07:00");
@@ -48,7 +75,7 @@ const generarBloques = (configuracion) => {
   const almuerzoInicio = 13 * 60;
   const almuerzoFin = 14 * 60;
 
-  for (const dia of dias) {
+  for (const dia of diasParseados) {
     let actual = inicio;
 
     while (actual + duracion <= fin) {
@@ -153,7 +180,6 @@ const SchedulerService = {
         };
       }
 
-      // Obtenemos la hora máxima de la configuración para limitarlo después
       const horaFinMaximaStr = configuracion.hora_fin || "22:00";
       const horaFinMaximaMinutos = timeToMinutes(horaFinMaximaStr);
 
@@ -163,8 +189,7 @@ const SchedulerService = {
       const usoPorHora = {};
 
       for (const asignacion of asignaciones) {
-        const ambientesBase =
-          asignacion.tipo === "Teoria" ? aulas : laboratorios;
+        const ambientesBase = asignacion.tipo === "Teoria" ? aulas : laboratorios;
         const ambientes = ordenarAmbientes(
           ambientesBase,
           asignacion.ambiente_preferido_id,
@@ -176,10 +201,7 @@ const SchedulerService = {
             curso: `${asignacion.curso_codigo} - ${asignacion.curso_nombre}`,
             docente: `${asignacion.docente_nombres} ${asignacion.docente_apellidos}`,
             tipo: asignacion.tipo,
-            motivo:
-              asignacion.tipo === "Teoria"
-                ? "No existen aulas activas"
-                : "No existen laboratorios activos",
+            motivo: asignacion.tipo === "Teoria" ? "No existen aulas activas" : "No existen laboratorios activos",
           });
           continue;
         }
@@ -215,7 +237,7 @@ const SchedulerService = {
           const finMin = inicioMin + minutosRequeridos;
           const horaFinStr = minutesToTime(finMin);
 
-          // BLINDAJE 3: Validación estricta con la configuración
+          // BLINDAJE 3: Validación estricta con la configuración dinámica
           if (finMin > horaFinMaximaMinutos) {
             ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} termina a las ${horaFinStr}, excediendo el cierre (${horaFinMaximaStr})`;
             continue;
@@ -228,15 +250,14 @@ const SchedulerService = {
             continue;
           }
 
-          const restriccion = await HorarioModel.existeRestriccionDocente(
-            {
-              docente_id: asignacion.docente_id,
-              dia: bloque.dia,
-              hora_inicio: bloque.hora_inicio,
-              hora_fin: horaFinStr,
-            },
-            client,
-          );
+          const restrictionPayload = {
+            docente_id: asignacion.docente_id,
+            dia: bloque.dia,
+            hora_inicio: bloque.hora_inicio,
+            hora_fin: horaFinStr,
+          };
+
+          const restriccion = await HorarioModel.existeRestriccionDocente(restrictionPayload, client);
 
           if (restriccion) {
             ultimoMotivo = `Docente no disponible en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
@@ -261,7 +282,7 @@ const SchedulerService = {
 
           const conflictoCiclo = await HorarioModel.existeConflictoCiclo(
             {
-              ciclo: asignacion.curso_ciclo,
+              ciclo: asignacion.curso_ciclo || asignacion.ciclo, // 🌟 Safe fallback de nomenclatura de propiedades
               semestre: semestreNormalizado,
               dia: bloque.dia,
               hora_inicio: bloque.hora_inicio,
@@ -271,7 +292,7 @@ const SchedulerService = {
           );
 
           if (conflictoCiclo) {
-            ultimoMotivo = `Ciclo ${asignacion.curso_ciclo} ya tiene una clase en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
+            ultimoMotivo = `Ciclo ${asignacion.curso_ciclo || asignacion.ciclo} ya tiene una clase en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
             continue;
           }
 
@@ -312,8 +333,7 @@ const SchedulerService = {
                 hora_inicio: bloque.hora_inicio,
                 hora_fin: horaFinStr,
                 aula_id: asignacion.tipo === "Teoria" ? ambiente.id : null,
-                laboratorio_id:
-                  asignacion.tipo === "Laboratorio" ? ambiente.id : null,
+                laboratorio_id: asignacion.tipo === "Laboratorio" ? ambiente.id : null,
                 generado_automaticamente: true,
                 editado_manualmente: false,
               },
@@ -357,7 +377,7 @@ const SchedulerService = {
           semestre: semestreNormalizado,
           asignaciones_procesadas: asignaciones.length,
           generados: generados.length,
-          no_asignados: noAsignados.length,
+          no_assigned: noAsignados.length,
           eliminados_previos: eliminados,
           conflictos: noAsignados,
           horarios,
@@ -371,28 +391,20 @@ const SchedulerService = {
     }
   },
 
-  // ... [El resto de tu método validarEdicionManual se mantiene intacto, no requería cambios] ...
   validarEdicionManual: async (id, body) => {
     const horario = await HorarioModel.getById(id);
     if (!horario) {
       return { ok: false, status: 404, message: "Horario no encontrado" };
     }
 
+    const docenteIdReal = horario.docente?.id || horario.docente_id;
+
     const data = {
       dia: body.dia !== undefined ? body.dia : horario.dia,
-      hora_inicio:
-        body.hora_inicio !== undefined
-          ? normalizarHora(body.hora_inicio)
-          : horario.hora_inicio,
-      hora_fin:
-        body.hora_fin !== undefined
-          ? normalizarHora(body.hora_fin)
-          : horario.hora_fin,
+      hora_inicio: body.hora_inicio !== undefined ? normalizarHora(body.hora_inicio) : horario.hora_inicio,
+      hora_fin: body.hora_fin !== undefined ? normalizarHora(body.hora_fin) : horario.hora_fin,
       aula_id: body.aula_id !== undefined ? body.aula_id : horario.aula_id,
-      laboratorio_id:
-        body.laboratorio_id !== undefined
-          ? body.laboratorio_id
-          : horario.laboratorio_id,
+      laboratorio_id: body.laboratorio_id !== undefined ? body.laboratorio_id : horario.laboratorio_id,
     };
 
     const errores = [];
@@ -444,7 +456,7 @@ const SchedulerService = {
     }
 
     const restriccion = await HorarioModel.existeRestriccionDocente({
-      docente_id: horario.docente.id,
+      docente_id: docenteIdReal,
       dia: data.dia,
       hora_inicio: data.hora_inicio,
       hora_fin: data.hora_fin,
@@ -459,7 +471,7 @@ const SchedulerService = {
     }
 
     const conflictoDocente = await HorarioModel.existeConflictoDocente({
-      docente_id: horario.docente.id,
+      docente_id: docenteIdReal,
       semestre: horario.semestre,
       dia: data.dia,
       hora_inicio: data.hora_inicio,
@@ -502,9 +514,7 @@ const SchedulerService = {
     }
 
     if (data.laboratorio_id) {
-      const laboratorio = await LaboratorioModel.getById(
-        Number(data.laboratorio_id),
-      );
+      const laboratorio = await LaboratorioModel.getById(Number(data.laboratorio_id));
       if (!laboratorio || laboratorio.activo === false) {
         return {
           ok: false,
@@ -513,15 +523,14 @@ const SchedulerService = {
         };
       }
 
-      const conflictoLaboratorio =
-        await HorarioModel.existeConflictoLaboratorio({
-          laboratorio_id: Number(data.laboratorio_id),
-          semestre: horario.semestre,
-          dia: data.dia,
-          hora_inicio: data.hora_inicio,
-          hora_fin: data.hora_fin,
-          excludeId: horario.id,
-        });
+      const conflictoLaboratorio = await HorarioModel.existeConflictoLaboratorio({
+        laboratorio_id: Number(data.laboratorio_id),
+        semestre: horario.semestre, //  Corregido
+        dia: data.dia,
+        hora_inicio: data.hora_inicio,
+        hora_fin: data.hora_fin,
+        excludeId: horario.id,
+      });
       if (conflictoLaboratorio)
         return {
           ok: false,
@@ -537,9 +546,7 @@ const SchedulerService = {
         hora_inicio: data.hora_inicio,
         hora_fin: data.hora_fin,
         aula_id: data.aula_id ? Number(data.aula_id) : null,
-        laboratorio_id: data.laboratorio_id
-          ? Number(data.laboratorio_id)
-          : null,
+        laboratorio_id: data.laboratorio_id ? Number(data.laboratorio_id) : null,
       },
     };
   },

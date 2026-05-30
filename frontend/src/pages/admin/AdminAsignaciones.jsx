@@ -5,7 +5,7 @@ import {
   BookOpen,
   Plus,
   Trash2,
-  Pencil, // Inyectado para el botón de edición
+  Pencil, 
   CheckCircle,
   AlertCircle,
   RefreshCw,
@@ -23,6 +23,13 @@ import {
 
 const MAX_HORAS_DOCENTE = 20;
 
+// 🌟 UTILIDAD: Convertir formatos de tiempo a minutos absolutos para cálculos matemáticos precisos
+const timeToMinutes = (t) => {
+  if (!t) return 0;
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+};
+
 const AdminAsignaciones = () => {
   const [cursos, setCursos] = useState([]);
   const [docentes, setDocentes] = useState([]);
@@ -33,14 +40,14 @@ const AdminAsignaciones = () => {
   const [limpiando, setLimpiando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
-  // Filters
+  // Filtros
   const [filtroEspecialidad, setFiltroEspecialidad] = useState("");
   const [filtroCiclo, setFiltroCiclo] = useState("");
   const [searchCurso, setSearchCurso] = useState("");
 
-  // Assignment modal
+  // Control de Modales
   const [modalOpen, setModalOpen] = useState(false);
-  const [asignacionEdicion, setAsignacionEdicion] = useState(null); // 👇 NUEVO: Estado para controlar el modo edición
+  const [asignacionEdicion, setAsignacionEdicion] = useState(null); 
   const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
   const [docenteSeleccionado, setDocenteSeleccionado] = useState("");
   const [tipoAsignacion, setTipoAsignacion] = useState("Teoria");
@@ -49,6 +56,8 @@ const AdminAsignaciones = () => {
   const [laboratorios, setLaboratorios] = useState([]);
   const [guardando, setGuardando] = useState(false);
 
+  // 🌟 SINCRO: Horarios globales de la malla para validación viva de contingencias
+  const [horarios, setHorarios] = useState([]);
   const [ambientesOcupados, setAmbientesOcupados] = useState([]);
   const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
 
@@ -57,13 +66,15 @@ const AdminAsignaciones = () => {
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [resCursos, resDocentes, resAsig, resConf, resAulas, resLabs] = await Promise.all([
+      // Agregamos la carga de horarios globales en paralelo
+      const [resCursos, resDocentes, resAsig, resConf, resAulas, resLabs, resHorarios] = await Promise.all([
         api.get("/cursos"),
         api.get("/docentes"),
         api.get("/asignaciones"),
         api.get("/configuracion"),
         api.get("/aulas"),
         api.get("/laboratorios"),
+        api.get("/horarios").catch(() => ({ data: { data: [] } }))
       ]);
       setCursos(resCursos.data?.data || []);
       setDocentes(resDocentes.data?.data || []);
@@ -71,6 +82,7 @@ const AdminAsignaciones = () => {
       setConfig(resConf.data?.data || null);
       setAulas(resAulas.data?.data || []);
       setLaboratorios(resLabs.data?.data || []);
+      setHorarios(resHorarios.data?.data || []); // Guardado dinámico
     } catch (err) {
       console.error("Error cargando datos:", err);
       setMensaje({ tipo: "error", texto: "Error al cargar datos" });
@@ -83,7 +95,6 @@ const AdminAsignaciones = () => {
     cargarDatos();
   }, [cargarDatos]);
 
-  // Determine active cycles based on semester
   const getCiclosActivos = () => {
     if (!semestre) return [];
     const part = semestre.split("-");
@@ -94,7 +105,6 @@ const AdminAsignaciones = () => {
 
   const ciclosActivos = getCiclosActivos();
 
-  // Filter courses
   const cursosFiltrados = cursos.filter((c) => {
     const matchEspecialidad = !filtroEspecialidad || (c.especialidad && c.especialidad.toLowerCase() === filtroEspecialidad.toLowerCase());
     const matchCiclo = !filtroCiclo || c.ciclo === Number(filtroCiclo);
@@ -107,7 +117,6 @@ const AdminAsignaciones = () => {
 
   const especialidades = [...new Set(cursos.map((c) => c.especialidad).filter(Boolean))].sort();
 
-  // Calculate hours per teacher from current assignments
   const horasPorDocente = useMemo(() => {
     const map = {};
     for (const a of asignaciones) {
@@ -125,12 +134,11 @@ const AdminAsignaciones = () => {
     setDocenteSeleccionado("");
     setTipoAsignacion("Teoria");
     setAmbientePreferido("");
-    setAsignacionEdicion(null); // Desactiva modo edición
+    setAsignacionEdicion(null); 
     setModalOpen(true);
     setMensaje(null);
   };
 
-  // 👇 NUEVO: Función para abrir el modal precargado en Modo Edición
   const abrirModalEditar = async (asig, curso) => {
     setCursoSeleccionado(curso);
     setDocenteSeleccionado(asig.docente_id);
@@ -139,15 +147,12 @@ const AdminAsignaciones = () => {
     setAsignacionEdicion(asig);
     setModalOpen(true);
     setMensaje(null);
-    setAmbientesOcupados([]); // Limpiar estados previos
+    setAmbientesOcupados([]); 
 
     setCargandoDisponibilidad(true);
     try {
-      // Llamamos al nuevo endpoint unificado de secretaría
       const res = await api.get(`/asignaciones/${asig.id}/horario`);
       const data = res.data?.data;
-
-      // Si el backend nos devuelve la lista negra de ocupados, la cargamos directamente
       if (data && data.ocupados) {
         setAmbientesOcupados(data.ocupados);
       }
@@ -158,6 +163,7 @@ const AdminAsignaciones = () => {
     }
   };
 
+  // FILTRADO PREMIUM CON EXCLUSIÓN DE DOCENTES NO DISPONIBLES
   const getDocentesDisponibles = () => {
     if (!cursoSeleccionado) return [];
     const cursoEsp = cursoSeleccionado.especialidad?.toLowerCase();
@@ -169,19 +175,41 @@ const AdminAsignaciones = () => {
       if (d.deleted_at) return false;
       if (cursoEsp && d.especialidad?.toLowerCase() !== cursoEsp) return false;
       
-      // MODIFICADO: Si estamos editando y evaluamos al docente actual, le restamos el peso
-      // de la asignación antigua para que no se autodescarte por sobrecarga de horas.
+      // A. Validar tope de carga horaria semanal
       let horasActuales = horasPorDocente[d.id] || 0;
       if (asignacionEdicion && asignacionEdicion.docente_id === d.id && asignacionEdicion.tipo === tipoAsignacion) {
         horasActuales -= horasCurso;
       }
-
       if (horasActuales + horasCurso > MAX_HORAS_DOCENTE) return false;
+
+      // B. 🔒 EXCLUSIÓN ABSOLUTA: Si el curso ya tiene horario, sacar a los profesores con cruces
+      if (asignacionEdicion) {
+        const bloqueFijo = horarios.find(h => Number(h.asignacion_id) === Number(asignacionEdicion.id));
+        if (bloqueFijo) {
+          const tieneCruce = horarios.some(h => {
+            if (h.dia !== bloqueFijo.dia) return false;
+            if (Number(h.id) === Number(bloqueFijo.id)) return false; // Evitar evaluarse a sí mismo
+            
+            const agendaProfId = h.docente?.id || h.docente_id;
+            if (Number(agendaProfId) !== Number(d.id)) return false;
+
+            // Análisis matemático de colisión de franjas temporales
+            const hIni = timeToMinutes(h.hora_inicio);
+            const hFin = timeToMinutes(h.hora_fin);
+            const bIni = timeToMinutes(bloqueFijo.hora_inicio);
+            const bFin = timeToMinutes(bloqueFijo.hora_fin);
+
+            return bIni < hFin && bFin > hIni;
+          });
+
+          if (tieneCruce) return false; // 🌟 ¡CORREGIDO! Nombre unificado y sin errores de tipeo
+        }
+      }
+
       return true;
     });
   };
 
-  // MODIFICADO: Soporta peticiones POST (Crear) y PUT (Editar) de forma transparente
   const handleGuardar = async () => {
     if (!docenteSeleccionado || !cursoSeleccionado) return;
     setGuardando(true);
@@ -197,10 +225,8 @@ const AdminAsignaciones = () => {
 
       let res;
       if (asignacionEdicion) {
-        // MODO EDICIÓN
         res = await api.put(`/asignaciones/${asignacionEdicion.id}`, payload);
       } else {
-        // MODO CREACIÓN
         res = await api.post("/asignaciones", payload);
       }
 
@@ -299,7 +325,6 @@ const AdminAsignaciones = () => {
 
   const getHorasDocente = (id) => horasPorDocente[id] || 0;
 
-  // MODIFICADO: Excluye la asignación actual en edición para que no cause falsos positivos consigo misma
   const isTipoYaAsignado = (cursoId, tipo) => {
     return asignaciones.some((a) => 
       a.curso_id === cursoId && 
@@ -358,11 +383,7 @@ const AdminAsignaciones = () => {
                   : "bg-danger-50 text-danger-700 border border-danger-200"
               }`}
             >
-              {mensaje.tipo === "exito" ? (
-                <CheckCircle className="w-4 h-4" />
-              ) : (
-                <AlertCircle className="w-4 h-4" />
-              )}
+              {mensaje.tipo === "exito" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               {mensaje.texto}
               <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600 ml-2">
                 <X className="w-4 h-4" />
@@ -394,7 +415,7 @@ const AdminAsignaciones = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filtros */}
       <div className="card p-4 mb-6">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
@@ -422,9 +443,7 @@ const AdminAsignaciones = () => {
             >
               <option value="">Todas</option>
               {especialidades.map((esp) => (
-                <option key={esp} value={esp}>
-                  {esp}
-                </option>
+                <option key={esp} value={esp}>{esp}</option>
               ))}
             </select>
           </div>
@@ -437,20 +456,17 @@ const AdminAsignaciones = () => {
             >
               <option value="">Todos</option>
               {ciclosActivos.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
           <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Actualizar
+            <RefreshCw className="w-4 h-4" /> Actualizar
           </button>
         </div>
       </div>
 
-      {/* Courses Table */}
+      {/* Tabla */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -472,10 +488,7 @@ const AdminAsignaciones = () => {
                 const tieneLab = asigs.some((a) => a.tipo === "Laboratorio");
                 const completado = tieneTeoria && (!curso.horas_lab || tieneLab);
                 return (
-                  <tr
-                    key={curso.id}
-                    className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors"
-                  >
+                  <tr key={curso.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
                     <td className="p-3 font-mono text-xs text-neutral-600">{curso.codigo}</td>
                     <td className="p-3 font-medium text-neutral-800">{curso.nombre}</td>
                     <td className="p-3 text-center text-neutral-700">{curso.ciclo}</td>
@@ -498,14 +511,9 @@ const AdminAsignaciones = () => {
                                   : "bg-indigo-50 text-indigo-700 border border-indigo-200"
                               }`}
                             >
-                              {a.tipo === "Teoria" ? (
-                                <Building2 className="w-3 h-3" />
-                              ) : (
-                                <FlaskConical className="w-3 h-3" />
-                              )}
+                              {a.tipo === "Teoria" ? <Building2 className="w-3 h-3" /> : <FlaskConical className="w-3 h-3" />}
                               {getNombreDocente(a.docente_id)}
                               
-                              {/* 👇 NUEVO: Botón de Editar integrado sutilmente */}
                               <button
                                 onClick={() => abrirModalEditar(a, curso)}
                                 className="ml-1 text-neutral-400 hover:text-primary-600 transition-colors"
@@ -531,9 +539,7 @@ const AdminAsignaciones = () => {
                         onClick={() => abrirModal(curso)}
                         disabled={completado}
                         className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          completado
-                            ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                            : "bg-primary-50 text-primary-700 hover:bg-primary-100"
+                          completado ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : "bg-primary-50 text-primary-700 hover:bg-primary-100"
                         }`}
                         title={completado ? "Curso completamente asignado" : "Asignar docente"}
                       >
@@ -544,24 +550,16 @@ const AdminAsignaciones = () => {
                   </tr>
                 );
               })}
-              {cursosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-neutral-400">
-                    <BookOpen className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
-                    No se encontraron cursos para los filtros seleccionados.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Assignment Modal */}
+      {/* Modal de Asignación / Edición */}
       {modalOpen && cursoSeleccionado && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in"
-          onClick={() => setModalOpen(false)}
+          onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }}
         >
           <div
             className="card p-6 w-full max-w-lg shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto"
@@ -570,11 +568,10 @@ const AdminAsignaciones = () => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary-600" />
-                {/* MODIFICADO: Título dinámico según el modo */}
-                {asignacionEdicion ? "Modificar Asignación" : "Asignar Docente"}
+                {asignacionEdicion ? "Modificar Asignación (Plan de Contingencia)" : "Asignar Docente"}
               </h2>
               <button
-                onClick={() => setModalOpen(false)}
+                onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }}
                 className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -591,15 +588,8 @@ const AdminAsignaciones = () => {
             </div>
 
             {mensaje && modalOpen && (
-              <div
-                className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium ${
-                  mensaje.tipo === "exito"
-                    ? "bg-success-50 text-success-700 border border-success-200"
-                    : "bg-danger-50 text-danger-700 border border-danger-200"
-                }`}
-              >
-                {mensaje.tipo === "exito" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                {mensaje.texto}
+              <div className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-danger-50 text-danger-700 border border-danger-200`}>
+                <AlertCircle className="w-4 h-4" /> {mensaje.texto}
               </div>
             )}
 
@@ -614,9 +604,7 @@ const AdminAsignaciones = () => {
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                       isTipoYaAsignado(cursoSeleccionado.id, "Teoria")
                         ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
-                        : tipoAsignacion === "Teoria"
-                          ? "bg-primary-50 text-primary-700 border-primary-200"
-                          : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                        : tipoAsignacion === "Teoria" ? "bg-primary-50 text-primary-700 border-primary-200" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
                     }`}
                   >
                     {isTipoYaAsignado(cursoSeleccionado.id, "Teoria") ? <Ban className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
@@ -630,9 +618,7 @@ const AdminAsignaciones = () => {
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                         isTipoYaAsignado(cursoSeleccionado.id, "Laboratorio")
                           ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
-                          : tipoAsignacion === "Laboratorio"
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                            : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                          : tipoAsignacion === "Laboratorio" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
                       }`}
                     >
                       {isTipoYaAsignado(cursoSeleccionado.id, "Laboratorio") ? <Ban className="w-4 h-4" /> : <FlaskConical className="w-4 h-4" />}
@@ -640,32 +626,23 @@ const AdminAsignaciones = () => {
                     </button>
                   )}
                 </div>
-                {isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion) && (
-                  <p className="text-xs text-danger-600 mt-1.5">
-                    Este tipo ya está asignado a otro docente. Selecciona el otro tipo o elimina la asignación existente.
-                  </p>
-                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
-                  Docente
+                  <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400" /> Docente Disponible
                 </label>
                 <select
                   value={docenteSeleccionado}
                   onChange={(e) => setDocenteSeleccionado(e.target.value)}
-                  className="input w-full"
+                  className="input w-full font-medium text-neutral-800 bg-white"
                   disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion)}
                 >
                   <option value="">Seleccionar docente...</option>
                   {getDocentesDisponibles().map((d) => {
                     const horas = getHorasDocente(d.id);
-                    const horasCurso = tipoAsignacion === "Teoria"
-                      ? (Number(cursoSeleccionado.horas_aula) || 0)
-                      : (Number(cursoSeleccionado.horas_lab) || 0);
+                    const horasCurso = tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0);
                     
-                    // Ajuste de texto para simular la carga real en modo edición
                     let horasBaseCalculo = horas;
                     if (asignacionEdicion && asignacionEdicion.docente_id === d.id && asignacionEdicion.tipo === tipoAsignacion) {
                       horasBaseCalculo -= horasCurso;
@@ -673,19 +650,11 @@ const AdminAsignaciones = () => {
 
                     return (
                       <option key={d.id} value={d.id}>
-                        {d.nombres} {d.apellidos} — {d.tipo_nombramiento} ({d.categoria})
-                        {d.especialidad ? ` · ${d.especialidad}` : ""}
-                        {` · ${horasBaseCalculo}h/${MAX_HORAS_DOCENTE}h`}
-                        {` +${horasCurso}h = ${horasBaseCalculo + horasCurso}h`}
+                        {d.apellidos}, {d.nombres} ({d.categoria}) · {horasBaseCalculo}h ➜ {horasBaseCalculo + horasCurso}h / {MAX_HORAS_DOCENTE}h max
                       </option>
                     );
                   })}
                 </select>
-                {getDocentesDisponibles().length === 0 && (
-                  <p className="text-xs text-danger-600 mt-1.5">
-                    No hay docentes disponibles para este curso en el semestre {semestre}.
-                  </p>
-                )}
               </div>
 
               {docenteSeleccionado && (
@@ -694,7 +663,6 @@ const AdminAsignaciones = () => {
                     <Clock className="w-4 h-4" />
                     <span className="font-medium">
                       Carga calculada: {
-                        // Lógica visual adaptativa para el progreso real en la barra de carga
                         (getHorasDocente(Number(docenteSeleccionado)) - 
                         (asignacionEdicion && asignacionEdicion.docente_id === Number(docenteSeleccionado) && asignacionEdicion.tipo === tipoAsignacion ? (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0)) : 0))
                       }h / {MAX_HORAS_DOCENTE}h semanales
@@ -712,39 +680,28 @@ const AdminAsignaciones = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  Ambiente preferido (opcional) {cargandoDisponibilidad && <span className="text-xs text-primary-500 animate-pulse">(Validando disponibilidad...)</span>}
-                </label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Ambiente preferido (opcional)</label>
                 <select
                   value={ambientePreferido}
                   onChange={(e) => setAmbientePreferido(e.target.value)}
-                  className="input w-full font-medium text-neutral-800"
+                  className="input w-full font-medium text-neutral-800 bg-white"
                   disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion) || cargandoDisponibilidad}
                 >
                   <option value="">Sin preferencia</option>
                   {tipoAsignacion === "Teoria"
                     ? aulas.map((a) => {
-                        // El aula está ocupada si su ID está explícitamente en la lista negra
                         const estaOcupado = ambientesOcupados.includes(Number(a.id));
                         return (
-                          <option 
-                            key={a.id} 
-                            value={a.id} 
-                            disabled={estaOcupado}
-                          >
-                            {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO EN ESTE HORARIO)" : "✅ (DISPONIBLE)"}
+                          <option key={a.id} value={a.id} disabled={estaOcupado}>
+                            {a.codigo} — Cap: {a.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
                           </option>
                         );
                       })
                     : laboratorios.map((l) => {
                         const estaOcupado = ambientesOcupados.includes(Number(l.id));
                         return (
-                          <option 
-                            key={l.id} 
-                            value={l.id} 
-                            disabled={estaOcupado}
-                          >
-                            {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO EN ESTE HORARIO)" : "✅ (DISPONIBLE)"}
+                          <option key={l.id} value={l.id} disabled={estaOcupado}>
+                            {l.codigo} — Cap: {l.capacidad} {estaOcupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
                           </option>
                         );
                       })}
@@ -753,10 +710,7 @@ const AdminAsignaciones = () => {
 
               <div className="flex gap-2 justify-end pt-2">
                 <button 
-                  onClick={() => {
-                    setModalOpen(false);
-                    setAsignacionEdicion(null);
-                  }} 
+                  onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }} 
                   className="btn-ghost"
                 >
                   Cancelar
@@ -766,17 +720,8 @@ const AdminAsignaciones = () => {
                   disabled={guardando || !docenteSeleccionado || isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion)}
                   className="btn-primary flex items-center gap-2"
                 >
-                  {guardando ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {asignacionEdicion ? "Actualizar Asignación" : "Guardar Asignación"}
-                    </>
-                  )}
+                  {guardando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {guardando ? "Guardando..." : asignacionEdicion ? "Actualizar Asignación" : "Guardar Asignación"}
                 </button>
               </div>
             </div>

@@ -6,8 +6,6 @@ const { authenticate } = require('../middleware/auth');
 /**
  * @route   POST /api/auth/login
  * @desc    Iniciar sesión (docente por email o admin por usuario)
- * @body    { email, password } para docente
- * @body    { usuario, password, role: 'admin' } para admin
  */
 router.post('/login', AuthController.login);
 
@@ -16,5 +14,11 @@ router.post('/login', AuthController.login);
  * @desc    Obtener datos del usuario autenticado
  */
 router.get('/me', authenticate, AuthController.me);
+
+/**
+ * @route   PUT /api/auth/admin/password
+ * @desc    Actualizar la contraseña del administrador con reglas de complejidad
+ */
+router.put('/admin/password', authenticate, AuthController.changeAdminPassword);
 
 module.exports = router;

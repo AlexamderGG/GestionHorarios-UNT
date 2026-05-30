@@ -25,7 +25,7 @@ const SecretariaController = {
     }
   },
 
-  // 2. Habilitar el turno y enviar credenciales
+  // 2. Habilitar el turno y enviar credenciales (Individual)
   habilitarTurno: async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect(); 
@@ -125,7 +125,7 @@ const SecretariaController = {
     }
   }, 
 
-  // 4.  CORREGIDO: Mover la función de disponibilidad ADENTRO del objeto controlador
+  // 4. Obtener disponibilidad con cruces
   getDocentesDisponibles: async (req, res, next) => {
     try {
       const { dia, hora_inicio, hora_fin, semestre } = req.query;
@@ -137,7 +137,6 @@ const SecretariaController = {
         });
       }
 
-      // Consulta SQL con subconsulta de existencia (EXISTS) para detectar cruces de agenda en tiempo real
       const sql = `
         SELECT 
           d.id, 
@@ -150,8 +149,8 @@ const SecretariaController = {
             JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
             WHERE adc.docente_id = d.id
               AND h.dia = $1
-              AND h.hora_inicio < $3  -- La clase inicia antes de que termine la propuesta
-              AND h.hora_fin > $2     -- La clase termina después de que inicie la propuesta
+              AND h.hora_inicio < $3
+              AND h.hora_fin > $2
               AND adc.semestre_asignacion = $4
           ) as esta_ocupado
         FROM docentes d
@@ -166,6 +165,80 @@ const SecretariaController = {
       });
     } catch (error) {
       next(error);
+    }
+  },
+
+  // 5. NUEVO MÉTODO: Enviar credenciales masivamente (Sin reiniciar a Pendiente)
+  notificarTodos: async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const query = `SELECT id, nombres, apellidos, email FROM docentes WHERE email IS NOT NULL AND email != ''`;
+      const result = await client.query(query);
+      const docentes = result.rows;
+
+      if (docentes.length === 0) {
+        client.release();
+        return res.status(404).json({ success: false, message: 'No hay docentes con correo registrado.' });
+      }
+
+      // Respondemos de inmediato
+      res.json({ 
+        success: true, 
+        message: `El proceso se ha iniciado con éxito. Se están generando y enviando nuevas credenciales a ${docentes.length} docentes en segundo plano.` 
+      });
+
+      // Ejecutamos en segundo plano
+      (async () => {
+        try {
+          await client.query('BEGIN');
+
+          for (const docente of docentes) {
+            try {
+              // Generar credencial temporal
+              const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+              const hashedPassword = await bcrypt.hash(passwordTemporal, 10);
+              
+              // Actualizar clave y cambiar estado SOLO a Notificado
+              await DocenteModel.updateEstadoTurno(docente.id, 'Notificado', client);
+              await DocenteModel.updatePassword(docente.id, hashedPassword, client);
+
+              const mailOptions = {
+                from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
+                to: docente.email,
+                subject: '🔑 Accesos para Registro de Disponibilidad - UNT',
+                html: `
+                  <div style="font-family: Arial, sans-serif; color: #333; padding: 20px; max-w-md; margin: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+                    <h2 style="color: #1a56db; margin-bottom: 20px;">Credenciales de Acceso</h2>
+                    <p>Estimado/a <strong>${docente.nombres} ${docente.apellidos}</strong>,</p>
+                    <p>El sistema se encuentra habilitado para que registre sus <strong>preferencias y restricciones horarias</strong>.</p>
+                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
+                      <p style="margin: 5px 0;"><strong>Usuario (Email):</strong> ${docente.email}</p>
+                      <p style="margin: 5px 0;"><strong>Contraseña Temporal:</strong> <span style="font-family: monospace; font-size: 16px; color: #1a56db; font-weight: bold;">${passwordTemporal}</span></p>
+                    </div>
+                    <p style="font-size: 12px; color: #718096;">Atentamente,<br><strong>Secretaría Académica UNT</strong></p>
+                  </div>
+                `
+              };
+
+              await transporter.sendMail(mailOptions);
+            } catch (error) {
+              console.error(`Error enviando a ${docente.email}:`, error);
+            }
+          }
+
+          await client.query('COMMIT');
+        } catch (bgError) {
+          await client.query('ROLLBACK');
+          console.error('[Sistema] Error en envío masivo de segundo plano:', bgError);
+        } finally {
+          client.release();
+        }
+      })();
+
+    } catch (error) {
+      client.release();
+      console.error('Error al preparar el envío masivo:', error);
+      return res.status(500).json({ success: false, message: 'Error interno al procesar el envío masivo.' });
     }
   }
 }; 

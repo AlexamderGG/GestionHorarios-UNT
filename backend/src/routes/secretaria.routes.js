@@ -10,6 +10,8 @@ router.get('/docentes-escalafon', SecretariaController.getEscalafon);
 
 // Habilitar turno de un docente por ID
 router.post('/habilitar-turno/:id', SecretariaController.habilitarTurno);
+// Notificar a todos
+router.post('/notificar-todos', authenticate, requireRole('admin'), SecretariaController.notificarTodos);
 // Ruta para el cambio manual (PUT)
 router.put('/docentes/:id/estado', SecretariaController.cambiarEstadoManual);
 

@@ -8,6 +8,7 @@ const SecretariaPanel = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [reiniciando, setReiniciando] = useState(false);
+  const [enviandoMasivo, setEnviandoMasivo] = useState(false);
 
   // Cargar la lista ordenada de docentes
   const fetchDocentes = async () => {
@@ -73,6 +74,28 @@ const SecretariaPanel = () => {
     }
   };
 
+  const handleNotificarTodos = async () => {
+    // Agregamos un texto de confirmación inteligente
+    const confirmar = window.confirm(
+      '¿Está seguro de enviar credenciales a TODOS los docentes a la vez?\n\n' +
+      '⚠️ NOTA IMPORTANTE: Si está iniciando la programación de un NUEVO SEMESTRE, asegúrese de haber presionado primero el botón "Reiniciar Turnos" para limpiar el sistema antes de enviar los correos.'
+    );
+
+    if (!confirmar) {
+      return; // Si la secretaria se da cuenta que olvidó reiniciar, cancela aquí
+    }
+    
+    setEnviandoMasivo(true);
+    try {
+      const res = await api.post('/secretaria/notificar-todos'); // Ajusta la ruta a la tuya (ej. /secretaria/notificar-todos)
+      alert(res.data.message);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al enviar correos masivos');
+    } finally {
+      setEnviandoMasivo(false);
+    }
+  };
+
   const handleReiniciarTurnosGlobal = async () => {
     const confirmar = confirm(
       "¿Está completamente seguro de reiniciar todos los turnos? \n\nEsto restaurará el estado de todos los docentes a 'Pendiente' y detendrá cualquier selección activa en este momento sin borrar los horarios ya guardados."
@@ -114,6 +137,25 @@ const SecretariaPanel = () => {
           <p className="text-sm text-neutral-500 mt-1">
             Control de flujo y asignación de prioridades horarias para los docentes.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleNotificarTodos} 
+            disabled={enviandoMasivo}
+            className="btn-primary flex items-center justify-center gap-2 px-4 py-2"
+          >
+            {enviandoMasivo ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Enviando a todos...
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4" />
+                Notificar a Todos
+              </>
+            )}
+          </button>
         </div>
         <div className="flex items-center gap-3">
           {/* Botón de recarga silenciosa en grilla */}

@@ -51,13 +51,15 @@ const Navbar = () => {
   const docenteLinks = [
     { to: '/docente/cursos', label: 'Mis Cursos', icon: BookOpen },
     { to: '/docente/horario', label: 'Mi Horario', icon: Calendar },
-    { to: '/docente/seleccionar', label: 'Seleccionar', icon: Clock },
+    { to: '/docente/disponibilidad', label: 'Disponibilidad', icon: Clock },
+    { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle }, 
     { to: '/docente/excepciones', label: 'Excepciones', icon: Lock },
   ];
 
   const adminLinks = [
     { to: '/admin/horarios', label: 'Horarios', icon: Calendar },
     { to: '/admin/asignaciones', label: 'Asignaciones', icon: Link2 },
+    { to: '/admin/planificacion', label: 'Planificación Intel.', icon: BookOpen },
     { to: '/admin/docentes', label: 'Docentes', icon: Users },
     { to: '/admin/estado-docentes', label: 'Estado Doc.', icon: BarChart3 },
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },

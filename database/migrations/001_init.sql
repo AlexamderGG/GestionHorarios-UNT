@@ -224,6 +224,20 @@ CREATE TABLE IF NOT EXISTS restricciones_horarias (
 );
 
 -- --------------------------------------------------------------
+-- 10. Tabla: disponibilidad_docente
+-- --------------------------------------------------------------
+CREATE TABLE disponibilidad_docente (
+    id SERIAL PRIMARY KEY,
+    docente_id INTEGER REFERENCES docentes(id) ON DELETE CASCADE,
+    semestre VARCHAR(20) NOT NULL,
+    dia VARCHAR(15) NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('PREFERIDO', 'RESTRINGIDO')),
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------------
 -- Indices recomendados para rendimiento
 -- --------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_docentes_categoria ON docentes(categoria);

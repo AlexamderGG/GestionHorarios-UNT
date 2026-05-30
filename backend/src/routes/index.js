@@ -17,6 +17,7 @@ const docenteAuthRoutes = require('./docente-auth.routes');
 const demoRoutes = require('./demo.routes');
 const secretariaRoutes = require('./secretaria.routes');
 const excepcionRoutes = require('./excepcion.routes');
+const disponibilidadRoutes = require('./disponibilidad.routes');
 
 // Rutas públicas
 router.use('/auth', authRoutes);
@@ -41,6 +42,9 @@ router.use('/docente', docenteAuthRoutes);
 // CORRECCIÓN: Separamos las excepciones a su propio prefijo limpio
 // Esto evitará conflictos con docenteAuthRoutes y se mapeará en el front como /api/excepciones
 router.use('/excepciones', excepcionRoutes);
+
+// Rutas de disponibilidades (Preferencias de docentes)
+router.use('/disponibilidades', disponibilidadRoutes);
 
 // Rutas protegidas - secretaría
 router.use('/secretaria', secretariaRoutes);

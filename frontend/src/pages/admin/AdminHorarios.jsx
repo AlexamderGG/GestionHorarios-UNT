@@ -83,6 +83,16 @@ const AdminHorarios = () => {
   const [filtroDocente, setFiltroDocente] = useState("");
   const [semestre, setSemestre] = useState("2026-1");
   const [cicloActivo, setCicloActivo] = useState("");
+  useEffect(() => {
+    if (!semestre) return;
+    const isImpar = semestre.endsWith('-1');
+    const ciclosValidos = isImpar ? [1, 3, 5, 7, 9] : [2, 4, 6, 8, 10];
+    
+    if (!ciclosValidos.includes(Number(cicloActivo))) {
+      setCicloActivo(String(ciclosValidos[0]));
+    }
+  }, [semestre, cicloActivo]);
+
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
@@ -129,21 +139,35 @@ const AdminHorarios = () => {
       .catch((err) => console.error("Error cargando configuración:", err));
   }, []);
 
+  // CORRECCIÓN: Evitar condición de carrera. Primero aseguramos el semestre, luego descargamos horarios.
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [resHor, resDoc, resConf, resCur, resAsig, resAulas, resLabs] = await Promise.all([
-        api.get("/horarios", { params: { semestre } }),
+      // 1. Obtenemos PRIMERO la configuración
+      const resConf = await api.get("/configuracion");
+      const configData = resConf.data?.data || {};
+      setConfig(configData);
+
+      // 2. Si el estado local 'semestre' está vacío (porque acabamos de entrar a la pantalla), usamos el activo
+      const semestreActual = semestre || configData.semestre_activo || "2026-1";
+      
+      // Actualizamos el input visualmente para que no quede en blanco
+      if (!semestre) {
+        setSemestre(semestreActual);
+      }
+
+      // 3. AHORA SÍ, traemos el resto de datos garantizando que 'semestreActual' tiene un valor real
+      const [resHor, resDoc, resCur, resAsig, resAulas, resLabs] = await Promise.all([
+        api.get("/horarios", { params: { semestre: semestreActual } }), 
         api.get("/docentes"),
-        api.get("/configuracion"),
         api.get("/cursos"),
         api.get("/asignaciones"),
         api.get("/horarios/aulas"),        
         api.get("/horarios/laboratorios")  
       ]);
+      
       setHorarios(resHor.data?.data || []);
       setDocentes(resDoc.data?.data || []);
-      setConfig(resConf.data?.data || null);
       setCursos(resCur.data?.data || []);
       setAsignaciones(resAsig.data?.data || []);
       setAulas(resAulas.data?.data || []);        
@@ -921,19 +945,26 @@ const AdminHorarios = () => {
 
   const horariosPorCiclo = useMemo(() => {
     const map = {};
+    if (!horarios || !Array.isArray(horarios)) return map;
+
     for (const h of horarios) {
-      //  CORRECCIÓN 2: Filtro local. Si hay un docente seleccionado, ignoramos visualmente a los demás
-      if (filtroDocente && String(h.docente?.id || h.docente_id) !== String(filtroDocente)) {
-        continue;
+      // a) Filtrado local seguro: Ignora si el valor es "Todos", "0" o está vacío
+      const docenteId = String(h.docente?.id || h.docente_id || "");
+      const filtroActivo = String(filtroDocente || "").trim().toLowerCase();
+      
+      if (filtroActivo && filtroActivo !== "todos" && filtroActivo !== "0" && docenteId !== filtroActivo) {
+        continue; // Ocultamos la clase si no es del docente seleccionado
       }
       
-      const cicloCurso = h.curso?.ciclo;
+      // b) Extracción segura del ciclo (Soporta múltiples formatos del backend)
+      const cicloCurso = h.curso?.ciclo || h.ciclo || h.curso_ciclo;
       if (!cicloCurso) continue;
+      
       if (!map[cicloCurso]) map[cicloCurso] = [];
       map[cicloCurso].push(h);
     }
     return map;
-  }, [horarios, filtroDocente]); // <-- Se agregó filtroDocente aquí
+  }, [horarios, filtroDocente]);
 
   const horarioEnBloque = (diaStr, bloquesInicio, bloqueFin, horariosDelCiclo) => {
     const blockIniMin = timeToMinutes(bloquesInicio);

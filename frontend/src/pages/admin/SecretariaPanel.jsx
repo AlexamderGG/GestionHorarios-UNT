@@ -105,12 +105,12 @@ const SecretariaPanel = () => {
 
     setReiniciando(true);
     try {
-      // 👇 CONECTADO: Apesta directamente al nuevo endpoint ordenado en el módulo de horarios
+      //  CONECTADO: Apesta directamente al nuevo endpoint ordenado en el módulo de horarios
       const res = await api.post("/horarios/reset-turnos"); 
       
       if (res.data?.success) {
         alert(res.data.message || "Turnos reiniciados correctamente.");
-        // 👇 CORREGIDO: Llamada correcta a fetchDocentes() en lugar de cargarDocentes()
+        //  CORREGIDO: Llamada correcta a fetchDocentes() en lugar de cargarDocentes()
         fetchDocentes(); 
       }
     } catch (err) {

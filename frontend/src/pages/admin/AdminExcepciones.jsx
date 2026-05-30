@@ -36,7 +36,7 @@ const AdminExcepciones = () => {
     }
   };
 
-  // 🌟 NUEVA FUNCIÓN: Eliminación física definitiva en Base de Datos
+  //  NUEVA FUNCIÓN: Eliminación física definitiva en Base de Datos
   const borrarDeBaseDeDatos = async (id) => {
     if (!window.confirm('🚨 ¿Está completamente seguro? Esto eliminará de forma irreversible el registro físico de la base de datos.')) {
       return;

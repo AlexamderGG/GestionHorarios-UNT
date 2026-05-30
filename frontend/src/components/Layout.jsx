@@ -7,12 +7,13 @@ const Layout = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-neutral-50">
       <Navbar />
       <main
         className={`flex-1 ${user ? 'lg:ml-[var(--sidebar-width,240px)]' : ''} pb-20 lg:pb-0 transition-[margin] duration-200 ease-in-out`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Aquí está el cambio: de max-w-7xl a max-w-[1600px] */}
+        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Outlet />
         </div>
       </main>

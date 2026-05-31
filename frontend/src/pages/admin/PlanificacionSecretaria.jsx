@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { Users, Clock, CheckCircle, XCircle, BookOpen, Save, X, RefreshCw, AlertCircle, Calendar } from 'lucide-react';
 
@@ -25,6 +25,7 @@ const checkOverlap = (start1, end1, start2, end2) => {
 };
 
 const PlanificacionSecretaria = () => {
+  const [config, setConfig] = useState(null);
   const [analisis, setAnalisis] = useState([]);
   const [horariosGlobales, setHorariosGlobales] = useState([]); 
   const [semestre, setSemestre] = useState('');
@@ -40,7 +41,10 @@ const PlanificacionSecretaria = () => {
   const cargarDatos = useCallback(async () => {
     try {
       const resConf = await api.get('/configuracion');
-      const semestreActivo = resConf.data?.data?.semestre_activo || "2026-1";
+      const configData = resConf.data?.data || {};
+      setConfig(configData);
+      
+      const semestreActivo = configData.semestre_activo || "2026-1";
       setSemestre(semestreActivo);
 
       const [resAnalisis, resHorarios] = await Promise.all([
@@ -103,9 +107,10 @@ const PlanificacionSecretaria = () => {
     if (!form.dia || !docenteSelect || !asigModal) return { invalida: true, motivo: '' };
     const horaFinCandidate = calcularHoraFin(horaCandidate);
 
-    // a) Límite de las 22:00
-    if (timeToMins(horaFinCandidate) > timeToMins("22:00")) {
-      return { invalida: true, motivo: '(Fuera de horario)' };
+    // a) Límite de cierre desde la Configuración Dinámica
+    const horaCierre = config?.hora_fin || "22:00";
+    if (timeToMins(horaFinCandidate) > timeToMins(horaCierre)) {
+      return { invalida: true, motivo: `(Excede cierre ${formatAMPM(horaCierre)})` };
     }
 
     // b) NO choque con un bloque RESTRINGIDO del docente
@@ -124,10 +129,9 @@ const PlanificacionSecretaria = () => {
       }
     }
 
-    // d) 🌟 CORRECCIÓN DEFINITIVA: NO choque con otra clase del MISMO CICLO
+    // d) NO choque con otra clase del MISMO CICLO
     if (asigModal.curso_ciclo && String(asigModal.curso_ciclo) !== "0") {
       const horariosMismoCiclo = horariosGlobales.filter(h => {
-        // Extraemos el ciclo con seguridad, ya sea que venga anidado o plano desde el backend
         const cicloHorario = h.curso?.ciclo || h.ciclo || h.curso_ciclo;
         return h.dia === form.dia && String(cicloHorario) === String(asigModal.curso_ciclo);
       });
@@ -162,7 +166,19 @@ const PlanificacionSecretaria = () => {
     }
   };
 
-  const horasBase = Array.from({ length: 15 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+  // Generar horas del combobox de forma dinámica según la Configuración
+  const horasBase = useMemo(() => {
+    const inicio = config?.hora_inicio || "07:00";
+    const fin = config?.hora_fin || "22:00";
+    const [hIni] = inicio.split(":").map(Number);
+    const [hFin] = fin.split(":").map(Number);
+    
+    const lista = [];
+    for (let h = hIni; h < hFin; h++) {
+      lista.push(`${String(h).padStart(2, "0")}:00`);
+    }
+    return lista;
+  }, [config]);
 
   if (loading) return <div className="p-10 text-center animate-pulse text-neutral-500">Cargando sala de análisis...</div>;
 
@@ -333,38 +349,32 @@ const PlanificacionSecretaria = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1">Horario de la Clase</label>
-                    <select 
-                    value={form.hora_inicio} 
-                    onChange={(e) => {
-                        const newIni = e.target.value;
-                        setForm({...form, hora_inicio: newIni, hora_fin: calcularHoraFin(newIni), ambiente_id: ''});
-                    }} 
-                    className="input w-full"
-                    >
-                    <option value="">Seleccione un horario...</option>
-                    {horasBase.map(h => {
-                        const status = checkHoraStatus(h);
-                        const hFinVisual = asigModal ? calcularHoraFin(h) : "";
-                        return (
-                        <option 
-                            key={h} 
-                            value={h} 
-                            disabled={status.invalida}
-                            className={status.invalida ? 'text-danger-500' : 'text-neutral-900'}
-                        >
-                            {formatAMPM(h)} - {formatAMPM(hFinVisual)} {status.invalida ? `❌ ${status.motivo}` : ''}
-                        </option>
-                        )
-                    })}
-                    </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1 text-neutral-400">Hora Fin (Calculado)</label>
-                  <input type="text" disabled value={form.hora_fin ? formatAMPM(form.hora_fin) : ''} className="input w-full bg-neutral-100 cursor-not-allowed" />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1">Horario de la Clase</label>
+                <select 
+                  value={form.hora_inicio} 
+                  onChange={(e) => {
+                    const newIni = e.target.value;
+                    setForm({...form, hora_inicio: newIni, hora_fin: calcularHoraFin(newIni), ambiente_id: ''});
+                  }} 
+                  className="input w-full"
+                >
+                  <option value="">Seleccione un horario...</option>
+                  {horasBase.map(h => {
+                    const status = checkHoraStatus(h);
+                    const hFinVisual = asigModal ? calcularHoraFin(h) : "";
+                    return (
+                      <option 
+                        key={h} 
+                        value={h} 
+                        disabled={status.invalida}
+                        className={status.invalida ? 'text-danger-500' : 'text-neutral-900'}
+                      >
+                        {formatAMPM(h)} - {formatAMPM(hFinVisual)} {status.invalida ? `❌ ${status.motivo}` : ''}
+                      </option>
+                    )
+                  })}
+                </select>
               </div>
 
               <div>

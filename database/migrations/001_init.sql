@@ -111,7 +111,7 @@ COMMENT ON TABLE laboratorios IS 'Laboratorios de uso general. Cualquier curso p
 -- --------------------------------------------------------------
 -- 5. Tabla: excepciones_horario
 -- --------------------------------------------------------------
-CREATE TABLE excepciones_horario (
+CREATE TABLE IF NOT EXISTS excepciones_horario (
     id SERIAL PRIMARY KEY,
     docente_id INT REFERENCES docentes(id) ON DELETE CASCADE,
     asignacion_id INT REFERENCES asignacion_docente_curso(id) ON DELETE CASCADE,
@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS restricciones_horarias (
 -- --------------------------------------------------------------
 -- 10. Tabla: disponibilidad_docente
 -- --------------------------------------------------------------
-CREATE TABLE disponibilidad_docente (
+CREATE TABLE IF NOT EXISTS disponibilidad_docente (
     id SERIAL PRIMARY KEY,
     docente_id INTEGER REFERENCES docentes(id) ON DELETE CASCADE,
     semestre VARCHAR(20) NOT NULL,

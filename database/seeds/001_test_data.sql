@@ -93,4 +93,7 @@ INSERT INTO laboratorios (codigo, nombre, capacidad, ubicacion) VALUES
 ('LAB03', 'Laboratorio 03', 20, 'Registro Técnico - Segundo Piso'),
 ('LAB04', 'Laboratorio 04', 20, 'Registro Técnico - Segundo Piso');
 
-
+-- -------------------------------------------------------------
+-- 5. habilitar_edicion_Docente
+-- -------------------------------------------------------------
+INSERT INTO configuracion (clave, valor) VALUES ('docentes_pueden_asignar', 'false');

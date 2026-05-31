@@ -16,6 +16,8 @@ router.get('/mis-cursos', authenticate, requireRole('docente'), DocenteAuthContr
  */
 router.get('/mi-horario', authenticate, requireRole('docente'), DocenteAuthController.getMiHorario);
 
+router.get('/mi-perfil', authenticate, DocenteAuthController.getMiPerfil);
+
 /**
  * @route   POST /api/docente/seleccionar
  * @desc    Seleccionar un horario para una asignación propia

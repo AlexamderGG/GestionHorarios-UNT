@@ -148,6 +148,9 @@ INSERT INTO configuracion (clave, valor, descripcion) VALUES
 ('semestre_activo', '2026-1', 'Semestre academico activo. Formato YYYY-N. Determina ciclos impares (N impar) o pares (N par)')
 ON CONFLICT (clave) DO NOTHING;
 
+ALTER TABLE configuracion 
+ADD COLUMN docentes_pueden_asignar BOOLEAN DEFAULT false;
+
 -- --------------------------------------------------------------
 -- 7. Tabla: asignacion_docente_curso
 -- --------------------------------------------------------------

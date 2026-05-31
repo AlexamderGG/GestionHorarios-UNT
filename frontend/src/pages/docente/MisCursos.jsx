@@ -11,13 +11,30 @@ const MisCursos = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [semestre, setSemestre] = useState('');
+
+  const [config, setConfig] = useState(null);
   
   // Variables de Estado de Control Académico
   const [estadoTurno, setEstadoTurno] = useState('');
   const [docenteEstadoReal, setDocenteEstadoReal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🌟 MEJORA: Unificamos todas las peticiones aquí para evitar llamadas duplicadas
+  useEffect(() => {
+    const fetchConfiguracion = async () => {
+      try {
+        const res = await api.get('/configuracion');
+        if (res.data?.data) {
+          setConfig(res.data.data);
+        }
+      } catch (error) {
+        console.error("Error cargando la configuración:", error);
+      }
+    };
+
+    fetchConfiguracion();
+  }, []);
+
+  // MEJORA: Unificamos todas las peticiones aquí para evitar llamadas duplicadas
   const cargarDatos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -114,8 +131,8 @@ const MisCursos = () => {
         </p>
       </div>
 
-      {/* 🌟 BLINDAJE: Evaluamos ambas banderas para garantizar la desaparición incluso tras presionar F5 */}
-      {(estadoTurno !== 'Completado' && docenteEstadoReal !== 'Completado') && (
+      {/* Solo se muestra si el modo turnos está activado Y el turno no está completado */}
+      {(String(config?.docentes_pueden_asignar).toLowerCase() === 'true' && estadoTurno !== 'Completado' && docenteEstadoReal !== 'Completado') && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs sm:text-sm text-amber-800 flex items-start gap-2.5 shadow-3xs animate-fade-in">
           <HelpCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
@@ -191,13 +208,24 @@ const MisCursos = () => {
                           Ver horario
                         </button>
                       ) : (
-                        <button
-                          onClick={() => navigate(`/docente/seleccionar?asignacion_id=${c.id}`)}
-                          className="btn-ghost flex items-center gap-1 mx-auto text-primary-600 hover:text-primary-700"
-                        >
-                          <Clock className="w-3.5 h-3.5" />
-                          Seleccionar
-                        </button>
+                        // 🌟 AQUÍ ENTRA LA MAGIA DEL INTERRUPTOR
+                        String(config?.docentes_pueden_asignar).toLowerCase() === 'true' ? (
+                          <button
+                            onClick={() => navigate(`/docente/seleccionar?asignacion_id=${c.id}`)}
+                            className="btn-ghost flex items-center gap-1 mx-auto text-primary-600 hover:text-primary-700"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            Seleccionar
+                          </button>
+                        ) : (
+                          <span 
+                            className="flex items-center gap-1 mx-auto text-neutral-400 cursor-not-allowed text-sm font-medium" 
+                            title="La secretaría asignará este horario"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            En espera
+                          </span>
+                        )
                       )}
                     </td>
                   </tr>

@@ -11,7 +11,8 @@ const CLAVES_VALIDAS = [
   'demo_mode',
   'demo_turno_actual',
   'demo_step_minutes',
-  'seleccion_abierta'
+  'seleccion_abierta',
+  'docentes_pueden_asignar'
 ];
 
 const validarConfiguracion = (data) => {

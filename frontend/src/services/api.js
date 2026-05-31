@@ -23,6 +23,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      if (error.config && error.config.url && error.config.url.includes('/admin/password')) {
+        return Promise.reject(error); // Dejamos que el formulario maneje el error
+      }
       // Verificamos si no estamos ya en la página de login para evitar bucles
       if (window.location.pathname !== '/login') {
         localStorage.removeItem('token'); // Borramos el token inválido

@@ -5,13 +5,13 @@ import {
   Calendar, 
   Trash2, 
   MapPin, 
-  User, 
   Inbox, 
   Clock, 
   Pencil, 
   X, 
   RefreshCw, 
-  Save    
+  Save,
+  AlertCircle
 } from 'lucide-react';
 
 const timeToMinutes = (t) => {
@@ -57,12 +57,12 @@ const MiHorario = () => {
   const [semestre, setSemestre] = useState('');
   const [demoEstado, setDemoEstado] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [miPerfil, setMiPerfil] = useState(null);
 
   const [editando, setEditando] = useState(null);
   const [editForm, setEditForm] = useState({ dia: "Lunes", hora_inicio: "", hora_fin: "", aula_id: "", laboratorio_id: "" });
   const [guardando, setGuardando] = useState(false);
   
-  // 🌟 LÓGICA DE API IGUAL QUE EL ADMIN (Infalible)
   const [ambientesValidadosAPI, setAmbientesValidadosAPI] = useState([]);
   const [cargandoAmbientes, setCargandoAmbientes] = useState(false);
 
@@ -87,6 +87,14 @@ const MiHorario = () => {
       setHorarios(Array.isArray(resHorariosDocente?.data?.data) ? resHorariosDocente.data.data : []);
       setHorariosGlobales(Array.isArray(resHorariosGlobales?.data?.data) ? resHorariosGlobales.data.data : []); 
 
+      // Obtener el perfil del docente por separado para no romper la carga si falla
+      try {
+        const resPerfil = await api.get('/docente/mi-perfil');
+        setMiPerfil(resPerfil.data?.data);
+      } catch (err) {
+        console.warn("No se pudo cargar el perfil del docente (ruta no disponible)", err);
+      }
+
       try {
         const resDemo = await api.get('/demo/estado');
         if (resDemo?.data?.data?.config?.demo_mode) {
@@ -102,7 +110,14 @@ const MiHorario = () => {
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
-  // 🌟 FUNCIÓN QUE LLAMA A POSTGRESQL (Resuelve el bug del A201)
+  // 1. Validamos estrictamente convirtiendo el valor que viene de la BD a texto minúscula
+  const modoTurnosActivo = String(config?.docentes_pueden_asignar).toLowerCase() === 'true';
+
+  // 2. Evaluamos si el modo turnos está activo Y si es el turno de este docente
+  const tienePermisoEdicion = 
+    modoTurnosActivo && 
+    (miPerfil?.estado_turno === 'Notificado' || demoEstado?.turnoActual?.docente_id === user?.id);
+
   const refrescarDisponibilidadAmbientesAPI = useCallback(async (diaStr, hIni, hFin, tipoAsig, idHorario) => {
     if (!diaStr || !hIni || !hFin || !tipoAsig) return;
     setCargandoAmbientes(true);
@@ -129,7 +144,6 @@ const MiHorario = () => {
     }
   }, [semestre]);
 
-  // Disparador reactivo que actualiza los ambientes al cambiar la hora o día en el modal
   useEffect(() => {
     if (editando && editForm.dia && editForm.hora_inicio && editForm.hora_fin) {
       const tipoCursoActual = editando.tipo || editando.tipo_asignacion || editando.curso?.tipo || "Teoria";
@@ -156,10 +170,8 @@ const MiHorario = () => {
     return lista;
   }, [config]);
 
-  // 🌟 ABRIR EDICIÓN: Limpia datos y dispara la carga de la API inmediatamente
   const abrirEdicion = (h) => {
     if (!h) return;
-    
     const hIniLimpia = h.hora_inicio ? String(h.hora_inicio).slice(0, 5) : "";
     const hFinLimpia = h.hora_fin ? String(h.hora_fin).slice(0, 5) : "";
     const tipoCursoActual = h.tipo || h.tipo_asignacion || h.curso?.tipo || "Teoria";
@@ -173,7 +185,6 @@ const MiHorario = () => {
       laboratorio_id: h.laboratorio_id || h.laboratorio?.id || "",
     });
 
-    // Llamada directa al abrir para que el combo no espere
     refrescarDisponibilidadAmbientesAPI(h.dia || "Lunes", hIniLimpia, hFinLimpia, tipoCursoActual, h.id);
   };
 
@@ -331,12 +342,26 @@ const MiHorario = () => {
     );
   }
 
-  // 🌟 Variable segura para el renderizado del select
   const tipoAsignacion = editando?.tipo || editando?.tipo_asignacion || editando?.curso?.tipo || "Teoria";
   const esTeoria = String(tipoAsignacion).includes("Teoria") || String(tipoAsignacion).includes("Teoría");
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in max-w-7xl mx-auto">
+      
+      {/* 🌟 AVISO DE FASE DE DISPONIBILIDAD (Solo visible si no pueden editar) 🌟 */}
+      {!config?.docentes_pueden_asignar && (
+        <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl mb-6 flex gap-3 shadow-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-indigo-600" />
+          <div>
+            <h4 className="font-bold">Fase de Disponibilidad Activa</h4>
+            <p className="text-sm mt-1 text-indigo-700">
+              El sistema se encuentra en modo recolección de preferencias. La asignación oficial de horarios está a cargo de la Secretaría. 
+              <strong> Las modificaciones directas están deshabilitadas.</strong>
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
@@ -348,8 +373,9 @@ const MiHorario = () => {
             {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
           </p>
         </div>
-        {demoEstado?.turnoActual && (
-          <div className={`badge ${demoEstado.turnoActual.docente_id === user?.id ? 'badge-success' : 'badge-warning'}`}>
+        
+        {config?.docentes_pueden_asignar && demoEstado?.turnoActual && (
+          <div className={`badge px-3 py-1.5 ${demoEstado.turnoActual.docente_id === user?.id ? 'badge-success' : 'badge-warning'}`}>
             {demoEstado.turnoActual.docente_id === user?.id ? 'Tu turno — Puedes seleccionar' : `Esperando turno (${demoEstado.turnoActual.nombre})`}
           </div>
         )}
@@ -363,7 +389,7 @@ const MiHorario = () => {
             </div>
             <h3 className="text-lg font-semibold text-neutral-800 mb-1">Sin horarios asignados</h3>
             <p className="text-sm text-neutral-500 text-center max-w-md">
-              No tienes horarios asignados para el semestre <strong>{semestre}</strong>. Espera a que el administrador genere los horarios o selecciona desde &quot;Mis Cursos&quot;.
+              No tienes horarios asignados para el semestre <strong>{semestre}</strong>.
             </p>
           </div>
         </div>
@@ -400,12 +426,14 @@ const MiHorario = () => {
                                 const color = getColorCurso(h?.curso?.codigo);
                                 return (
                                   <div
-                                    className="rounded-lg p-2.5 group border-l-[3px] cursor-pointer hover:shadow-sm transition-all"
+                                    className={`rounded-lg p-2.5 group border-l-[3px] transition-all ${
+                                      tienePermisoEdicion ? 'cursor-pointer hover:shadow-sm' : 'cursor-default opacity-90'
+                                    }`}
                                     style={{
                                       backgroundColor: color.bg,
                                       borderLeftColor: color.border,
                                     }}
-                                    onClick={() => abrirEdicion(h)}
+                                    onClick={() => tienePermisoEdicion && abrirEdicion(h)}
                                   >
                                     <p className="text-xs font-semibold truncate" style={{ color: color.text }}>{h?.curso?.codigo || 'S/C'}</p>
                                     <p className="text-xs truncate" style={{ color: color.sub }}>{h?.curso?.nombre || 'Sin Nombre'}</p>
@@ -421,15 +449,19 @@ const MiHorario = () => {
                                         {h?.aula?.codigo || h?.laboratorio?.codigo || h?.ambiente_secretaria_codigo || 'Sin ambiente'}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); eliminarHorario(h.id); }}
-                                        className="flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                        Eliminar
-                                      </button>
-                                    </div>
+                                    
+                                    {/* Botón Eliminar solo visible si hay permisos */}
+                                    {tienePermisoEdicion && (
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); eliminarHorario(h.id); }}
+                                          className="flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                          Eliminar
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })()
@@ -473,12 +505,14 @@ const MiHorario = () => {
                             const color = getColorCurso(h?.curso?.codigo);
                             return (
                               <div
-                                className="flex-1 rounded-lg p-2.5 border-l-[3px] cursor-pointer"
+                                className={`flex-1 rounded-lg p-2.5 border-l-[3px] ${
+                                  tienePermisoEdicion ? 'cursor-pointer hover:opacity-90' : 'cursor-default'
+                                }`}
                                 style={{
                                   backgroundColor: color.bg,
                                   borderLeftColor: color.border,
                                 }}
-                                onClick={() => abrirEdicion(h)}
+                                onClick={() => tienePermisoEdicion && abrirEdicion(h)}
                               >
                                 <p className="text-sm font-semibold" style={{ color: color.text }}>{h?.curso?.codigo || 'S/C'}</p>
                                 <p className="text-xs" style={{ color: color.sub }}>{h?.curso?.nombre || 'Sin Nombre'}</p>
@@ -488,15 +522,18 @@ const MiHorario = () => {
                                     {h?.aula?.codigo || h?.laboratorio?.codigo || h?.ambiente_secretaria_codigo || 'Sin ambiente'}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3 mt-2">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); eliminarHorario(h?.id); }}
-                                    className="flex items-center gap-1 text-danger-500 text-xs font-medium"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                    Eliminar
-                                  </button>
-                                </div>
+                                
+                                {tienePermisoEdicion && (
+                                  <div className="flex items-center gap-3 mt-2">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); eliminarHorario(h?.id); }}
+                                      className="flex items-center gap-1 text-danger-500 text-xs font-medium"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}
@@ -510,7 +547,7 @@ const MiHorario = () => {
         </>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (Este solo se abre si se cumplió la condición de permiso) */}
       {editando && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
           <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
@@ -558,7 +595,6 @@ const MiHorario = () => {
                 </div>
               </div>
 
-              {/* 🌟 SELECTOR INFALIBLE CONECTADO A LA API COMO EL ADMIN 🌟 */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   {esTeoria ? "Seleccionar Aula" : "Seleccionar Laboratorio"}

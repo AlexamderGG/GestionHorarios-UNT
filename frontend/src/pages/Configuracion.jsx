@@ -15,6 +15,7 @@ const Configuracion = () => {
     hora_fin: '22:00',
     duracion_bloque: 120,
     semestre_activo: '2026-1',
+    docentes_pueden_asignar: false // 🌟 NUEVO ESTADO INICIAL
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +35,8 @@ const Configuracion = () => {
           setConfig((prev) => ({
             ...prev,
             ...data,
+            //  ASEGURAMOS QUE EL BOOLEANO LLEGUE CORRECTAMENTE
+            docentes_pueden_asignar: String(data.docentes_pueden_asignar).toLowerCase() === 'true', 
             dias_habiles: Array.isArray(data.dias_habiles)
               ? data.dias_habiles
               : typeof data.dias_habiles === 'string'
@@ -50,8 +53,10 @@ const Configuracion = () => {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'duracion_bloque') {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setConfig((prev) => ({ ...prev, [name]: checked }));
+    } else if (name === 'duracion_bloque') {
       setConfig((prev) => ({ ...prev, [name]: Number(value) }));
     } else {
       setConfig((prev) => ({ ...prev, [name]: value }));
@@ -81,6 +86,7 @@ const Configuracion = () => {
           hora_fin: config.hora_fin,
           duracion_bloque: String(config.duracion_bloque),
           semestre_activo: config.semestre_activo,
+          docentes_pueden_asignar: config.docentes_pueden_asignar // 🌟 ENVIAMOS LA BANDERA
         },
       };
       const res = await api.put('/configuracion', payload);
@@ -92,6 +98,7 @@ const Configuracion = () => {
           setConfig((prev) => ({
             ...prev,
             ...data,
+            docentes_pueden_asignar: String(data.docentes_pueden_asignar).toLowerCase() === 'true',
             dias_habiles: Array.isArray(data.dias_habiles)
               ? data.dias_habiles
               : typeof data.dias_habiles === 'string'
@@ -117,7 +124,7 @@ const Configuracion = () => {
     try {
       await api.put('/auth/admin/password', passForm);
       setPassStatus({ loading: false, error: null, success: true });
-      setPassForm({ currentPassword: '', newPassword: '' }); // Limpiar formulario tras éxito
+      setPassForm({ currentPassword: '', newPassword: '' }); 
       setTimeout(() => setPassStatus(prev => ({ ...prev, success: false })), 4000);
     } catch (err) {
       setPassStatus({
@@ -247,6 +254,27 @@ const Configuracion = () => {
           </div>
         </div>
 
+        {/* 🌟 INTERRUPTOR DE MODO TURNOS CORREGIDO Y MOVIDO DENTRO DEL FORMULARIO 🌟 */}
+        <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg border border-indigo-100 mt-4">
+          <div>
+            <h4 className="font-bold text-indigo-900">Modo de Planificación por Turnos</h4>
+            <p className="text-xs text-indigo-700 mt-1 max-w-sm">
+              Actívelo si los docentes se van a auto-asignar horarios (Fase de Turnos). 
+              Apáguelo si están en Fase de Disponibilidad (la Secretaría asigna).
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              name="docentes_pueden_asignar"
+              className="sr-only peer"
+              checked={config.docentes_pueden_asignar}
+              onChange={handleChange}
+            />
+            <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+          </label>
+        </div>
+
         {error && (
           <div className="text-sm text-danger-600 bg-danger-50 border border-danger-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
@@ -254,7 +282,7 @@ const Configuracion = () => {
           </div>
         )}
 
-        <div className="pt-2 flex items-center gap-3">
+        <div className="pt-4 border-t border-neutral-100 flex items-center gap-3">
           <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
             {saving ? <><RefreshCw className="w-4 h-4 animate-spin" /> Guardando...</> : <><Save className="w-4 h-4" /> Guardar Configuración</>}
           </button>

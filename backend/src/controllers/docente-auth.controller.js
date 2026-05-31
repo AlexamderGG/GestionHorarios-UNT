@@ -519,6 +519,30 @@ const DocenteAuthController = {
     }
   },
   
+  // Obtener perfil del docente logueado
+  getMiPerfil: async (req, res) => {
+    try {
+      // Tu middleware de autenticación (authenticate) debería inyectar req.user con el ID del token
+      const docenteId = req.user.id; 
+
+      const query = `
+        SELECT id, nombres, apellidos, email, estado_turno 
+        FROM docentes 
+        WHERE id = $1
+      `;
+      const result = await pool.query(query, [docenteId]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Docente no encontrado' });
+      }
+
+      return res.json({ success: true, data: result.rows[0] });
+
+    } catch (error) {
+      console.error('Error al obtener mi perfil:', error);
+      return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
 };
 
 module.exports = DocenteAuthController;

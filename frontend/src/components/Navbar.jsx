@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import {
   Calendar,
   LayoutDashboard,
@@ -48,13 +49,33 @@ const Navbar = () => {
     } catch {}
   }, [sidebarCollapsed]);
 
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await api.get('/configuracion');
+        // Guardamos la configuración y convertimos el texto a booleano por seguridad
+        setConfig({
+          ...res.data.data,
+          docentes_pueden_asignar: String(res.data.data.docentes_pueden_asignar).toLowerCase() === 'true'
+        });
+      } catch (error) {
+        console.error("Error cargando config en sidebar:", error);
+      }
+    };
+    fetchConfig();
+  }, []);
+
   const docenteLinks = [
     { to: '/docente/cursos', label: 'Mis Cursos', icon: BookOpen },
     { to: '/docente/horario', label: 'Mi Horario', icon: Calendar },
     { to: '/docente/disponibilidad', label: 'Disponibilidad', icon: Clock },
-    { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle }, 
-    { to: '/docente/excepciones', label: 'Excepciones', icon: Lock },
-  ];
+    config?.docentes_pueden_asignar 
+      ? { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle } 
+      : null,
+    { to: '/docente/excepciones', label: 'Excepciones/ Permuta', icon: Lock },
+  ].filter(Boolean);
 
   const adminLinks = [
     { to: '/admin/horarios', label: 'Horarios', icon: Calendar },
@@ -66,7 +87,7 @@ const Navbar = () => {
     { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
     { to: '/admin/reportes', label: 'Reportes', icon: FileText },
     { to: "/admin/secretaria-turnos", label: 'Gestión de Turnos', icon: ListOrdered},
-    { to: "/admin/excepciones", label: 'Excepciones', icon: HelpCircle}
+    { to: "/admin/excepciones", label: 'Excepciones/ Permuta', icon: HelpCircle}
   ];
 
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'docente' ? docenteLinks : [];

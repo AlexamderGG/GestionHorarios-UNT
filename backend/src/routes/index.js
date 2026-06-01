@@ -14,7 +14,6 @@ const estadisticasRoutes = require('./estadisticas.routes');
 const reportesRoutes = require('./reportes.routes');
 const configuracionRoutes = require('./configuracion.routes');
 const docenteAuthRoutes = require('./docente-auth.routes');
-const demoRoutes = require('./demo.routes');
 const secretariaRoutes = require('./secretaria.routes');
 const excepcionRoutes = require('./excepcion.routes');
 const disponibilidadRoutes = require('./disponibilidad.routes');
@@ -31,7 +30,6 @@ router.use('/asignaciones', authenticate, requireRole('admin'), asignacionesRout
 router.use('/estadisticas', authenticate, requireRole('admin'), estadisticasRoutes);
 router.use('/reportes', authenticate, requireRole('admin'), reportesRoutes);
 router.use('/configuracion', configuracionRoutes);
-router.use('/demo', demoRoutes);
 
 // Rutas protegidas - horarios (GET abierto, el resto en el propio router)
 router.use('/horarios', horariosRoutes);

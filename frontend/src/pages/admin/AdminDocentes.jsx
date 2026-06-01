@@ -177,33 +177,33 @@ const AdminDocentes = () => {
   };
 
   const badgeColor = (tipo) => {
-    if (tipo === "Nombrado") return "bg-success-50 text-success-700 border-success-200";
-    return "bg-warning-50 text-warning-700 border-warning-200";
+    if (tipo === "Nombrado") return "bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/50";
+    return "bg-warning-50 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 border-warning-200 dark:border-warning-800/50";
   };
 
   const catColor = (cat) => {
     switch (cat) {
-      case "Principal": return "bg-primary-50 text-primary-700 border-primary-200";
-      case "Asociado": return "bg-indigo-50 text-indigo-700 border-indigo-200";
-      case "Auxiliar": return "bg-neutral-100 text-neutral-700 border-neutral-200";
-      default: return "bg-neutral-50 text-neutral-600 border-neutral-200";
+      case "Principal": return "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800/50";
+      case "Asociado": return "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50";
+      case "Auxiliar": return "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700";
+      default: return "bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700";
     }
   };
 
   if (loading) {
     return (
       <div className="animate-fade-in">
-        <div className="skeleton h-7 w-64 mb-6" />
-        <div className="card p-4 mb-6">
+        <div className="skeleton h-7 w-64 mb-6 dark:opacity-20" />
+        <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
           <div className="flex flex-wrap gap-4">
-            <div className="skeleton h-10 w-40" />
-            <div className="skeleton h-10 w-56" />
-            <div className="skeleton h-10 w-32" />
+            <div className="skeleton h-10 w-40 dark:opacity-20" />
+            <div className="skeleton h-10 w-56 dark:opacity-20" />
+            <div className="skeleton h-10 w-32 dark:opacity-20" />
           </div>
         </div>
-        <div className="card">
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700">
           <div className="p-4">
-            <div className="skeleton h-64 w-full rounded-lg" />
+            <div className="skeleton h-64 w-full rounded-lg dark:opacity-20" />
           </div>
         </div>
       </div>
@@ -214,11 +214,11 @@ const AdminDocentes = () => {
     <div className="animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary-600" />
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             Gestión de Docentes
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             {docentes.length} docentes registrados en el sistema
           </p>
         </div>
@@ -227,13 +227,13 @@ const AdminDocentes = () => {
             <div
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium animate-slide-down ${
                 mensaje.tipo === "exito"
-                  ? "bg-success-50 text-success-700 border border-success-200"
-                  : "bg-danger-50 text-danger-700 border border-danger-200"
+                  ? "bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/50"
+                  : "bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800/50"
               }`}
             >
               {mensaje.tipo === "exito" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               {mensaje.texto}
-              <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600 ml-2">
+              <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 ml-2">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -246,27 +246,27 @@ const AdminDocentes = () => {
       </div>
 
       {/* Filters */}
-      <div className="card p-4 mb-6">
+      <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              <Search className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <Search className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
               Buscar
             </label>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input w-full"
+              className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
               placeholder="Nombre o email..."
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
               Categoría
             </label>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="input w-40">
+            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="input w-40 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
               <option value="">Todas</option>
               {CATEGORIAS.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -274,8 +274,8 @@ const AdminDocentes = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tipo</label>
-            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="input w-36">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Tipo</label>
+            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="input w-36 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
               <option value="">Todos</option>
               {TIPOS_NOMBRAMIENTO.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -283,53 +283,53 @@ const AdminDocentes = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Especialidad</label>
-            <select value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="input w-48">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Especialidad</label>
+            <select value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="input w-48 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
               <option value="">Todas</option>
               {especialidades.map((e) => (
                 <option key={e} value={e}>{e}</option>
               ))}
             </select>
           </div>
-          <button onClick={cargarDocentes} className="btn-secondary flex items-center gap-2">
+          <button onClick={cargarDocentes} className="btn-secondary flex items-center gap-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Docente</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Email</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Categoría</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Tipo</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Especialidad</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Escuela</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase w-20">Antig.</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase w-28">Acciones</th>
+              <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700">
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Docente</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Email</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Categoría</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Tipo</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Especialidad</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Escuela</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-20">Antig.</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {docentesFiltrados.map((d) => (
-                <tr key={d.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
+                <tr key={d.id} className="border-b border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="w-4 h-4 text-primary-600" />
+                      <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                       </div>
                       <div>
-                        <p className="font-medium text-neutral-800">{d.nombres} {d.apellidos}</p>
+                        <p className="font-medium text-neutral-800 dark:text-neutral-200">{d.nombres} {d.apellidos}</p>
                         {d.semestre_contrato && (
-                          <p className="text-2xs text-warning-600">Contrato: {d.semestre_contrato}</p>
+                          <p className="text-2xs text-warning-600 dark:text-warning-400">Contrato: {d.semestre_contrato}</p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="p-3 text-neutral-500 text-xs font-mono">{d.email}</td>
+                  <td className="p-3 text-neutral-500 dark:text-neutral-400 text-xs font-mono">{d.email}</td>
                   <td className="p-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-2xs font-medium border ${catColor(d.categoria)}`}>
                       {d.categoria}
@@ -340,21 +340,21 @@ const AdminDocentes = () => {
                       {d.tipo_nombramiento}
                     </span>
                   </td>
-                  <td className="p-3 text-neutral-600 text-xs">{d.especialidad || "—"}</td>
-                  <td className="p-3 text-neutral-600 text-xs">{d.escuela}</td>
-                  <td className="p-3 text-center text-neutral-700 text-xs">{d.antiguedad_anios}a</td>
+                  <td className="p-3 text-neutral-600 dark:text-neutral-400 text-xs">{d.especialidad || "—"}</td>
+                  <td className="p-3 text-neutral-600 dark:text-neutral-400 text-xs">{d.escuela}</td>
+                  <td className="p-3 text-center text-neutral-700 dark:text-neutral-300 text-xs">{d.antiguedad_anios}a</td>
                   <td className="p-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => abrirEditar(d)}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
                         title="Editar"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEliminar(d.id)}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-600 hover:bg-danger-50 transition-colors"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/30 transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -365,8 +365,8 @@ const AdminDocentes = () => {
               ))}
               {docentesFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-neutral-400">
-                    <Users className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
+                  <td colSpan={8} className="p-12 text-center text-neutral-400 dark:text-neutral-500">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
                     No se encontraron docentes.
                   </td>
                 </tr>
@@ -378,20 +378,20 @@ const AdminDocentes = () => {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalOpen(false)}>
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalOpen(false)}>
+          <div className="card p-6 w-full max-w-lg shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto dark:bg-neutral-800 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-primary-600" />
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 {editando ? "Editar Docente" : "Nuevo Docente"}
               </h2>
-              <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+              <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {mensaje && modalOpen && (
-              <div className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium ${mensaje.tipo === "exito" ? "bg-success-50 text-success-700 border border-success-200" : "bg-danger-50 text-danger-700 border border-danger-200"}`}>
+              <div className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border ${mensaje.tipo === "exito" ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800/50" : "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800/50"}`}>
                 {mensaje.tipo === "exito" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                 {mensaje.texto}
               </div>
@@ -400,36 +400,36 @@ const AdminDocentes = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Nombres *</label>
-                  <input type="text" name="nombres" value={form.nombres} onChange={handleChange} className="input w-full" required />
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Nombres *</label>
+                  <input type="text" name="nombres" value={form.nombres} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Apellidos *</label>
-                  <input type="text" name="apellidos" value={form.apellidos} onChange={handleChange} className="input w-full" required />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Email *</label>
-                  <input type="email" name="email" value={form.email} onChange={handleChange} className="input w-full" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Teléfono</label>
-                  <input type="text" name="telefono" value={form.telefono} onChange={handleChange} className="input w-full" />
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Apellidos *</label>
+                  <input type="text" name="apellidos" value={form.apellidos} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Categoría *</label>
-                  <select name="categoria" value={form.categoria} onChange={handleChange} className="input w-full">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Email *</label>
+                  <input type="email" name="email" value={form.email} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Teléfono</label>
+                  <input type="text" name="telefono" value={form.telefono} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Categoría *</label>
+                  <select name="categoria" value={form.categoria} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                     {CATEGORIAS.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tipo *</label>
-                  <select name="tipo_nombramiento" value={form.tipo_nombramiento} onChange={handleChange} className="input w-full">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Tipo *</label>
+                  <select name="tipo_nombramiento" value={form.tipo_nombramiento} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                     {TIPOS_NOMBRAMIENTO.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
@@ -438,8 +438,8 @@ const AdminDocentes = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Especialidad *</label>
-                  <select name="especialidad" value={form.especialidad} onChange={handleChange} className="input w-full" required>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Especialidad *</label>
+                  <select name="especialidad" value={form.especialidad} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required>
                     <option value="">Seleccionar...</option>
                     {ESPECIALIDADES.map((e) => (
                       <option key={e} value={e}>{e}</option>
@@ -447,8 +447,8 @@ const AdminDocentes = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Escuela *</label>
-                  <select name="escuela" value={form.escuela} onChange={handleChange} className="input w-full" required>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Escuela *</label>
+                  <select name="escuela" value={form.escuela} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required>
                     <option value="">Seleccionar...</option>
                     {ESCUELAS.map((e) => (
                       <option key={e} value={e}>{e}</option>
@@ -458,17 +458,17 @@ const AdminDocentes = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Antigüedad (años)</label>
-                  <input type="number" name="antiguedad_anios" value={form.antiguedad_anios} onChange={handleChange} className="input w-full" min={0} />
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Antigüedad (años)</label>
+                  <input type="number" name="antiguedad_anios" value={form.antiguedad_anios} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" min={0} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Semestre contrato</label>
-                  <input type="text" name="semestre_contrato" value={form.semestre_contrato} onChange={handleChange} className="input w-full" placeholder="2026-1 (opcional)" />
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Semestre contrato</label>
+                  <input type="text" name="semestre_contrato" value={form.semestre_contrato} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" placeholder="2026-1 (opcional)" />
                 </div>
               </div>
 
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setModalOpen(false)} className="btn-ghost">Cancelar</button>
+                <button onClick={() => setModalOpen(false)} className="btn-ghost dark:text-neutral-300 dark:hover:bg-neutral-700">Cancelar</button>
                 <button onClick={handleGuardar} disabled={guardando} className="btn-primary flex items-center gap-2">
                   {guardando ? (
                     <><RefreshCw className="w-4 h-4 animate-spin" /> Guardando...</>

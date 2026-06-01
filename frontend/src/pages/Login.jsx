@@ -56,7 +56,9 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex font-sans">
+    //  SE AGREGÓ: bg-neutral-50 dark:bg-neutral-900 transition-colors
+    <div className="min-h-screen flex font-sans bg-neutral-50 dark:bg-neutral-900 transition-colors duration-300">
+      
       {/* Lado Izquierdo - Branding Institucional (Solo Desktop) */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-700 via-primary-800 to-primary-900 relative overflow-hidden">
         {/* Patrón de fondo abstracto */}
@@ -92,28 +94,36 @@ const Login = () => {
       </div>
 
       {/* Lado Derecho - Formulario de Login */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-neutral-50">
+      {/*  SE AGREGÓ: dark:bg-neutral-900 */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-neutral-50 dark:bg-neutral-900 transition-colors duration-300">
         <div className="w-full max-w-md">
+          
           {/* Logo Mobile (Visible solo en pantallas pequeñas) */}
           <div className="lg:hidden text-center mb-10">
             <div className="w-16 h-16 bg-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-primary-700/20">
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Scheduling UNT</h1>
-            <p className="text-base text-neutral-500 mt-2">Sistema de Gestión de Horarios</p>
+            {/*  SE AGREGÓ: dark:text-white */}
+            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">Scheduling UNT</h1>
+            {/*  SE AGREGÓ: dark:text-neutral-400 */}
+            <p className="text-base text-neutral-500 dark:text-neutral-400 mt-2">Sistema de Gestión de Horarios</p>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-8 sm:p-10">
+          {/*  SE AGREGÓ: dark:bg-neutral-800 dark:border-neutral-700 dark:shadow-none */}
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-xl shadow-neutral-200/50 dark:shadow-none border border-neutral-100 dark:border-neutral-700 p-8 sm:p-10 transition-colors duration-300">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-neutral-900">Iniciar Sesión</h2>
-              <p className="text-sm text-neutral-500 mt-2">
+              {/*  SE AGREGÓ: dark:text-white */}
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Iniciar Sesión</h2>
+              {/*  SE AGREGÓ: dark:text-neutral-400 */}
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                 Ingrese sus credenciales institucionales para acceder al sistema.
               </p>
             </div>
 
             {/* Mensaje de Error */}
             {error && (
-              <div className="mb-6 px-4 py-3 bg-danger-50 text-danger-700 border border-danger-200 rounded-xl text-sm flex items-center gap-3 animate-fade-in">
+              //  SE AGREGÓ: dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800
+              <div className="mb-6 px-4 py-3 bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800 rounded-xl text-sm flex items-center gap-3 animate-fade-in">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -121,16 +131,19 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                {/*  SE AGREGÓ: dark:text-neutral-300 */}
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
                   Usuario o Correo
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 group-focus-within:text-primary-600 transition-colors" />
+                  {/*  SE AGREGÓ: dark:text-neutral-500 dark:group-focus-within:text-primary-400 */}
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500 group-focus-within:text-primary-600 dark:group-focus-within:text-primary-400 transition-colors" />
                   <input
                     type="text"
                     value={usuario}
                     onChange={(e) => setUsuario(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all"
+                    //  SE AGREGÓ MÚLTIPLES dark: CLASSES PARA EL INPUT
+                    className="w-full pl-11 pr-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600/20 dark:focus:ring-primary-500/20 focus:border-primary-600 dark:focus:border-primary-500 transition-all"
                     placeholder="admin o correo@unt.edu.pe"
                     autoComplete="username"
                   />
@@ -138,23 +151,27 @@ const Login = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                {/*  SE AGREGÓ: dark:text-neutral-300 */}
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
                   Contraseña
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 group-focus-within:text-primary-600 transition-colors" />
+                  {/*  SE AGREGÓ: dark:text-neutral-500 dark:group-focus-within:text-primary-400 */}
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500 group-focus-within:text-primary-600 dark:group-focus-within:text-primary-400 transition-colors" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all"
+                    //  SE AGREGÓ MÚLTIPLES dark: CLASSES PARA EL INPUT
+                    className="w-full pl-11 pr-12 py-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600/20 dark:focus:ring-primary-500/20 focus:border-primary-600 dark:focus:border-primary-500 transition-all"
                     placeholder="••••••••"
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors p-1"
+                    //  SE AGREGÓ: dark:text-neutral-500 dark:hover:text-neutral-300
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors p-1"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -165,7 +182,8 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-primary-400 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30"
+                //  SE AGREGÓ: dark:bg-primary-700 dark:hover:bg-primary-600 dark:disabled:bg-primary-800 dark:shadow-none
+                className="w-full mt-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-primary-400 dark:bg-primary-700 dark:hover:bg-primary-600 dark:disabled:bg-primary-800 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 dark:shadow-none"
               >
                 {loading ? (
                   <>
@@ -181,8 +199,10 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-neutral-100">
-              <p className="text-xs text-center text-neutral-500 leading-relaxed">
+            {/*  SE AGREGÓ: dark:border-neutral-700 */}
+            <div className="mt-8 pt-6 border-t border-neutral-100 dark:border-neutral-700">
+              {/*  SE AGREGÓ: dark:text-neutral-400 */}
+              <p className="text-xs text-center text-neutral-500 dark:text-neutral-400 leading-relaxed">
                 Utilice su correo institucional asignado como docente, o sus credenciales de administración.
               </p>
             </div>

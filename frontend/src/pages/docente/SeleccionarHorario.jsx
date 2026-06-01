@@ -152,7 +152,7 @@ const SeleccionarHorario = () => {
     return `${hf}:${mf}`;
   };
 
-  // 2. VERIFICACIÓN DE CONFLICTOS (Corregida: Variables API correctas)
+  // 2. VERIFICACIÓN DE CONFLICTOS
   const verificarConflicto = (horaIniPropuesta) => {
     if (!asignacionSeleccionada) return null;
     const horaFinPropuesta = calcularHoraFin(horaIniPropuesta);
@@ -167,7 +167,6 @@ const SeleccionarHorario = () => {
       // Retorna el mensaje para deshabilitar la opción
       return `Excede el cierre (${config.hora_fin})`; 
     }
-    // FIN DE LA NUEVA VALIDACIÓN
 
     const cicloCursoActual = asignacionSeleccionada.curso_ciclo || asignacionSeleccionada.ciclo;
 
@@ -199,15 +198,15 @@ const SeleccionarHorario = () => {
   if (loading) {
     return (
       <div className="animate-fade-in max-w-xl">
-        <div className="skeleton h-7 w-44 mb-6" />
-        <div className="card p-6 space-y-4">
-          <div className="skeleton h-10 w-full" />
-          <div className="skeleton h-10 w-full" />
+        <div className="skeleton h-7 w-44 mb-6 dark:opacity-20" />
+        <div className="card p-6 space-y-4 dark:bg-neutral-800 dark:border-neutral-700">
+          <div className="skeleton h-10 w-full dark:opacity-20" />
+          <div className="skeleton h-10 w-full dark:opacity-20" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="skeleton h-10 w-full" />
-            <div className="skeleton h-10 w-full" />
+            <div className="skeleton h-10 w-full dark:opacity-20" />
+            <div className="skeleton h-10 w-full dark:opacity-20" />
           </div>
-          <div className="skeleton h-10 w-full" />
+          <div className="skeleton h-10 w-full dark:opacity-20" />
         </div>
       </div>
     );
@@ -216,39 +215,39 @@ const SeleccionarHorario = () => {
   return (
     <div className="animate-fade-in max-w-xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-          <Clock className="w-6 h-6 text-primary-600" />
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+          <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           Seleccionar Horario
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
           Elige día, horario y ambiente para tu curso
-          {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
+          {semestre && <span className="ml-2 text-neutral-400 dark:text-neutral-500">· Semestre: {semestre}</span>}
         </p>
       </div>
 
-      <div className="card p-6">
+      <div className="card p-6 dark:bg-neutral-800 dark:border-neutral-700">
         {error && (
-          <div className="mb-5 px-4 py-3 bg-danger-50 text-danger-700 border border-danger-200 rounded-lg text-sm flex items-center gap-2 animate-slide-down">
+          <div className="mb-5 px-4 py-3 bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800/50 rounded-lg text-sm flex items-center gap-2 animate-slide-down">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-5 px-4 py-3 bg-success-50 text-success-700 border border-success-200 rounded-lg text-sm flex items-center gap-2 animate-slide-down">
+          <div className="mb-5 px-4 py-3 bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/50 rounded-lg text-sm flex items-center gap-2 animate-slide-down">
             <CheckCircle className="w-4 h-4 flex-shrink-0" />
             {success}
           </div>
         )}
 
         {cursos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
-            <CheckCircle className="w-10 h-10 mb-3 text-success-400" />
+          <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500">
+            <CheckCircle className="w-10 h-10 mb-3 text-success-400 dark:text-success-500" />
             <p className="text-sm">Todos tus cursos ya tienen horario asignado en este semestre.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Curso</label>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Curso</label>
               <select
                 value={asignacionId}
                 onChange={(e) => {
@@ -256,7 +255,7 @@ const SeleccionarHorario = () => {
                   setHoraInicio('');
                   setHoraFin('');
                 }}
-                className="input"
+                className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
               >
                 <option value="">Seleccionar curso</option>
                 {cursos.map(c => (
@@ -271,8 +270,8 @@ const SeleccionarHorario = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                <Calendar className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400" />
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                <Calendar className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400 dark:text-neutral-500" />
                 Día
               </label>
               <select
@@ -282,7 +281,7 @@ const SeleccionarHorario = () => {
                   setHoraInicio('');
                   setHoraFin('');
                 }}
-                className="input"
+                className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
                 disabled={!asignacionId}
               >
                 {DIAS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -291,8 +290,8 @@ const SeleccionarHorario = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  <Clock className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400" />
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                  <Clock className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400 dark:text-neutral-500" />
                   Hora inicio
                 </label>
                 <select
@@ -302,7 +301,7 @@ const SeleccionarHorario = () => {
                     setHoraInicio(val);
                     setHoraFin(calcularHoraFin(val));
                   }}
-                  className="input"
+                  className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white disabled:opacity-50"
                   disabled={!asignacionId}
                 >
                   <option value="">{asignacionId ? "Seleccionar" : "Elija curso primero"}</option>
@@ -317,29 +316,29 @@ const SeleccionarHorario = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5 text-neutral-400">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-500 mb-1.5 text-neutral-400 dark:text-neutral-500">
                   <Clock className="w-3.5 h-3.5 inline mr-1.5" />
                   Hora fin (Auto)
                 </label>
                 <input
                   type="text"
                   value={horaFin || "Automático"}
-                  className="input bg-neutral-100 text-neutral-500 font-semibold cursor-not-allowed"
+                  className="input bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-semibold cursor-not-allowed border-transparent dark:border-neutral-700"
                   disabled
                 />
               </div>
             </div>
 
             {ambientes.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  <MapPin className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400" />
+              <div className="animate-fade-in">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                  <MapPin className="w-3.5 h-3.5 inline mr-1.5 text-neutral-400 dark:text-neutral-500" />
                   {asignacionSeleccionada?.tipo === 'Teoria' ? 'Aula' : 'Laboratorio'}
                 </label>
                 <select
                   value={ambienteId}
                   onChange={(e) => setAmbienteId(e.target.value)}
-                  className="input"
+                  className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
                 >
                   <option value="">Automático (mejor disponible)</option>
                   {ambientes.map(a => (
@@ -352,7 +351,7 @@ const SeleccionarHorario = () => {
             <button
               type="submit"
               disabled={saving || !horaInicio || !horaFin}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-2"
+              className="btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

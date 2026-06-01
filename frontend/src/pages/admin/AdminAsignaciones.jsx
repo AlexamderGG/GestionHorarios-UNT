@@ -202,7 +202,7 @@ const AdminAsignaciones = () => {
             return bIni < hFin && bFin > hIni;
           });
 
-          if (tieneCruce) return false; // 🌟 ¡CORREGIDO! Nombre unificado y sin errores de tipeo
+          if (tieneCruce) return false;
         }
       }
 
@@ -337,17 +337,17 @@ const AdminAsignaciones = () => {
   if (loading) {
     return (
       <div className="animate-fade-in">
-        <div className="skeleton h-7 w-64 mb-6" />
-        <div className="card p-4 mb-6">
+        <div className="skeleton h-7 w-64 mb-6 dark:opacity-20" />
+        <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
           <div className="flex flex-wrap gap-4">
-            <div className="skeleton h-10 w-40" />
-            <div className="skeleton h-10 w-32" />
-            <div className="skeleton h-10 w-56" />
+            <div className="skeleton h-10 w-40 dark:opacity-20" />
+            <div className="skeleton h-10 w-32 dark:opacity-20" />
+            <div className="skeleton h-10 w-56 dark:opacity-20" />
           </div>
         </div>
-        <div className="card">
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700">
           <div className="p-4">
-            <div className="skeleton h-64 w-full rounded-lg" />
+            <div className="skeleton h-64 w-full rounded-lg dark:opacity-20" />
           </div>
         </div>
       </div>
@@ -358,18 +358,18 @@ const AdminAsignaciones = () => {
     <div className="animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary-600" />
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             Asignaciones Docente-Curso
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Semestre activo: <span className="font-semibold text-primary-700">{semestre}</span>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Semestre activo: <span className="font-semibold text-primary-700 dark:text-primary-400">{semestre}</span>
             {ciclosActivos.length > 0 && (
-              <span className="ml-2 text-xs text-neutral-400">
+              <span className="ml-2 text-xs text-neutral-400 dark:text-neutral-500">
                 (Ciclos activos: {ciclosActivos.join(", ")})
               </span>
             )}
-            <span className="ml-3 text-xs text-neutral-400">
+            <span className="ml-3 text-xs text-neutral-400 dark:text-neutral-500">
               Límite: {MAX_HORAS_DOCENTE}h semanales/docente
             </span>
           </p>
@@ -379,13 +379,13 @@ const AdminAsignaciones = () => {
             <div
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium animate-slide-down ${
                 mensaje.tipo === "exito"
-                  ? "bg-success-50 text-success-700 border border-success-200"
-                  : "bg-danger-50 text-danger-700 border border-danger-200"
+                  ? "bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/50"
+                  : "bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800/50"
               }`}
             >
               {mensaje.tipo === "exito" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               {mensaje.texto}
-              <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600 ml-2">
+              <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 ml-2">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -393,7 +393,7 @@ const AdminAsignaciones = () => {
           <button
             onClick={handleAsignacionAutomatica}
             disabled={autoAsignando}
-            className="btn-primary flex items-center gap-2 bg-warning-600 hover:bg-warning-700"
+            className="btn-primary flex items-center gap-2 bg-warning-600 hover:bg-warning-700 dark:bg-warning-500 dark:hover:bg-warning-600 dark:text-white"
           >
             {autoAsignando ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Asignando...</>
@@ -404,7 +404,7 @@ const AdminAsignaciones = () => {
           <button
             onClick={handleLimpiarTodo}
             disabled={limpiando}
-            className="btn-secondary flex items-center gap-2 bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100 hover:text-danger-800"
+            className="btn-secondary flex items-center gap-2 bg-danger-50 dark:bg-danger-900/20 text-danger-700 dark:text-danger-400 border-danger-200 dark:border-danger-800/50 hover:bg-danger-100 dark:hover:bg-danger-900/40 hover:text-danger-800 dark:hover:text-danger-300"
           >
             {limpiando ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Limpiando...</>
@@ -416,30 +416,30 @@ const AdminAsignaciones = () => {
       </div>
 
       {/* Filtros */}
-      <div className="card p-4 mb-6">
+      <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              <Search className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <Search className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
               Buscar curso
             </label>
             <input
               type="text"
               value={searchCurso}
               onChange={(e) => setSearchCurso(e.target.value)}
-              className="input w-full"
+              className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
               placeholder="Código o nombre..."
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+              <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
               Especialidad
             </label>
             <select
               value={filtroEspecialidad}
               onChange={(e) => setFiltroEspecialidad(e.target.value)}
-              className="input w-48"
+              className="input w-48 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
             >
               <option value="">Todas</option>
               {especialidades.map((esp) => (
@@ -448,11 +448,11 @@ const AdminAsignaciones = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Ciclo</label>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Ciclo</label>
             <select
               value={filtroCiclo}
               onChange={(e) => setFiltroCiclo(e.target.value)}
-              className="input w-28"
+              className="input w-28 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
             >
               <option value="">Todos</option>
               {ciclosActivos.map((c) => (
@@ -460,25 +460,25 @@ const AdminAsignaciones = () => {
               ))}
             </select>
           </div>
-          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2">
+          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700">
             <RefreshCw className="w-4 h-4" /> Actualizar
           </button>
         </div>
       </div>
 
       {/* Tabla */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase w-24">Código</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Curso</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase w-16">Ciclo</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase w-40">Especialidad</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase w-20">Horas</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">Asignaciones</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase w-28">Acción</th>
+              <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700">
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-24">Código</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Curso</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-16">Ciclo</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-40">Especialidad</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-20">Horas</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Asignaciones</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -488,27 +488,27 @@ const AdminAsignaciones = () => {
                 const tieneLab = asigs.some((a) => a.tipo === "Laboratorio");
                 const completado = tieneTeoria && (!curso.horas_lab || tieneLab);
                 return (
-                  <tr key={curso.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
-                    <td className="p-3 font-mono text-xs text-neutral-600">{curso.codigo}</td>
-                    <td className="p-3 font-medium text-neutral-800">{curso.nombre}</td>
-                    <td className="p-3 text-center text-neutral-700">{curso.ciclo}</td>
-                    <td className="p-3 text-neutral-600 text-xs">{curso.especialidad || "—"}</td>
-                    <td className="p-3 text-center text-neutral-700 text-xs">
+                  <tr key={curso.id} className="border-b border-neutral-100 dark:border-neutral-700 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/50 transition-colors">
+                    <td className="p-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">{curso.codigo}</td>
+                    <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">{curso.nombre}</td>
+                    <td className="p-3 text-center text-neutral-700 dark:text-neutral-300">{curso.ciclo}</td>
+                    <td className="p-3 text-neutral-600 dark:text-neutral-400 text-xs">{curso.especialidad || "—"}</td>
+                    <td className="p-3 text-center text-neutral-700 dark:text-neutral-300 text-xs">
                       {curso.horas_aula || 0}h
                       {curso.horas_lab ? ` + ${curso.horas_lab}h lab` : ""}
                     </td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-1">
                         {asigs.length === 0 ? (
-                          <span className="text-xs text-neutral-400">Sin asignar</span>
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500">Sin asignar</span>
                         ) : (
                           asigs.map((a) => (
                             <span
                               key={a.id}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium ${
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium border ${
                                 a.tipo === "Teoria"
-                                  ? "bg-primary-50 text-primary-700 border border-primary-200"
-                                  : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800/50"
+                                  : "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/50"
                               }`}
                             >
                               {a.tipo === "Teoria" ? <Building2 className="w-3 h-3" /> : <FlaskConical className="w-3 h-3" />}
@@ -516,7 +516,7 @@ const AdminAsignaciones = () => {
                               
                               <button
                                 onClick={() => abrirModalEditar(a, curso)}
-                                className="ml-1 text-neutral-400 hover:text-primary-600 transition-colors"
+                                className="ml-1 text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                                 title="Editar asignación"
                               >
                                 <Pencil className="w-3 h-3" />
@@ -524,7 +524,7 @@ const AdminAsignaciones = () => {
 
                               <button
                                 onClick={() => handleEliminar(a.id)}
-                                className="ml-0.5 text-neutral-400 hover:text-danger-500 transition-colors"
+                                className="ml-0.5 text-neutral-400 hover:text-danger-500 dark:hover:text-danger-400 transition-colors"
                                 title="Eliminar asignación"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -539,7 +539,9 @@ const AdminAsignaciones = () => {
                         onClick={() => abrirModal(curso)}
                         disabled={completado}
                         className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          completado ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : "bg-primary-50 text-primary-700 hover:bg-primary-100"
+                          completado 
+                            ? "bg-neutral-100 text-neutral-400 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-500" 
+                            : "bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50"
                         }`}
                         title={completado ? "Curso completamente asignado" : "Asignar docente"}
                       >
@@ -558,29 +560,29 @@ const AdminAsignaciones = () => {
       {/* Modal de Asignación / Edición */}
       {modalOpen && cursoSeleccionado && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in"
           onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }}
         >
           <div
-            className="card p-6 w-full max-w-lg shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto"
+            className="card p-6 w-full max-w-lg shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto dark:bg-neutral-800 dark:border-neutral-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-primary-600" />
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 {asignacionEdicion ? "Modificar Asignación (Plan de Contingencia)" : "Asignar Docente"}
               </h2>
               <button
                 onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-700 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mb-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-              <p className="text-sm font-medium text-neutral-800">{cursoSeleccionado.codigo} — {cursoSeleccionado.nombre}</p>
-              <p className="text-xs text-neutral-500 mt-0.5">
+            <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+              <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{cursoSeleccionado.codigo} — {cursoSeleccionado.nombre}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 Ciclo {cursoSeleccionado.ciclo} · {cursoSeleccionado.especialidad || "Sin especialidad"}
                 {cursoSeleccionado.horas_aula ? ` · ${cursoSeleccionado.horas_aula}h teoría` : ""}
                 {cursoSeleccionado.horas_lab ? ` · ${cursoSeleccionado.horas_lab}h lab` : ""}
@@ -588,14 +590,14 @@ const AdminAsignaciones = () => {
             </div>
 
             {mensaje && modalOpen && (
-              <div className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-danger-50 text-danger-700 border border-danger-200`}>
+              <div className={`mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border ${mensaje.tipo === 'exito' ? 'bg-success-50 text-success-700 border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800/50' : 'bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800/50'}`}>
                 <AlertCircle className="w-4 h-4" /> {mensaje.texto}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tipo de asignación</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Tipo de asignación</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -603,8 +605,8 @@ const AdminAsignaciones = () => {
                     disabled={isTipoYaAsignado(cursoSeleccionado.id, "Teoria")}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                       isTipoYaAsignado(cursoSeleccionado.id, "Teoria")
-                        ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
-                        : tipoAsignacion === "Teoria" ? "bg-primary-50 text-primary-700 border-primary-200" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                        ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-500 dark:border-neutral-700"
+                        : tipoAsignacion === "Teoria" ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/40 dark:text-primary-400 dark:border-primary-800/50" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-700 dark:hover:bg-neutral-800"
                     }`}
                   >
                     {isTipoYaAsignado(cursoSeleccionado.id, "Teoria") ? <Ban className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
@@ -617,8 +619,8 @@ const AdminAsignaciones = () => {
                       disabled={isTipoYaAsignado(cursoSeleccionado.id, "Laboratorio")}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                         isTipoYaAsignado(cursoSeleccionado.id, "Laboratorio")
-                          ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed"
-                          : tipoAsignacion === "Laboratorio" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                          ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-500 dark:border-neutral-700"
+                          : tipoAsignacion === "Laboratorio" ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:border-indigo-800/50" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-400 dark:border-neutral-700 dark:hover:bg-neutral-800"
                       }`}
                     >
                       {isTipoYaAsignado(cursoSeleccionado.id, "Laboratorio") ? <Ban className="w-4 h-4" /> : <FlaskConical className="w-4 h-4" />}
@@ -629,13 +631,13 @@ const AdminAsignaciones = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400" /> Docente Disponible
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                  <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" /> Docente Disponible
                 </label>
                 <select
                   value={docenteSeleccionado}
                   onChange={(e) => setDocenteSeleccionado(e.target.value)}
-                  className="input w-full font-medium text-neutral-800 bg-white"
+                  className="input w-full font-medium text-neutral-800 dark:text-white bg-white dark:bg-neutral-900 dark:border-neutral-700"
                   disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion)}
                 >
                   <option value="">Seleccionar docente...</option>
@@ -658,8 +660,8 @@ const AdminAsignaciones = () => {
               </div>
 
               {docenteSeleccionado && (
-                <div className="p-3 bg-primary-50 rounded-lg border border-primary-200">
-                  <div className="flex items-center gap-2 text-sm text-primary-700">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800/50">
+                  <div className="flex items-center gap-2 text-sm text-primary-700 dark:text-primary-400">
                     <Clock className="w-4 h-4" />
                     <span className="font-medium">
                       Carga calculada: {
@@ -668,9 +670,9 @@ const AdminAsignaciones = () => {
                       }h / {MAX_HORAS_DOCENTE}h semanales
                     </span>
                   </div>
-                  <div className="w-full bg-primary-200 rounded-full h-2 mt-2">
+                  <div className="w-full bg-primary-200 dark:bg-primary-900/50 rounded-full h-2 mt-2">
                     <div
-                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-primary-600 dark:bg-primary-500 h-2 rounded-full transition-all duration-300"
                       style={{
                         width: `${Math.min(100, (((getHorasDocente(Number(docenteSeleccionado)) - (asignacionEdicion && asignacionEdicion.docente_id === Number(docenteSeleccionado) && asignacionEdicion.tipo === tipoAsignacion ? (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0)) : 0)) + (tipoAsignacion === "Teoria" ? (Number(cursoSeleccionado.horas_aula) || 0) : (Number(cursoSeleccionado.horas_lab) || 0))) / MAX_HORAS_DOCENTE) * 100)}%`,
                       }}
@@ -680,11 +682,11 @@ const AdminAsignaciones = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Ambiente preferido (opcional)</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Ambiente preferido (opcional)</label>
                 <select
                   value={ambientePreferido}
                   onChange={(e) => setAmbientePreferido(e.target.value)}
-                  className="input w-full font-medium text-neutral-800 bg-white"
+                  className="input w-full font-medium text-neutral-800 dark:text-white bg-white dark:bg-neutral-900 dark:border-neutral-700"
                   disabled={isTipoYaAsignado(cursoSeleccionado.id, tipoAsignacion) || cargandoDisponibilidad}
                 >
                   <option value="">Sin preferencia</option>
@@ -711,7 +713,7 @@ const AdminAsignaciones = () => {
               <div className="flex gap-2 justify-end pt-2">
                 <button 
                   onClick={() => { setModalOpen(false); setAsignacionEdicion(null); }} 
-                  className="btn-ghost"
+                  className="btn-ghost dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
                   Cancelar
                 </button>

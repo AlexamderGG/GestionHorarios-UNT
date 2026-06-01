@@ -130,12 +130,12 @@ const SecretariaPanel = () => {
 
     setReiniciando(true);
     try {
-      //  CONECTADO: Apesta directamente al nuevo endpoint ordenado en el módulo de horarios
+      // CONECTADO: Apunta directamente al nuevo endpoint ordenado en el módulo de horarios
       const res = await api.post("/horarios/reset-turnos"); 
       
       if (res.data?.success) {
         alert(res.data.message || "Turnos reiniciados correctamente.");
-        //  CORREGIDO: Llamada correcta a fetchDocentes() en lugar de cargarDocentes()
+        // Llamada correcta a fetchDocentes()
         fetchDocentes(); 
       }
     } catch (err) {
@@ -173,8 +173,8 @@ const SecretariaPanel = () => {
   // Encontrar el ID del PRIMER docente que está en estado "Pendiente"
   const idSiguienteEnTurno = docentes.find(d => d.estado_turno === 'Pendiente')?.id;
 
-  if (loading && docentes.length === 0) return <div className="p-6 text-center text-neutral-500">Cargando escalafón docente...</div>;
-  if (error) return <div className="p-6 text-center text-red-500">{error}</div>;
+  if (loading && docentes.length === 0) return <div className="p-6 text-center text-neutral-500 dark:text-neutral-400">Cargando escalafón docente...</div>;
+  if (error) return <div className="p-6 text-center text-red-500 dark:text-red-400">{error}</div>;
 
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in">
@@ -184,8 +184,8 @@ const SecretariaPanel = () => {
         
         {/* 1. Área de Título (Arriba) */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Gestión de Turnos (Escalafón)</h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Gestión de Turnos (Escalafón)</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             Control de flujo y asignación de prioridades horarias para los docentes.
           </p>
         </div>
@@ -195,13 +195,13 @@ const SecretariaPanel = () => {
           
           {/* Izquierda: Buscador */}
           <div className="relative w-full lg:w-80 flex-shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar docente o correo..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="input w-full pl-9 py-2 text-sm bg-white border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all shadow-sm"
+              className="input w-full pl-9 py-2 text-sm bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 dark:text-white dark:placeholder-neutral-500 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all shadow-sm"
             />
           </div>
 
@@ -212,7 +212,7 @@ const SecretariaPanel = () => {
             <button 
               onClick={fetchDocentes} 
               disabled={loading}
-              className="p-2 border border-neutral-200 text-neutral-500 hover:bg-neutral-50 rounded-lg transition-colors bg-white flex-shrink-0 shadow-sm"
+              className="p-2 border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded-lg transition-colors bg-white dark:bg-neutral-800 flex-shrink-0 shadow-sm"
               title="Actualizar escalafón"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -235,7 +235,7 @@ const SecretariaPanel = () => {
             <button
               onClick={handleCompletarTodos}
               disabled={completando}
-              className="flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
+              className="flex items-center justify-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
               title="Bloquear edición para todos los docentes"
             >
               {completando ? (
@@ -249,7 +249,7 @@ const SecretariaPanel = () => {
             <button
               onClick={handleReiniciarTurnosGlobal}
               disabled={reiniciando}
-              className="flex items-center justify-center gap-1.5 bg-danger-50 text-danger-700 border border-danger-200 hover:bg-danger-100 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
+              className="flex items-center justify-center gap-1.5 bg-danger-50 dark:bg-danger-900/20 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800/50 hover:bg-danger-100 dark:hover:bg-danger-900/40 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
             >
               {reiniciando ? (
                 <><RefreshCw className="w-4 h-4 animate-spin" /> Reiniciando...</>
@@ -262,10 +262,10 @@ const SecretariaPanel = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+      <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-neutral-600">
-            <thead className="text-xs text-neutral-700 uppercase bg-neutral-50 border-b border-neutral-200">
+          <table className="w-full text-sm text-left text-neutral-600 dark:text-neutral-300">
+            <thead className="text-xs text-neutral-700 dark:text-neutral-400 uppercase bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
                 <th className="px-4 py-3 w-12">#</th>
                 <th className="px-4 py-3">Docente</th>
@@ -281,22 +281,22 @@ const SecretariaPanel = () => {
                 const nombreCompleto = `${docente.apellidos}, ${docente.nombres}`;
 
                 return (
-                  <tr key={docente.id} className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-neutral-900">
+                  <tr key={docente.id} className="border-b border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-neutral-900 dark:text-neutral-200">
                       {index + 1}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-neutral-800">{nombreCompleto}</div>
-                      <div className="text-xs text-neutral-400">{docente.email}</div>
-                      {/* 🌟 NUEVO: INDICADOR VISUAL DE CREDENCIALES */}
-                      <div>
+                      <div className="font-semibold text-neutral-800 dark:text-neutral-200">{nombreCompleto}</div>
+                      <div className="text-xs text-neutral-400 dark:text-neutral-500">{docente.email}</div>
+                      {/* 🌟 INDICADOR VISUAL DE CREDENCIALES */}
+                      <div className="mt-1">
                         {docente.tiene_credenciales ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/50">
                             <CheckCircle className="w-3 h-3" /> Con Acceso
                           </span>
                         ) : (
                           <span 
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 cursor-help" 
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 cursor-help" 
                             title="Debe usar 'Habilitar Turno' o 'Notificar a Todos' para generarle contraseña"
                           >
                             <AlertCircle className="w-3 h-3" /> Sin Credenciales
@@ -304,25 +304,25 @@ const SecretariaPanel = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-neutral-700">
+                    <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
                       {docente.categoria}
                     </td>
-                    <td className="px-4 py-3 text-center font-medium text-neutral-800">
+                    <td className="px-4 py-3 text-center font-medium text-neutral-800 dark:text-neutral-200">
                       {docente.antiguedad_anios}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <select
                         value={docente.estado_turno}
                         onChange={(e) => handleCambioEstadoManual(docente.id, e.target.value)}
-                        className={`text-xs font-bold rounded-full px-3 py-1 border border-transparent outline-none cursor-pointer text-center ${
-                          docente.estado_turno === 'Completado' ? 'bg-green-100 text-green-800 border-green-200' :
-                          docente.estado_turno === 'Notificado' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                          'bg-neutral-100 text-neutral-600 border-neutral-200'
+                        className={`text-xs font-bold rounded-full px-3 py-1 border outline-none cursor-pointer text-center ${
+                          docente.estado_turno === 'Completado' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50' :
+                          docente.estado_turno === 'Notificado' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50' :
+                          'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600'
                         }`}
                       >
-                        <option value="Pendiente" className="bg-white text-neutral-800">Pendiente</option>
-                        <option value="Notificado" className="bg-white text-neutral-800">Notificado / Eligiendo</option>
-                        <option value="Completado" className="bg-white text-neutral-800">Completado</option>
+                        <option value="Pendiente" className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">Pendiente</option>
+                        <option value="Notificado" className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">Notificado / Eligiendo</option>
+                        <option value="Completado" className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">Completado</option>
                       </select>
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -333,7 +333,7 @@ const SecretariaPanel = () => {
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             esSuTurno 
                               ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
-                              : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                              : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed'
                           }`}
                           title={!esSuTurno ? "Debe esperar a que los docentes anteriores finalicen su selección" : ""}
                         >
@@ -347,7 +347,7 @@ const SecretariaPanel = () => {
                           )}
                         </button>
                       ) : (
-                        <span className="text-xs text-neutral-400 italic font-medium">No requiere acción</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500 italic font-medium">No requiere acción</span>
                       )}
                     </td>
                   </tr>
@@ -356,7 +356,7 @@ const SecretariaPanel = () => {
               
               {docentes.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-neutral-400 font-medium">
+                  <td colSpan="6" className="px-4 py-8 text-center text-neutral-400 dark:text-neutral-500 font-medium">
                     No se encontraron docentes en el escalafón para este semestre.
                   </td>
                 </tr>

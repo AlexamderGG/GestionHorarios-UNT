@@ -50,6 +50,7 @@ const normalizarDia = (diaStr) => {
   return DIAS_ESTANDAR[limpio] || "Lunes";
 };
 
+// Se agregó una ligera opacidad para que los bloques pastel se vean bien tanto en claro como en oscuro
 const getColorCurso = (codigo) => {
   let hash = 0;
   for (let i = 0; i < (codigo || "").length; i++) {
@@ -83,6 +84,7 @@ const AdminHorarios = () => {
   const [filtroDocente, setFiltroDocente] = useState("");
   const [semestre, setSemestre] = useState("2026-1");
   const [cicloActivo, setCicloActivo] = useState("");
+  
   useEffect(() => {
     if (!semestre) return;
     const isImpar = semestre.endsWith('-1');
@@ -100,11 +102,9 @@ const AdminHorarios = () => {
   const [editando, setEditando] = useState(null);
   const [editForm, setEditForm] = useState({});
 
-  // 🌟 INFRAESTRUCTURA EN CALIENTE: API asíncrona idéntica a la del Docente
   const [ambientesValidadosAPI, setAmbientesValidadosAPI] = useState([]);
   const [cargandoAmbientes, setCargandoAmbientes] = useState(false);
 
-  // Garantiza que los días de la cabecera no tengan tildes ni espacios dañinos
   const dias = useMemo(() => {
     if (!config?.dias_habiles) return ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
     const raw = Array.isArray(config.dias_habiles)
@@ -113,7 +113,6 @@ const AdminHorarios = () => {
     return raw.map(d => normalizarDia(d));
   }, [config]);
 
-  // Control de Creación Manual e Infraestructura
   const [modalCreateOpen, setModalCreateOpen] = useState(false);
   const [asignacionesLibres, setAsignacionesLibres] = useState([]);
   const [aulas, setAulas] = useState([]);
@@ -139,24 +138,19 @@ const AdminHorarios = () => {
       .catch((err) => console.error("Error cargando configuración:", err));
   }, []);
 
-  // CORRECCIÓN: Evitar condición de carrera. Primero aseguramos el semestre, luego descargamos horarios.
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Obtenemos PRIMERO la configuración
       const resConf = await api.get("/configuracion");
       const configData = resConf.data?.data || {};
       setConfig(configData);
 
-      // 2. Si el estado local 'semestre' está vacío (porque acabamos de entrar a la pantalla), usamos el activo
       const semestreActual = semestre || configData.semestre_activo || "2026-1";
       
-      // Actualizamos el input visualmente para que no quede en blanco
       if (!semestre) {
         setSemestre(semestreActual);
       }
 
-      // 3. AHORA SÍ, traemos el resto de datos garantizando que 'semestreActual' tiene un valor real
       const [resHor, resDoc, resCur, resAsig, resAulas, resLabs] = await Promise.all([
         api.get("/horarios", { params: { semestre: semestreActual } }), 
         api.get("/docentes"),
@@ -330,7 +324,6 @@ const AdminHorarios = () => {
     return null;
   };
 
-  // 🌟 LLAMADA ASÍNCRONA A POSTGRESQL (Idéntica a la lógica del Docente)
   const refrescarDisponibilidadAmbientesAPI = useCallback(async (dia, hIni, hFin, tipoAsig, idHorario) => {
     if (!dia || !hIni || !hFin || !tipoAsig) return;
     setCargandoAmbientes(true);
@@ -354,10 +347,8 @@ const AdminHorarios = () => {
     }
   }, [semestre]);
 
-  // Sincronizador dinámico del modal de edición
   useEffect(() => {
     if (editando && editForm.dia && editForm.hora_inicio && editForm.hora_fin) {
-      console.log("Editando ID:", editando.id);
       refrescarDisponibilidadAmbientesAPI(
         editForm.dia,
         editForm.hora_inicio,
@@ -368,7 +359,6 @@ const AdminHorarios = () => {
     }
   }, [editForm.dia, editForm.hora_inicio, editForm.hora_fin, editando, refrescarDisponibilidadAmbientesAPI]);
 
-  // Sincronizador dinámico del modal de creación manual
   useEffect(() => {
     if (asigSeleccionada && createForm.dia && createForm.hora_inicio && createForm.hora_fin) {
       refrescarDisponibilidadAmbientesAPI(
@@ -629,7 +619,6 @@ const AdminHorarios = () => {
     doc.save(`Horario_Oficial_Ciclo_${cicloActivo}_${semestre}.pdf`);
   };
 
-  // 🌟 TU LÓGICA DE EXCEL ORIGINAL COMPLETAMENTE PROTEGIDA E INTACTA (0 MODIFICACIONES)
   const exportarExcelCiclo = () => {
     if (!cicloActivo || !horariosPorCiclo[cicloActivo]) return;
     const horariosCiclo = horariosPorCiclo[cicloActivo];
@@ -862,14 +851,12 @@ const AdminHorarios = () => {
     setCreateForm({ dia: "Lunes", hora_inicio: "", hora_fin: "", ambiente_id: "" });
     setAmbientesValidadosAPI([]);
     
-    // Como 'horarios' ahora tiene los de TODOS, esta lista de IDs será exacta
     const idsConHorario = horarios.map(h => h.asignacion_id);
     
     let pendientes = asignaciones.filter(
       a => a.semestre_asignacion === semestre && !idsConHorario.includes(a.id)
     );
 
-    //  CORRECCIÓN 3: Si hay un docente filtrado, mostramos solo sus asignaturas pendientes
     if (filtroDocente) {
       pendientes = pendientes.filter(a => String(a.docente_id) === String(filtroDocente));
     }
@@ -948,15 +935,13 @@ const AdminHorarios = () => {
     if (!horarios || !Array.isArray(horarios)) return map;
 
     for (const h of horarios) {
-      // a) Filtrado local seguro: Ignora si el valor es "Todos", "0" o está vacío
       const docenteId = String(h.docente?.id || h.docente_id || "");
       const filtroActivo = String(filtroDocente || "").trim().toLowerCase();
       
       if (filtroActivo && filtroActivo !== "todos" && filtroActivo !== "0" && docenteId !== filtroActivo) {
-        continue; // Ocultamos la clase si no es del docente seleccionado
+        continue; 
       }
       
-      // b) Extracción segura del ciclo (Soporta múltiples formatos del backend)
       const cicloCurso = h.curso?.ciclo || h.ciclo || h.curso_ciclo;
       if (!cicloCurso) continue;
       
@@ -998,17 +983,18 @@ const AdminHorarios = () => {
   if (loading) {
     return (
       <div className="animate-fade-in">
-        <div className="skeleton h-7 w-48 mb-6" />
-        <div className="card p-4 mb-6">
+        {/* 🌟 MODO OSCURO PARA SKELETONS */}
+        <div className="skeleton dark:bg-neutral-800 h-7 w-48 mb-6 rounded-md" />
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700 p-4 mb-6">
           <div className="flex gap-4">
-            <div className="skeleton h-10 w-28" />
-            <div className="skeleton h-10 w-56" />
-            <div className="skeleton h-10 w-32" />
+            <div className="skeleton dark:bg-neutral-700 h-10 w-28 rounded-md" />
+            <div className="skeleton dark:bg-neutral-700 h-10 w-56 rounded-md" />
+            <div className="skeleton dark:bg-neutral-700 h-10 w-32 rounded-md" />
           </div>
         </div>
-        <div className="card overflow-hidden">
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700 overflow-hidden">
           <div className="p-12">
-            <div className="skeleton h-64 w-full rounded-lg" />
+            <div className="skeleton dark:bg-neutral-700 h-64 w-full rounded-lg" />
           </div>
         </div>
       </div>
@@ -1016,17 +1002,19 @@ const AdminHorarios = () => {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in transition-colors duration-300">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-primary-600" />
+          {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2 transition-colors">
+            <Calendar className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             Gestión de Horarios
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Semestre: <span className="font-semibold text-primary-700">{semestre}</span>
+          {/* 🌟 MODO OSCURO: text-neutral-500 -> dark:text-neutral-400 */}
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 transition-colors">
+            Semestre: <span className="font-semibold text-primary-700 dark:text-primary-400">{semestre}</span>
             {getCiclosActivos.length > 0 && (
-              <span className="ml-2 text-xs text-neutral-400">(Ciclos activos: {getCiclosActivos.join(", ")})</span>
+              <span className="ml-2 text-xs text-neutral-400 dark:text-neutral-500">(Ciclos activos: {getCiclosActivos.join(", ")})</span>
             )}
           </p>
         </div>
@@ -1034,12 +1022,14 @@ const AdminHorarios = () => {
           <div
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium animate-slide-down ${
               mensaje.tipo === "exito"
-                ? "bg-success-50 text-success-700 border border-success-200"
-                : "bg-danger-50 text-danger-700 border border-danger-200"
+                // 🌟 MODO OSCURO PARA MENSAJE DE ÉXITO
+                ? "bg-success-50 text-success-700 border border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800"
+                // 🌟 MODO OSCURO PARA MENSAJE DE ERROR
+                : "bg-danger-50 text-danger-700 border border-danger-200 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800"
             }`}
           >
             {mensaje.texto}
-            <button onClick={() => setMensaje(null)} className="text-neutral-400 hover:text-neutral-600">
+            <button onClick={() => setMensaje(null)} className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300">
               &times;
             </button>
           </div>
@@ -1047,18 +1037,32 @@ const AdminHorarios = () => {
       </div>
 
       {/* Filters */}
-      <div className="card p-4 mb-6">
+      {/* 🌟 MODO OSCURO: card -> dark:bg-neutral-800 dark:border-neutral-700 */}
+      <div className="card dark:bg-neutral-800 dark:border-neutral-700 p-4 mb-6 transition-colors">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Semestre</label>
-            <input type="text" value={semestre} onChange={(e) => setSemestre(e.target.value)} className="input w-28" />
+            {/* 🌟 MODO OSCURO: text-neutral-700 -> dark:text-neutral-300 */}
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">Semestre</label>
+            <input 
+              type="text" 
+              value={semestre} 
+              onChange={(e) => setSemestre(e.target.value)} 
+              // 🌟 MODO OSCURO INPUT
+              className="input w-28 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors" 
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400" />
+            {/* 🌟 MODO OSCURO: text-neutral-700 -> dark:text-neutral-300 */}
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
+              <Users className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
               Docente
             </label>
-            <select value={filtroDocente} onChange={(e) => setFiltroDocente(e.target.value)} className="input w-56">
+            {/* 🌟 MODO OSCURO SELECT */}
+            <select 
+              value={filtroDocente} 
+              onChange={(e) => setFiltroDocente(e.target.value)} 
+              className="input w-56 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors"
+            >
               <option value="">Todos</option>
               {docentes.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -1067,7 +1071,8 @@ const AdminHorarios = () => {
               ))}
             </select>
           </div>
-          <button onClick={handleGenerar} disabled={generando} className="btn-primary flex items-center gap-2">
+          {/* 🌟 MODO OSCURO BOTÓN GENERAR */}
+          <button onClick={handleGenerar} disabled={generando} className="btn-primary flex items-center gap-2 dark:bg-primary-700 dark:hover:bg-primary-600 dark:disabled:bg-primary-800 border-none transition-colors">
             {generando ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Generando...</>
             ) : (
@@ -1075,29 +1080,32 @@ const AdminHorarios = () => {
             )}
           </button>
           
-          <button onClick={abrirModalCrearManual} className="btn-primary flex items-center gap-2 bg-blue-600 hover:bg-blue-700 border-none text-white">
+          <button onClick={abrirModalCrearManual} className="btn-primary flex items-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 border-none text-white transition-colors">
             <Plus className="w-4 h-4" />
             Programar Horario Manual
           </button>
 
-          <button onClick={handleLimpiar} disabled={limpiando} className="btn-secondary flex items-center gap-2 bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100">
+          {/* 🌟 MODO OSCURO BOTÓN LIMPIAR */}
+          <button onClick={handleLimpiar} disabled={limpiando} className="btn-secondary flex items-center gap-2 bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800 dark:hover:bg-danger-900/40 transition-colors">
             {limpiando ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Limpiando...</>
             ) : (
               <><Trash2 className="w-4 h-4" /> Limpiar Todo</>
             )}
           </button>
-          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2">
+          {/* 🌟 MODO OSCURO BOTÓN REFRESCO */}
+          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700 transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
 
+        {/* 🌟 MODO OSCURO: TARJETA DE CURSOS ASIGNADOS AL DOCENTE */}
         {filtroDocente && (cursosDelDocente || []).length > 0 && (
-          <div className="mt-4 p-3 bg-primary-50 rounded-lg border border-primary-200">
-            <p className="text-xs font-medium text-primary-700 mb-1.5">Cursos asignados a {getNombreDocente(Number(filtroDocente))}:</p>
+          <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800/50 transition-colors">
+            <p className="text-xs font-medium text-primary-700 dark:text-primary-400 mb-1.5 transition-colors">Cursos asignados a {getNombreDocente(Number(filtroDocente))}:</p>
             <div className="flex flex-wrap gap-1.5">
               {(cursosDelDocente || []).map((a) => (
-                <span key={a.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-white text-primary-700 border border-primary-200 font-medium">
+                <span key={a.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-white dark:bg-neutral-800 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700 font-medium transition-colors">
                   <BookOpen className="w-3 h-3" />
                   {getNombreCurso(a.curso_id)} ({a.tipo})
                 </span>
@@ -1108,15 +1116,17 @@ const AdminHorarios = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-neutral-100 rounded-lg p-1 w-fit flex-wrap">
+      {/* 🌟 MODO OSCURO: bg-neutral-100 -> dark:bg-neutral-800 */}
+      <div className="flex gap-1 mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1 w-fit flex-wrap transition-colors">
         {getCiclosActivos.map((c) => (
           <button
             key={c}
             onClick={() => setCicloActivo(String(c))}
+            // 🌟 MODO OSCURO: Ajustes a pestañas activas e inactivas
             className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-md transition-all duration-150 ${
               cicloActivo === String(c)
-                ? "bg-white text-primary-700 shadow-sm font-medium"
-                : "text-neutral-500 hover:text-neutral-700"
+                ? "bg-white dark:bg-neutral-700 text-primary-700 dark:text-primary-400 shadow-sm font-medium"
+                : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
             }`}
           >
             <GraduationCap className="w-4 h-4" />
@@ -1127,51 +1137,54 @@ const AdminHorarios = () => {
 
       {/* Grid view */}
       {cicloActivo && (
-        <div className="card overflow-hidden mb-6">
-          <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-              <LayoutGrid className="w-4 h-4 text-primary-600" />
+        // 🌟 MODO OSCURO: card -> dark:bg-neutral-800 dark:border-neutral-700
+        <div className="card overflow-hidden mb-6 dark:bg-neutral-800 dark:border-neutral-700 transition-colors">
+          {/* 🌟 MODO OSCURO CABECERA GRILLA */}
+          <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between transition-colors">
+            <h2 className="text-sm font-semibold text-neutral-800 dark:text-white flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-primary-600 dark:text-primary-400" />
               Horario Ciclo {cicloActivo}
             </h2>
             <div className="flex items-center gap-4">
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
                 {(horariosPorCiclo[cicloActivo] || []).length} clase(s)
               </span>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={exportarPDFCiclo} 
-                  className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white border border-neutral-300 shadow-sm hover:bg-neutral-50 text-neutral-700 rounded-md font-medium transition-colors"
+                  className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 rounded-md font-medium transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5 text-red-600" />
+                  <Download className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                   Descargar PDF
                 </button>
                 <button 
                   onClick={exportarExcelCiclo} 
-                  className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white border border-neutral-300 shadow-sm hover:bg-neutral-50 text-neutral-700 rounded-md font-medium transition-colors"
+                  className="btn-secondary flex items-center gap-1.5 py-1.5 px-3 text-xs bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 rounded-md font-medium transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5 text-green-600" />
+                  <Download className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                   Descargar Excel
                 </button>
               </div>
             </div>
           </div>
           {(horariosPorCiclo[cicloActivo] || []).length === 0 ? (
-            <div className="p-12 text-center text-neutral-400">
-              <Inbox className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
+            <div className="p-12 text-center text-neutral-400 dark:text-neutral-500">
+              <Inbox className="w-8 h-8 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
               <p className="text-sm">No hay horarios para el ciclo {cicloActivo}.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-max">
                 <thead>
-                  <tr className="bg-neutral-50">
-                    <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-28 sticky left-0 bg-neutral-50 z-10">
+                  {/* 🌟 MODO OSCURO TR y TH CABECERAS DE TABLA */}
+                  <tr className="bg-neutral-50 dark:bg-neutral-800 transition-colors">
+                    <th className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-left text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28 sticky left-0 bg-neutral-50 dark:bg-neutral-800 z-10 transition-colors">
                       Bloque
                     </th>
                     {dias.map((dia) => (
                       <th
                         key={dia}
-                        className="border-b border-r border-neutral-200 p-2 text-center text-xs font-semibold text-neutral-500 uppercase min-w-[120px] xl:min-w-0 last:border-r-0"
+                        className="border-b border-r border-neutral-200 dark:border-neutral-700 p-2 text-center text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase min-w-[120px] xl:min-w-0 last:border-r-0 transition-colors"
                       >
                         {dia}
                       </th>
@@ -1180,23 +1193,26 @@ const AdminHorarios = () => {
                 </thead>
                 <tbody>
                   {bloques.map((bloque, idx) => (
-                    <tr key={bloque.label} className={idx % 2 === 0 ? "bg-white" : "bg-neutral-50/30"}>
-                      <td className="border-b border-r border-neutral-200 p-2 text-neutral-600 text-xs font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                    // 🌟 MODO OSCURO PARA FILAS ALTERNAS DE LA TABLA
+                    <tr key={bloque.label} className={`${idx % 2 === 0 ? "bg-white dark:bg-neutral-800" : "bg-neutral-50/30 dark:bg-neutral-800/50"} transition-colors`}>
+                      <td className="border-b border-r border-neutral-200 dark:border-neutral-700 p-2 text-neutral-600 dark:text-neutral-300 text-xs font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap transition-colors">
                         {bloque.label}
                       </td>
                       {dias.map((dia) => {
                         const h = horarioEnBloque(dia, bloque.inicio, bloque.fin, horariosPorCiclo[cicloActivo] || []);
                         return (
+                          // 🌟 MODO OSCURO PARA LAS CELDAS INDIVIDUALES
                           <td
                             key={`${dia}-${bloque.label}`}
-                            className="border-b border-r border-neutral-200 p-1 align-top last:border-r-0"
+                            className="border-b border-r border-neutral-200 dark:border-neutral-700 p-1 align-top last:border-r-0 transition-colors"
                           >
                             {h ? (
                               (() => {
                                 const color = getColorCurso(h.curso?.codigo);
                                 return (
                                   <div
-                                    className="rounded-lg p-2 border-l-[3px] cursor-pointer hover:shadow-sm transition-all group"
+                                    // 🌟 MODO OSCURO PARA EL BLOQUE DE HORARIO (AGREGANDO dark:opacity-90)
+                                    className="rounded-lg p-2 border-l-[3px] cursor-pointer hover:shadow-sm transition-all group dark:opacity-90"
                                     style={{
                                       backgroundColor: color.bg,
                                       borderLeftColor: color.border,
@@ -1256,21 +1272,23 @@ const AdminHorarios = () => {
 
       {/* Edit Modal (🌟 CONTROL EN CALIENTE SEGURO DE POSTGRESQL) */}
       {editando && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
-          <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in transition-colors duration-300" onClick={() => setEditando(null)}>
+          {/* 🌟 MODO OSCURO MODAL DE EDICIÓN */}
+          <div className="card bg-white dark:bg-neutral-800 dark:border-neutral-700 p-6 w-full max-w-md shadow-modal animate-scale-in transition-colors" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-primary-600" />
+              {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2 transition-colors">
+                <Pencil className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 Editar Horario
               </h2>
-              <button onClick={() => setEditando(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+              <button onClick={() => setEditando(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día</label>
-                <select value={editForm.dia} onChange={(e) => setEditForm({ ...editForm, dia: e.target.value })} className="input">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">Día</label>
+                <select value={editForm.dia} onChange={(e) => setEditForm({ ...editForm, dia: e.target.value })} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors">
                   {dias.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
@@ -1278,11 +1296,11 @@ const AdminHorarios = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora inicio</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">Hora inicio</label>
                   <select 
                     value={editForm.hora_inicio} 
                     onChange={(e) => handleCambioHoraInicioEdit(e.target.value)} 
-                    className="input w-full font-medium"
+                    className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors"
                   >
                     <option value="" disabled>Seleccione...</option>
                     {horasDisponibles.map((h) => {
@@ -1296,11 +1314,12 @@ const AdminHorarios = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5 text-neutral-400">Hora fin (Auto)</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-400 mb-1.5 transition-colors">Hora fin (Auto)</label>
                   <input 
                     type="text" 
                     value={editForm.hora_fin ? formatAMPM(editForm.hora_fin) : "Automático"} 
-                    className="input w-full font-semibold bg-neutral-100 text-neutral-500 cursor-not-allowed"
+                    // 🌟 MODO OSCURO: bg-neutral-100 -> dark:bg-neutral-900/50
+                    className="input w-full font-semibold bg-neutral-100 dark:bg-neutral-900/50 dark:border-neutral-700 text-neutral-500 dark:text-neutral-500 cursor-not-allowed transition-colors"
                     disabled 
                   />
                 </div>
@@ -1308,9 +1327,9 @@ const AdminHorarios = () => {
 
               {/* 🔒 SELECTOR INTEGRADO CON LA API ASÍNCRONA DE INFRAESTRUCTURA */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
                   {editando.tipo === "Teoria" || editando.tipo_asignacion === "Teoria" ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
-                  {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
+                  {cargandoAmbientes && <span className="text-3xs text-primary-600 dark:text-primary-400 animate-pulse ml-2">(Sincronizando...)</span>}
                 </label>
                 
                 <select 
@@ -1322,7 +1341,7 @@ const AdminHorarios = () => {
                       setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null });
                     }
                   }} 
-                  className="input w-full font-medium bg-white"
+                  className="input w-full font-medium bg-white dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors"
                   disabled={cargandoAmbientes}
                 >
                   <option value="">Seleccione el ambiente físico...</option>
@@ -1334,9 +1353,9 @@ const AdminHorarios = () => {
                 </select>
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setEditando(null)} className="btn-ghost">Cancelar</button>
-                <button onClick={handleGuardarEdicion} disabled={cargandoAmbientes} className="btn-primary flex items-center gap-2">
+              <div className="flex gap-2 justify-end pt-2 border-t border-transparent dark:border-neutral-700 mt-2 transition-colors">
+                <button onClick={() => setEditando(null)} className="btn-ghost dark:text-neutral-300 dark:hover:bg-neutral-700 transition-colors">Cancelar</button>
+                <button onClick={handleGuardarEdicion} disabled={cargandoAmbientes} className="btn-primary flex items-center gap-2 dark:bg-primary-700 dark:hover:bg-primary-600 transition-colors border-none">
                   <Save className="w-4 h-4" />
                   Guardar
                 </button>
@@ -1348,20 +1367,21 @@ const AdminHorarios = () => {
 
       {/* Modal Crear */}
       {modalCreateOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalCreateOpen(false)}>
-          <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in transition-colors duration-300" onClick={() => setModalCreateOpen(false)}>
+          {/* 🌟 MODO OSCURO MODAL CREAR */}
+          <div className="card bg-white dark:bg-neutral-800 dark:border-neutral-700 p-6 w-full max-w-md shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto transition-colors" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2 transition-colors">
+                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Programar Horario Manual
               </h2>
-              <button onClick={() => setModalCreateOpen(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+              <button onClick={() => setModalCreateOpen(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {errorModalCreate && (
-              <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-danger-50 text-danger-700 border border-danger-200">
+              <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-danger-50 text-danger-700 border border-danger-200 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800 transition-colors">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{errorModalCreate}</span>
               </div>
@@ -1369,11 +1389,11 @@ const AdminHorarios = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
                   Docente y Curso (Ordenados por Escalafón)
                 </label>
                 <select
-                  className="input w-full font-medium"
+                  className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors"
                   onChange={(e) => {
                     const selected = asignacionesLibres.find(a => a.id === Number(e.target.value));
                     setAsigSeleccionada(selected);
@@ -1396,19 +1416,19 @@ const AdminHorarios = () => {
               {asigSeleccionada && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día de la semana</label>
-                    <select value={createForm.dia} onChange={(e) => setCreateForm({ ...createForm, dia: e.target.value })} className="input w-full">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">Día de la semana</label>
+                    <select value={createForm.dia} onChange={(e) => setCreateForm({ ...createForm, dia: e.target.value })} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors">
                       {dias.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora Inicio</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">Hora Inicio</label>
                       <select 
                         value={createForm.hora_inicio} 
                         onChange={(e) => handleCambioHoraInicioCreate(e.target.value)} 
-                        className="input w-full font-medium"
+                        className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors"
                         disabled={!asigSeleccionada}
                       >
                         <option value="">{asigSeleccionada ? "Seleccione..." : "Elija un curso primero"}</option>
@@ -1423,25 +1443,25 @@ const AdminHorarios = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1.5 text-neutral-400">Hora Fin (Auto)</label>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-400 mb-1.5 transition-colors">Hora Fin (Auto)</label>
                       <input 
                         type="text" 
                         value={createForm.hora_fin ? formatAMPM(createForm.hora_fin) : "Automático"} 
-                        className="input w-full font-semibold bg-neutral-100 text-neutral-500 cursor-not-allowed"
+                        className="input w-full font-semibold bg-neutral-100 dark:bg-neutral-900/50 dark:border-neutral-700 text-neutral-500 cursor-not-allowed transition-colors"
                         disabled 
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
                       {asigSeleccionada.tipo === "Teoria" ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
-                      {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
+                      {cargandoAmbientes && <span className="text-3xs text-primary-600 dark:text-primary-400 animate-pulse ml-2">(Sincronizando...)</span>}
                     </label>
                     <select 
                       value={createForm.ambiente_id ? String(createForm.ambiente_id) : ""} 
                       onChange={(e) => setCreateForm({ ...createForm, ambiente_id: e.target.value })} 
-                      className="input w-full font-medium bg-white text-neutral-800"
+                      className="input w-full font-medium bg-white dark:bg-neutral-900 dark:border-neutral-700 text-neutral-800 dark:text-white transition-colors"
                       disabled={cargandoAmbientes}
                     >
                       <option value="">Seleccione el ambiente físico...</option>
@@ -1455,12 +1475,12 @@ const AdminHorarios = () => {
                 </>
               )}
 
-              <div className="flex gap-2 justify-end pt-3 border-t border-neutral-100">
-                <button onClick={() => setModalCreateOpen(false)} className="btn-ghost">Cancelar</button>
+              <div className="flex gap-2 justify-end pt-3 border-t border-neutral-100 dark:border-neutral-700 transition-colors">
+                <button onClick={() => setModalCreateOpen(false)} className="btn-ghost dark:text-neutral-300 dark:hover:bg-neutral-700 transition-colors">Cancelar</button>
                 <button
                   onClick={handleGuardarHorarioManual}
                   disabled={guardandoManual || !asigSeleccionada || !createForm.hora_inicio || cargandoAmbientes}
-                  className="btn-primary bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                  className="btn-primary bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 dark:disabled:bg-blue-800 text-white flex items-center gap-2 border-none transition-colors"
                 >
                   {guardandoManual ? (
                     <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</>

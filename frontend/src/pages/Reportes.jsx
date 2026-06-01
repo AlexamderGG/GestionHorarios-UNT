@@ -193,8 +193,8 @@ const Reportes = () => {
         return (
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-full md:w-72">
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Docente</label>
-              <select value={docenteId} onChange={(e) => { setDocenteId(e.target.value); resetData(); }} className="input">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Docente</label>
+              <select value={docenteId} onChange={(e) => { setDocenteId(e.target.value); resetData(); }} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                 <option value="">-- Seleccione --</option>
                 {docentes.map((d) => (
                   <option key={d.id} value={d.id}>{`${d.apellidos}, ${d.nombres}`}</option>
@@ -207,8 +207,8 @@ const Reportes = () => {
         return (
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-full md:w-48">
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Dia</label>
-              <select value={dia} onChange={(e) => { setDia(e.target.value); resetData(); }} className="input">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Dia</label>
+              <select value={dia} onChange={(e) => { setDia(e.target.value); resetData(); }} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                 {DIAS.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -220,8 +220,8 @@ const Reportes = () => {
         return (
           <div className="flex flex-wrap gap-3 items-end">
             <div className="w-full md:w-56">
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Aula</label>
-              <select value={aulaId} onChange={(e) => { setAulaId(e.target.value); setLabId(""); resetData(); }} className="input">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Aula</label>
+              <select value={aulaId} onChange={(e) => { setAulaId(e.target.value); setLabId(""); resetData(); }} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                 <option value="">-- Seleccione --</option>
                 {aulas.map((a) => (
                   <option key={a.id} value={a.id}>{a.codigo} - {a.nombre}</option>
@@ -229,8 +229,8 @@ const Reportes = () => {
               </select>
             </div>
             <div className="w-full md:w-56">
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Laboratorio</label>
-              <select value={labId} onChange={(e) => { setLabId(e.target.value); setAulaId(""); resetData(); }} className="input">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Laboratorio</label>
+              <select value={labId} onChange={(e) => { setLabId(e.target.value); setAulaId(""); resetData(); }} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                 <option value="">-- Seleccione --</option>
                 {laboratorios.map((l) => (
                   <option key={l.id} value={l.id}>{l.codigo} - {l.nombre}</option>
@@ -267,24 +267,24 @@ const Reportes = () => {
     <div className="animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary-600" />
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <FileText className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             Reportes
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">Generacion y exportacion de reportes en PDF y Excel</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Generacion y exportacion de reportes en PDF y Excel</p>
         </div>
       </div>
 
       {/* Panel de filtros */}
-      <div className="card p-5 mb-6">
+      <div className="card p-5 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="w-full md:w-56">
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tipo de Reporte</label>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Tipo de Reporte</label>
             <div className="relative">
               <select
                 value={tipoReporte}
                 onChange={(e) => { setTipoReporte(e.target.value); resetData(); }}
-                className="input appearance-none pr-10"
+                className="input appearance-none pr-10 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
               >
                 <option value="por-docente">Por Docente</option>
                 <option value="por-dia">Por Dia</option>
@@ -292,13 +292,13 @@ const Reportes = () => {
                 <option value="operacional">Operacional</option>
                 <option value="gestion">Gestion Docente</option>
               </select>
-              <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-neutral-400 dark:text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
           <div className="w-full md:w-32">
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Semestre</label>
-            <input type="text" value={semestre} onChange={(e) => { setSemestre(e.target.value); resetData(); }} className="input" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Semestre</label>
+            <input type="text" value={semestre} onChange={(e) => { setSemestre(e.target.value); resetData(); }} className="input dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" />
           </div>
 
           {renderFiltros()}
@@ -327,7 +327,7 @@ const Reportes = () => {
           </button>
           <button
             onClick={handleExportarExcel}
-            className="btn-secondary flex items-center gap-2"
+            className="btn-secondary flex items-center gap-2 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
             <FileDown className="w-4 h-4" />
             Exportar Excel
@@ -336,12 +336,12 @@ const Reportes = () => {
       )}
 
       {/* Preview */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
         {data ? (
           renderPreview()
         ) : (
-          <div className="p-12 text-center text-neutral-400">
-            <FileText className="w-10 h-10 mx-auto mb-3 text-neutral-300" />
+          <div className="p-12 text-center text-neutral-400 dark:text-neutral-500">
+            <FileText className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
             <p className="text-sm">Configure los filtros y haga clic en "Generar Reporte" para visualizar.</p>
           </div>
         )}
@@ -356,72 +356,72 @@ const PreviewPorDocente = ({ data }) => {
   const { docente, semestre, horarios, cursos, resumen } = data;
   return (
     <div className="p-6">
-      <div className="border-b border-neutral-200 pb-4 mb-4">
-        <h2 className="text-lg font-bold text-neutral-900">Reporte por Docente</h2>
-        <p className="text-sm text-neutral-500">Semestre: {semestre}</p>
+      <div className="border-b border-neutral-200 dark:border-neutral-700 pb-4 mb-4">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Reporte por Docente</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Semestre: {semestre}</p>
       </div>
 
-      <div className="bg-neutral-50 rounded-lg p-4 mb-6 border border-neutral-200">
-        <h3 className="text-sm font-semibold text-neutral-800 mb-2">Informacion del Docente</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          <div><span className="text-neutral-500">Nombre:</span> {docente.apellidos}, {docente.nombres}</div>
-          <div><span className="text-neutral-500">Categoria:</span> {docente.categoria || "-"}</div>
-          <div><span className="text-neutral-500">Tipo:</span> {docente.tipo_nombramiento || "-"}</div>
-          <div><span className="text-neutral-500">Especialidad:</span> {docente.especialidad || "-"}</div>
-          <div><span className="text-neutral-500">Antiguedad:</span> {docente.antiguedad_anios || 0} anios</div>
-          <div><span className="text-neutral-500">Total Horas:</span> {resumen.total_horas}h</div>
+      <div className="bg-neutral-50 dark:bg-neutral-900/50 rounded-lg p-4 mb-6 border border-neutral-200 dark:border-neutral-700">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Informacion del Docente</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm dark:text-neutral-300">
+          <div><span className="text-neutral-500 dark:text-neutral-400">Nombre:</span> {docente.apellidos}, {docente.nombres}</div>
+          <div><span className="text-neutral-500 dark:text-neutral-400">Categoria:</span> {docente.categoria || "-"}</div>
+          <div><span className="text-neutral-500 dark:text-neutral-400">Tipo:</span> {docente.tipo_nombramiento || "-"}</div>
+          <div><span className="text-neutral-500 dark:text-neutral-400">Especialidad:</span> {docente.especialidad || "-"}</div>
+          <div><span className="text-neutral-500 dark:text-neutral-400">Antiguedad:</span> {docente.antiguedad_anios || 0} anios</div>
+          <div><span className="text-neutral-500 dark:text-neutral-400">Total Horas:</span> {resumen.total_horas}h</div>
         </div>
       </div>
 
-      <h3 className="text-sm font-semibold text-neutral-800 mb-2">Horario Semanal</h3>
+      <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Horario Semanal</h3>
       <div className="overflow-x-auto mb-6">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-primary-50">
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Dia</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Horario</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Curso</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ciclo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ambiente</th>
+            <tr className="bg-primary-50 dark:bg-primary-900/20">
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Dia</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Horario</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Curso</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ciclo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ambiente</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {horarios.length === 0 && (
-              <tr><td colSpan="5" className="border border-neutral-200 p-4 text-center text-neutral-400">Sin horarios</td></tr>
+              <tr><td colSpan="5" className="border border-neutral-200 dark:border-neutral-700 p-4 text-center text-neutral-400 dark:text-neutral-500">Sin horarios</td></tr>
             )}
             {horarios.map((h) => (
-              <tr key={h.id} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2 font-medium">{h.dia}</td>
-                <td className="border border-neutral-200 p-2">{h.hora_inicio} - {h.hora_fin}</td>
-                <td className="border border-neutral-200 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
-                <td className="border border-neutral-200 p-2">{h.curso_ciclo}</td>
-                <td className="border border-neutral-200 p-2">{h.aula_codigo ? `Aula ${h.aula_codigo}` : `Lab ${h.lab_codigo}`}</td>
+              <tr key={h.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 font-medium">{h.dia}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.hora_inicio} - {h.hora_fin}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.curso_ciclo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.aula_codigo ? `Aula ${h.aula_codigo}` : `Lab ${h.lab_codigo}`}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <h3 className="text-sm font-semibold text-neutral-800 mb-2">Cursos Asignados</h3>
+      <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Cursos Asignados</h3>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-neutral-100">
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Codigo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Curso</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ciclo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Tipo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Horas</th>
+            <tr className="bg-neutral-100 dark:bg-neutral-800">
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Codigo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Curso</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ciclo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Tipo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Horas</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {cursos.map((c, i) => (
-              <tr key={i} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2 font-medium">{c.codigo}</td>
-                <td className="border border-neutral-200 p-2">{c.nombre}</td>
-                <td className="border border-neutral-200 p-2">{c.ciclo}</td>
-                <td className="border border-neutral-200 p-2">{c.tipo}</td>
-                <td className="border border-neutral-200 p-2">{c.horas}h</td>
+              <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 font-medium">{c.codigo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{c.nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{c.ciclo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{c.tipo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{c.horas}h</td>
               </tr>
             ))}
           </tbody>
@@ -435,31 +435,31 @@ const PreviewPorDia = ({ data }) => {
   const { dia, semestre, horarios, docentes, ambientes, resumen } = data;
   return (
     <div className="p-6">
-      <div className="border-b border-neutral-200 pb-4 mb-4">
-        <h2 className="text-lg font-bold text-neutral-900">Reporte por Dia: {dia}</h2>
-        <p className="text-sm text-neutral-500">Semestre: {semestre} | Clases: {resumen.total_clases} | Docentes: {resumen.total_docentes} | Ambientes: {resumen.total_ambientes}</p>
+      <div className="border-b border-neutral-200 dark:border-neutral-700 pb-4 mb-4">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Reporte por Dia: {dia}</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Semestre: {semestre} | Clases: {resumen.total_clases} | Docentes: {resumen.total_docentes} | Ambientes: {resumen.total_ambientes}</p>
       </div>
 
-      <h3 className="text-sm font-semibold text-neutral-800 mb-2">Horarios</h3>
+      <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Horarios</h3>
       <div className="overflow-x-auto mb-6">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-primary-50">
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Horario</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Curso</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ciclo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Docente</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ambiente</th>
+            <tr className="bg-primary-50 dark:bg-primary-900/20">
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Horario</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Curso</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ciclo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Docente</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ambiente</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {horarios.map((h) => (
-              <tr key={h.id} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2">{h.hora_inicio} - {h.hora_fin}</td>
-                <td className="border border-neutral-200 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
-                <td className="border border-neutral-200 p-2">{h.curso_ciclo}</td>
-                <td className="border border-neutral-200 p-2">{h.docente_apellidos}, {h.docente_nombres}</td>
-                <td className="border border-neutral-200 p-2">{h.aula_codigo ? `Aula ${h.aula_codigo}` : `Lab ${h.lab_codigo}`}</td>
+              <tr key={h.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.hora_inicio} - {h.hora_fin}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.curso_ciclo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.docente_apellidos}, {h.docente_nombres}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.aula_codigo ? `Aula ${h.aula_codigo}` : `Lab ${h.lab_codigo}`}</td>
               </tr>
             ))}
           </tbody>
@@ -468,20 +468,20 @@ const PreviewPorDia = ({ data }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-sm font-semibold text-neutral-800 mb-2">Docentes</h3>
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Docentes</h3>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-neutral-100">
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Docente</th>
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Categoria</th>
+                <tr className="bg-neutral-100 dark:bg-neutral-800">
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Docente</th>
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Categoria</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="dark:text-neutral-300">
                 {docentes.map((d) => (
-                  <tr key={d.id} className="hover:bg-neutral-50">
-                    <td className="border border-neutral-200 p-2">{d.nombre}</td>
-                    <td className="border border-neutral-200 p-2">{d.categoria || "-"}</td>
+                  <tr key={d.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                    <td className="border border-neutral-200 dark:border-neutral-700 p-2">{d.nombre}</td>
+                    <td className="border border-neutral-200 dark:border-neutral-700 p-2">{d.categoria || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -489,20 +489,20 @@ const PreviewPorDia = ({ data }) => {
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-neutral-800 mb-2">Ambientes Utilizados</h3>
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Ambientes Utilizados</h3>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-neutral-100">
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Codigo</th>
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Nombre</th>
+                <tr className="bg-neutral-100 dark:bg-neutral-800">
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Codigo</th>
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Nombre</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="dark:text-neutral-300">
                 {ambientes.map((a, i) => (
-                  <tr key={i} className="hover:bg-neutral-50">
-                    <td className="border border-neutral-200 p-2 font-medium">{a.codigo}</td>
-                    <td className="border border-neutral-200 p-2">{a.nombre || "-"}</td>
+                  <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                    <td className="border border-neutral-200 dark:border-neutral-700 p-2 font-medium">{a.codigo}</td>
+                    <td className="border border-neutral-200 dark:border-neutral-700 p-2">{a.nombre || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -518,51 +518,51 @@ const PreviewPorAula = ({ data }) => {
   const { ambiente, tipo, semestre, horarios, docentes, resumen } = data;
   return (
     <div className="p-6">
-      <div className="border-b border-neutral-200 pb-4 mb-4">
-        <h2 className="text-lg font-bold text-neutral-900">Reporte por {tipo}: {ambiente.codigo}</h2>
-        <p className="text-sm text-neutral-500">{ambiente.nombre || ""} | Capacidad: {ambiente.capacidad || "-"} | Semestre: {semestre} | Clases: {resumen.total_clases}</p>
+      <div className="border-b border-neutral-200 dark:border-neutral-700 pb-4 mb-4">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Reporte por {tipo}: {ambiente.codigo}</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{ambiente.nombre || ""} | Capacidad: {ambiente.capacidad || "-"} | Semestre: {semestre} | Clases: {resumen.total_clases}</p>
       </div>
 
-      <h3 className="text-sm font-semibold text-neutral-800 mb-2">Horarios Asignados</h3>
+      <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Horarios Asignados</h3>
       <div className="overflow-x-auto mb-6">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-primary-50">
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Dia</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Horario</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Curso</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Ciclo</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Docente</th>
+            <tr className="bg-primary-50 dark:bg-primary-900/20">
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Dia</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Horario</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Curso</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Ciclo</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Docente</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {horarios.map((h) => (
-              <tr key={h.id} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2 font-medium">{h.dia}</td>
-                <td className="border border-neutral-200 p-2">{h.hora_inicio} - {h.hora_fin}</td>
-                <td className="border border-neutral-200 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
-                <td className="border border-neutral-200 p-2">{h.curso_ciclo}</td>
-                <td className="border border-neutral-200 p-2">{h.docente_apellidos}, {h.docente_nombres}</td>
+              <tr key={h.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 font-medium">{h.dia}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.hora_inicio} - {h.hora_fin}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">[{h.curso_codigo}] {h.curso_nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.curso_ciclo}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{h.docente_apellidos}, {h.docente_nombres}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <h3 className="text-sm font-semibold text-neutral-800 mb-2">Docentes que utilizan este ambiente</h3>
+      <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Docentes que utilizan este ambiente</h3>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-neutral-100">
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Docente</th>
-              <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase">Categoria</th>
+            <tr className="bg-neutral-100 dark:bg-neutral-800">
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Docente</th>
+              <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase">Categoria</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {docentes.map((d) => (
-              <tr key={d.id} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2">{d.nombre}</td>
-                <td className="border border-neutral-200 p-2">{d.categoria || "-"}</td>
+              <tr key={d.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{d.nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{d.categoria || "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -575,41 +575,41 @@ const PreviewPorAula = ({ data }) => {
 const PreviewOperacional = ({ data }) => {
   return (
     <div className="p-6">
-      <div className="border-b border-neutral-200 pb-4 mb-4">
-        <h2 className="text-lg font-bold text-neutral-900">Reporte Operacional</h2>
-        <p className="text-sm text-neutral-500">Horarios agrupados por ambiente</p>
+      <div className="border-b border-neutral-200 dark:border-neutral-700 pb-4 mb-4">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Reporte Operacional</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Horarios agrupados por ambiente</p>
       </div>
       {Object.keys(data).length === 0 && (
-        <p className="text-center text-neutral-400 py-8">No hay datos</p>
+        <p className="text-center text-neutral-400 dark:text-neutral-500 py-8">No hay datos</p>
       )}
       {Object.keys(data).map((ambienteKey) => (
         <div key={ambienteKey} className="mb-6">
-          <h3 className="text-sm font-bold bg-neutral-800 text-white p-2 rounded mb-2">{ambienteKey}</h3>
+          <h3 className="text-sm font-bold bg-neutral-800 dark:bg-neutral-700 text-white p-2 rounded mb-2">{ambienteKey}</h3>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-neutral-100">
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase w-1/4">Bloque</th>
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase w-5/12">Curso</th>
-                  <th className="border border-neutral-200 p-2 text-left text-xs font-semibold text-neutral-600 uppercase w-1/3">Docente</th>
+                <tr className="bg-neutral-100 dark:bg-neutral-800">
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase w-1/4">Bloque</th>
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase w-5/12">Curso</th>
+                  <th className="border border-neutral-200 dark:border-neutral-700 p-2 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase w-1/3">Docente</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="dark:text-neutral-300">
                 {data[ambienteKey].map((item, idx, arr) => {
                   const esPrimerDia = idx === 0 || item.dia !== arr[idx - 1].dia;
                   return (
                     <React.Fragment key={idx}>
                       {esPrimerDia && (
-                        <tr className="bg-neutral-50 font-bold">
-                          <td colSpan="3" className="border border-neutral-200 p-2 pl-3 text-xs uppercase text-primary-900">
+                        <tr className="bg-neutral-50 dark:bg-neutral-900/50 font-bold">
+                          <td colSpan="3" className="border border-neutral-200 dark:border-neutral-700 p-2 pl-3 text-xs uppercase text-primary-900 dark:text-primary-400">
                             {item.dia}
                           </td>
                         </tr>
                       )}
-                      <tr className="hover:bg-neutral-50">
-                        <td className="border border-neutral-200 p-2 pl-3">{item.hora_inicio} - {item.hora_fin}</td>
-                        <td className="border border-neutral-200 p-2">{item.curso?.nombre}</td>
-                        <td className="border border-neutral-200 p-2">{item.docente?.apellidos}, {item.docente?.nombres}</td>
+                      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                        <td className="border border-neutral-200 dark:border-neutral-700 p-2 pl-3">{item.hora_inicio} - {item.hora_fin}</td>
+                        <td className="border border-neutral-200 dark:border-neutral-700 p-2">{item.curso?.nombre}</td>
+                        <td className="border border-neutral-200 dark:border-neutral-700 p-2">{item.docente?.apellidos}, {item.docente?.nombres}</td>
                       </tr>
                     </React.Fragment>
                   );
@@ -626,30 +626,30 @@ const PreviewOperacional = ({ data }) => {
 const PreviewGestion = ({ data }) => {
   return (
     <div className="p-6">
-      <div className="border-b border-neutral-200 pb-4 mb-4">
-        <h2 className="text-lg font-bold text-neutral-900">Reporte de Gestion Docente</h2>
-        <p className="text-sm text-neutral-500">Resumen de carga horaria por docente</p>
+      <div className="border-b border-neutral-200 dark:border-neutral-700 pb-4 mb-4">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Reporte de Gestion Docente</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Resumen de carga horaria por docente</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-neutral-800 text-white">
-              <th className="border border-neutral-300 p-2 text-left text-xs font-semibold uppercase">Docente</th>
-              <th className="border border-neutral-300 p-2 text-left text-xs font-semibold uppercase">Categoria</th>
-              <th className="border border-neutral-300 p-2 text-left text-xs font-semibold uppercase">Antiguedad</th>
-              <th className="border border-neutral-300 p-2 text-left text-xs font-semibold uppercase">Horas Asignadas</th>
+            <tr className="bg-neutral-800 dark:bg-neutral-900 text-white">
+              <th className="border border-neutral-300 dark:border-neutral-700 p-2 text-left text-xs font-semibold uppercase">Docente</th>
+              <th className="border border-neutral-300 dark:border-neutral-700 p-2 text-left text-xs font-semibold uppercase">Categoria</th>
+              <th className="border border-neutral-300 dark:border-neutral-700 p-2 text-left text-xs font-semibold uppercase">Antiguedad</th>
+              <th className="border border-neutral-300 dark:border-neutral-700 p-2 text-left text-xs font-semibold uppercase">Horas Asignadas</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="dark:text-neutral-300">
             {data.length === 0 && (
-              <tr><td colSpan="4" className="border border-neutral-200 p-4 text-center text-neutral-400">Sin datos</td></tr>
+              <tr><td colSpan="4" className="border border-neutral-200 dark:border-neutral-700 p-4 text-center text-neutral-400 dark:text-neutral-500">Sin datos</td></tr>
             )}
             {data.map((doc, idx) => (
-              <tr key={idx} className="hover:bg-neutral-50">
-                <td className="border border-neutral-200 p-2 font-medium">{doc.nombre}</td>
-                <td className="border border-neutral-200 p-2">{doc.categoria}</td>
-                <td className="border border-neutral-200 p-2 text-center">{doc.antiguedad_anios} anios</td>
-                <td className="border border-neutral-200 p-2 text-center font-bold text-primary-700">{doc.horas} hrs</td>
+              <tr key={idx} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 font-medium">{doc.nombre}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2">{doc.categoria}</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 text-center">{doc.antiguedad_anios} anios</td>
+                <td className="border border-neutral-200 dark:border-neutral-700 p-2 text-center font-bold text-primary-700 dark:text-primary-400">{doc.horas} hrs</td>
               </tr>
             ))}
           </tbody>

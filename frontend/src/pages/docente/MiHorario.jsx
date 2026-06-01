@@ -325,15 +325,15 @@ const MiHorario = () => {
   if (loading) {
     return (
       <div className="animate-fade-in">
-        <div className="skeleton h-7 w-36 mb-6" />
-        <div className="card overflow-hidden">
+        <div className="skeleton h-7 w-36 mb-6 dark:opacity-20" />
+        <div className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
           <div className="flex">
             <div className="w-36 p-3">
-              {[...Array(5)].map((_, i) => <div key={`skel-h-${i}`} className="skeleton h-14 w-full mb-1 rounded" />)}
+              {[...Array(5)].map((_, i) => <div key={`skel-h-${i}`} className="skeleton h-14 w-full mb-1 rounded dark:opacity-20" />)}
             </div>
             {dias.map((dia, i) => (
               <div key={`skel-d-${i}`} className="flex-1 p-1.5">
-                {[...Array(5)].map((_, j) => <div key={`skel-b-${i}-${j}`} className="skeleton h-14 w-full mb-1 rounded" />)}
+                {[...Array(5)].map((_, j) => <div key={`skel-b-${i}-${j}`} className="skeleton h-14 w-full mb-1 rounded dark:opacity-20" />)}
               </div>
             ))}
           </div>
@@ -350,13 +350,13 @@ const MiHorario = () => {
       
       {/* 🌟 AVISO DE FASE DE DISPONIBILIDAD (Solo visible si no pueden editar) 🌟 */}
       {!config?.docentes_pueden_asignar && (
-        <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl mb-6 flex gap-3 shadow-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-indigo-600" />
+        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800/50 text-indigo-800 dark:text-indigo-300 p-4 rounded-xl mb-6 flex gap-3 shadow-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
           <div>
             <h4 className="font-bold">Fase de Disponibilidad Activa</h4>
-            <p className="text-sm mt-1 text-indigo-700">
+            <p className="text-sm mt-1 text-indigo-700 dark:text-indigo-400">
               El sistema se encuentra en modo recolección de preferencias. La asignación oficial de horarios está a cargo de la Secretaría. 
-              <strong> Las modificaciones directas están deshabilitadas.</strong>
+              <strong className="dark:text-indigo-200"> Las modificaciones directas están deshabilitadas.</strong>
             </p>
           </div>
         </div>
@@ -364,48 +364,48 @@ const MiHorario = () => {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-primary-600" />
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             Mi Horario
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             {(horarios || []).length} clase{(horarios || []).length !== 1 ? 's' : ''} asignada{(horarios || []).length !== 1 ? 's' : ''}
-            {semestre && <span className="ml-2 text-neutral-400">· Semestre: {semestre}</span>}
+            {semestre && <span className="ml-2 text-neutral-400 dark:text-neutral-500">· Semestre: {semestre}</span>}
           </p>
         </div>
         
         {config?.docentes_pueden_asignar && demoEstado?.turnoActual && (
-          <div className={`badge px-3 py-1.5 ${demoEstado.turnoActual.docente_id === user?.id ? 'badge-success' : 'badge-warning'}`}>
+          <div className={`badge px-3 py-1.5 ${demoEstado.turnoActual.docente_id === user?.id ? 'bg-success-100 text-success-800 dark:bg-success-900/40 dark:text-success-400' : 'bg-warning-100 text-warning-800 dark:bg-warning-900/40 dark:text-warning-400'}`}>
             {demoEstado.turnoActual.docente_id === user?.id ? 'Tu turno — Puedes seleccionar' : `Esperando turno (${demoEstado.turnoActual.nombre})`}
           </div>
         )}
       </div>
 
       {(horarios || []).length === 0 ? (
-        <div className="card">
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700">
           <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-              <Inbox className="w-8 h-8 text-neutral-400" />
+            <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-700/50 flex items-center justify-center mb-4">
+              <Inbox className="w-8 h-8 text-neutral-400 dark:text-neutral-500" />
             </div>
-            <h3 className="text-lg font-semibold text-neutral-800 mb-1">Sin horarios asignados</h3>
-            <p className="text-sm text-neutral-500 text-center max-w-md">
-              No tienes horarios asignados para el semestre <strong>{semestre}</strong>.
+            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-1">Sin horarios asignados</h3>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-md">
+              No tienes horarios asignados para el semestre <strong className="dark:text-neutral-300">{semestre}</strong>.
             </p>
           </div>
         </div>
       ) : (
         <>
           {/* Desktop Grid */}
-          <div className="hidden md:block card overflow-hidden">
+          <div className="hidden md:block card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-neutral-50">
-                    <th className="border-b border-r border-neutral-200 p-3 text-left text-xs font-semibold text-neutral-500 uppercase w-36 sticky left-0 bg-neutral-50 z-10">
+                  <tr className="bg-neutral-50 dark:bg-neutral-900/50">
+                    <th className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-left text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-36 sticky left-0 bg-neutral-50 dark:bg-neutral-900 z-10">
                       Bloque
                     </th>
                     {dias.map(dia => (
-                      <th key={`th-${dia}`} className="border-b border-r border-neutral-200 p-3 text-center text-xs font-semibold text-neutral-500 uppercase min-w-[160px] last:border-r-0">
+                      <th key={`th-${dia}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-center text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase min-w-[160px] last:border-r-0">
                         {dia}
                       </th>
                     ))}
@@ -413,14 +413,14 @@ const MiHorario = () => {
                 </thead>
                 <tbody>
                   {bloques.map((bloque, idx) => (
-                    <tr key={`tr-${bloque.label}-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50/30'}>
-                      <td className="border-b border-r border-neutral-200 p-3 text-neutral-600 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                    <tr key={`tr-${bloque.label}-${idx}`} className={idx % 2 === 0 ? 'bg-white dark:bg-neutral-800' : 'bg-neutral-50/30 dark:bg-neutral-800/50'}>
+                      <td className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-neutral-600 dark:text-neutral-400 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
                         {bloque.label}
                       </td>
                       {dias.map(dia => {
                         const h = !loading ? horarioEnBloque(dia, bloque.inicio, bloque.fin) : null;
                         return (
-                          <td key={`td-${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 p-1.5 align-top last:border-r-0">
+                          <td key={`td-${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-1.5 align-top last:border-r-0">
                             {h ? (
                               (() => {
                                 const color = getColorCurso(h?.curso?.codigo);
@@ -488,18 +488,18 @@ const MiHorario = () => {
 
               if (horariosDelDia.length === 0) return null;
               return (
-                <div key={`mob-${dia}`} className="card overflow-hidden">
-                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
-                    <h3 className="text-sm font-semibold text-neutral-800">{dia}</h3>
+                <div key={`mob-${dia}`} className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
+                  <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700">
+                    <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{dia}</h3>
                   </div>
-                  <div className="divide-y divide-neutral-100">
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-700/50">
                     {horariosDelDia
                       .sort((a, b) => String(a?.hora_inicio || '').localeCompare(String(b?.hora_inicio || '')))
                       .map(h => (
                         <div key={`mob-h-${h?.id}`} className="p-3 flex items-start gap-3">
                           <div className="flex-shrink-0 w-14 text-center pt-0.5">
-                            <p className="text-xs font-medium text-neutral-800">{h?.hora_inicio ? String(h.hora_inicio).slice(0, 5) : ""}</p>
-                            <p className="text-xs text-neutral-400">{h?.hora_fin ? String(h.hora_fin).slice(0, 5) : ""}</p>
+                            <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">{h?.hora_inicio ? String(h.hora_inicio).slice(0, 5) : ""}</p>
+                            <p className="text-xs text-neutral-400 dark:text-neutral-500">{h?.hora_fin ? String(h.hora_fin).slice(0, 5) : ""}</p>
                           </div>
                           {(() => {
                             const color = getColorCurso(h?.curso?.codigo);
@@ -527,7 +527,7 @@ const MiHorario = () => {
                                   <div className="flex items-center gap-3 mt-2">
                                     <button
                                       onClick={(e) => { e.stopPropagation(); eliminarHorario(h?.id); }}
-                                      className="flex items-center gap-1 text-danger-500 text-xs font-medium"
+                                      className="flex items-center gap-1 text-danger-500 hover:text-danger-700 text-xs font-medium"
                                     >
                                       <Trash2 className="w-3 h-3" />
                                       Eliminar
@@ -549,30 +549,30 @@ const MiHorario = () => {
 
       {/* Edit Modal (Este solo se abre si se cumplió la condición de permiso) */}
       {editando && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
-          <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
+          <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in dark:bg-neutral-800 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-primary-600" />
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 Modificar Mi Horario
               </h2>
-              <button onClick={() => setEditando(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+              <button onClick={() => setEditando(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día de la semana</label>
-                <select value={editForm?.dia || "Lunes"} onChange={(e) => setEditForm({ ...editForm, dia: e.target.value })} className="input w-full">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Día de la semana</label>
+                <select value={editForm?.dia || "Lunes"} onChange={(e) => setEditForm({ ...editForm, dia: e.target.value })} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                   {dias.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hora Inicio</label>
-                  <select value={editForm?.hora_inicio || ""} onChange={(e) => handleCambioHoraInicioEdit(e.target.value)} className="input w-full font-medium">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Hora Inicio</label>
+                  <select value={editForm?.hora_inicio || ""} onChange={(e) => handleCambioHoraInicioEdit(e.target.value)} className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                     <option value="" disabled>Seleccione...</option>
                     {horasDisponibles.map((h) => {
                       const conflicto = verificarConflictoEdit(h);
@@ -585,20 +585,20 @@ const MiHorario = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5 text-neutral-400">Hora Fin (Auto)</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-500 mb-1.5 text-neutral-400">Hora Fin (Auto)</label>
                   <input 
                     type="text" 
                     value={editForm?.hora_fin ? formatAMPM(editForm.hora_fin) : "Automático"} 
-                    className="input w-full font-semibold bg-neutral-100 text-neutral-500 cursor-not-allowed"
+                    className="input w-full font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed border-transparent dark:border-neutral-700"
                     disabled 
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   {esTeoria ? "Seleccionar Aula" : "Seleccionar Laboratorio"}
-                  {cargandoAmbientes && <span className="text-3xs text-primary-600 animate-pulse ml-2">(Sincronizando...)</span>}
+                  {cargandoAmbientes && <span className="text-3xs text-primary-600 dark:text-primary-400 animate-pulse ml-2">(Sincronizando...)</span>}
                 </label>
                 
                 <select 
@@ -610,20 +610,20 @@ const MiHorario = () => {
                       setEditForm({ ...editForm, laboratorio_id: e.target.value, aula_id: null });
                     }
                   }} 
-                  className="input w-full font-medium bg-white text-neutral-800 border border-neutral-300 rounded p-2"
+                  className="input w-full font-medium bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded p-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   disabled={cargandoAmbientes}
                 >
                   <option value="">Seleccione el ambiente físico...</option>
                   {(ambientesValidadosAPI || []).map(amb => (
-                    <option key={amb.id} value={String(amb.id)} disabled={amb.esta_ocupado}>
+                    <option key={amb.id} value={String(amb.id)} disabled={amb.esta_ocupado} className="dark:bg-neutral-900 dark:text-white">
                       {amb.codigo} — Cap: {amb.capacidad} {amb.esta_ocupado ? "❌ (OCUPADO)" : "✅ (DISPONIBLE)"}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100">
-                <button onClick={() => setEditando(null)} className="btn-ghost" disabled={guardando || cargandoAmbientes}>Cancelar</button>
+              <div className="flex gap-2 justify-end pt-2 border-t border-neutral-100 dark:border-neutral-700/50">
+                <button onClick={() => setEditando(null)} className="btn-ghost dark:text-neutral-300 dark:hover:bg-neutral-700" disabled={guardando || cargandoAmbientes}>Cancelar</button>
                 <button onClick={handleGuardarEdicion} disabled={guardando || !editForm?.hora_inicio || cargandoAmbientes} className="btn-primary flex items-center gap-2">
                   {guardando ? (
                     <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</>

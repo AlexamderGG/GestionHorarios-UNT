@@ -109,7 +109,7 @@ const MisDisponibilidades = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-neutral-500">Cargando configuración...</div>;
+  if (loading) return <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">Cargando configuración...</div>;
 
   const preferidos = disponibilidades.filter(d => d.tipo === 'PREFERIDO');
   const restringidos = disponibilidades.filter(d => d.tipo === 'RESTRINGIDO');
@@ -117,47 +117,49 @@ const MisDisponibilidades = () => {
   return (
     <div className="animate-fade-in max-w-5xl mx-auto pb-10">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-          <Clock className="w-6 h-6 text-primary-600" />
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+          <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           Mi Disponibilidad Horaria
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Semestre Activo: <span className="font-semibold text-primary-700">{config?.semestre_activo}</span>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          Semestre Activo: <span className="font-semibold text-primary-700 dark:text-primary-400">{config?.semestre_activo}</span>
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl p-4 mb-8 flex gap-3 text-sm">
+      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 text-blue-800 dark:text-blue-300 rounded-xl p-4 mb-8 flex gap-3 text-sm">
         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <p>
-          En este semestre, la <strong>Secretaría</strong> será la encargada de asignar los horarios de acuerdo al escalafón docente. 
-          Por favor, ingrese los bloques de tiempo en los que <strong>prefiere</strong> dictar clases y aquellos en los que le es <strong>imposible</strong> asistir.
+          En este semestre, la <strong className="dark:text-blue-200">Secretaría</strong> será la encargada de asignar los horarios de acuerdo al escalafón docente. 
+          Por favor, ingrese los bloques de tiempo en los que <strong className="dark:text-blue-200">prefiere</strong> dictar clases y aquellos en los que le es <strong className="dark:text-blue-200">imposible</strong> asistir.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulario para agregar */}
         <div className="lg:col-span-1">
-          <form onSubmit={agregarBloque} className="card p-5 sticky top-6">
-            <h2 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary-600" />
+          <form onSubmit={agregarBloque} className="card p-5 sticky top-6 dark:bg-neutral-800 dark:border-neutral-700">
+            <h2 className="text-lg font-bold text-neutral-800 dark:text-white mb-4 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               Añadir Bloque
             </h2>
 
             {error && (
-              <div className="mb-4 text-sm text-danger-600 bg-danger-50 p-3 rounded-lg border border-danger-200">
+              <div className="mb-4 text-sm text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/30 p-3 rounded-lg border border-danger-200 dark:border-danger-800/50">
                 {error}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tipo de Bloque</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Tipo de Bloque</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, tipo: 'PREFERIDO' })}
                     className={`py-2 px-3 text-sm rounded-lg font-medium border transition-colors ${
-                      form.tipo === 'PREFERIDO' ? 'bg-success-50 border-success-500 text-success-700' : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
+                      form.tipo === 'PREFERIDO' 
+                        ? 'bg-success-50 dark:bg-success-900/40 border-success-500 dark:border-success-400 text-success-700 dark:text-success-300' 
+                        : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                     }`}
                   >
                     Preferido
@@ -166,7 +168,9 @@ const MisDisponibilidades = () => {
                     type="button"
                     onClick={() => setForm({ ...form, tipo: 'RESTRINGIDO' })}
                     className={`py-2 px-3 text-sm rounded-lg font-medium border transition-colors ${
-                      form.tipo === 'RESTRINGIDO' ? 'bg-danger-50 border-danger-500 text-danger-700' : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
+                      form.tipo === 'RESTRINGIDO' 
+                        ? 'bg-danger-50 dark:bg-danger-900/40 border-danger-500 dark:border-danger-400 text-danger-700 dark:text-danger-300' 
+                        : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                     }`}
                   >
                     Restringido
@@ -175,23 +179,23 @@ const MisDisponibilidades = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Día</label>
-                <select value={form.dia} onChange={(e) => setForm({ ...form, dia: e.target.value })} className="input w-full">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Día</label>
+                <select value={form.dia} onChange={(e) => setForm({ ...form, dia: e.target.value })} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                   {diasDisponibles.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Desde</label>
-                  <select value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} className="input w-full font-medium">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Desde</label>
+                  <select value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                     <option value="">Inicio...</option>
                     {horasDisponibles.map(h => <option key={h} value={h}>{formatAMPM(h)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Hasta</label>
-                  <select value={form.hora_fin} onChange={(e) => setForm({ ...form, hora_fin: e.target.value })} className="input w-full font-medium">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Hasta</label>
+                  <select value={form.hora_fin} onChange={(e) => setForm({ ...form, hora_fin: e.target.value })} className="input w-full font-medium dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
                     <option value="">Fin...</option>
                     {horasDisponibles.map(h => <option key={h} value={h}>{formatAMPM(h)}</option>)}
                   </select>
@@ -208,22 +212,22 @@ const MisDisponibilidades = () => {
         {/* Listado de bloques registrados */}
         <div className="lg:col-span-2 space-y-6">
           {/* Preferencias */}
-          <div className="card p-5 border-t-4 border-t-success-500">
-            <h3 className="text-base font-bold text-neutral-800 flex items-center gap-2 mb-4">
-              <CheckCircle className="w-5 h-5 text-success-600" />
+          <div className="card p-5 border-t-4 border-t-success-500 dark:bg-neutral-800 dark:border-x-neutral-700 dark:border-b-neutral-700">
+            <h3 className="text-base font-bold text-neutral-800 dark:text-white flex items-center gap-2 mb-4">
+              <CheckCircle className="w-5 h-5 text-success-600 dark:text-success-400" />
               Horarios Preferidos
             </h3>
             {preferidos.length === 0 ? (
-              <p className="text-sm text-neutral-400 italic text-center py-4">No ha registrado horarios preferidos.</p>
+              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic text-center py-4">No ha registrado horarios preferidos.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {preferidos.map(p => (
-                  <div key={p.id} className="flex items-center justify-between bg-success-50 border border-success-100 p-3 rounded-lg group">
+                  <div key={p.id} className="flex items-center justify-between bg-success-50 dark:bg-success-900/20 border border-success-100 dark:border-success-800/50 p-3 rounded-lg group transition-colors">
                     <div>
-                      <p className="text-sm font-bold text-success-800">{p.dia}</p>
-                      <p className="text-xs text-success-600">{formatAMPM(p.hora_inicio)} - {formatAMPM(p.hora_fin)}</p>
+                      <p className="text-sm font-bold text-success-800 dark:text-success-400">{p.dia}</p>
+                      <p className="text-xs text-success-600 dark:text-success-500">{formatAMPM(p.hora_inicio)} - {formatAMPM(p.hora_fin)}</p>
                     </div>
-                    <button onClick={() => eliminarBloque(p.id)} className="text-success-400 hover:text-danger-500 transition-colors p-1.5">
+                    <button onClick={() => eliminarBloque(p.id)} className="text-success-400 dark:text-success-600 hover:text-danger-500 dark:hover:text-danger-400 transition-colors p-1.5">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -233,22 +237,22 @@ const MisDisponibilidades = () => {
           </div>
 
           {/* Restricciones */}
-          <div className="card p-5 border-t-4 border-t-danger-500">
-            <h3 className="text-base font-bold text-neutral-800 flex items-center gap-2 mb-4">
-              <XCircle className="w-5 h-5 text-danger-600" />
+          <div className="card p-5 border-t-4 border-t-danger-500 dark:bg-neutral-800 dark:border-x-neutral-700 dark:border-b-neutral-700">
+            <h3 className="text-base font-bold text-neutral-800 dark:text-white flex items-center gap-2 mb-4">
+              <XCircle className="w-5 h-5 text-danger-600 dark:text-danger-400" />
               Restricciones (No disponible)
             </h3>
             {restringidos.length === 0 ? (
-              <p className="text-sm text-neutral-400 italic text-center py-4">No ha registrado restricciones horarias.</p>
+              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic text-center py-4">No ha registrado restricciones horarias.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {restringidos.map(r => (
-                  <div key={r.id} className="flex items-center justify-between bg-danger-50 border border-danger-100 p-3 rounded-lg group">
+                  <div key={r.id} className="flex items-center justify-between bg-danger-50 dark:bg-danger-900/20 border border-danger-100 dark:border-danger-800/50 p-3 rounded-lg group transition-colors">
                     <div>
-                      <p className="text-sm font-bold text-danger-800">{r.dia}</p>
-                      <p className="text-xs text-danger-600">{formatAMPM(r.hora_inicio)} - {formatAMPM(r.hora_fin)}</p>
+                      <p className="text-sm font-bold text-danger-800 dark:text-danger-400">{r.dia}</p>
+                      <p className="text-xs text-danger-600 dark:text-danger-500">{formatAMPM(r.hora_inicio)} - {formatAMPM(r.hora_fin)}</p>
                     </div>
-                    <button onClick={() => eliminarBloque(r.id)} className="text-danger-400 hover:text-danger-600 transition-colors p-1.5">
+                    <button onClick={() => eliminarBloque(r.id)} className="text-danger-400 dark:text-danger-600 hover:text-danger-600 dark:hover:text-danger-400 transition-colors p-1.5">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

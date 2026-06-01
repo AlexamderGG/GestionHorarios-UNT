@@ -49,20 +49,20 @@ const EstadoDocentes = () => {
   if (loading) {
     return (
       <div className="animate-fade-in">
-        <div className="skeleton h-7 w-64 mb-6" />
-        <div className="card p-4 mb-6">
+        <div className="skeleton h-7 w-64 mb-6 dark:opacity-20" />
+        <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
           <div className="flex gap-4">
-            <div className="skeleton h-10 w-28" />
-            <div className="skeleton h-10 w-40" />
+            <div className="skeleton h-10 w-28 dark:opacity-20" />
+            <div className="skeleton h-10 w-40 dark:opacity-20" />
           </div>
         </div>
-        <div className="card p-5 mb-6">
-          <div className="skeleton h-5 w-full mb-2" />
-          <div className="skeleton h-3 w-full rounded-full" />
+        <div className="card p-5 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
+          <div className="skeleton h-5 w-full mb-2 dark:opacity-20" />
+          <div className="skeleton h-3 w-full rounded-full dark:opacity-20" />
         </div>
-        <div className="card">
+        <div className="card dark:bg-neutral-800 dark:border-neutral-700">
           <div className="p-4">
-            <div className="skeleton h-64 w-full rounded-lg" />
+            <div className="skeleton h-64 w-full rounded-lg dark:opacity-20" />
           </div>
         </div>
       </div>
@@ -72,37 +72,37 @@ const EstadoDocentes = () => {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-          <Users className="w-6 h-6 text-primary-600" />
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+          <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           Estado de Selección de Horarios
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
           Progreso de selección de horarios por docente
         </p>
       </div>
 
       {/* Filters */}
-      <div className="card p-4 mb-6">
+      <div className="card p-4 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
               Semestre
             </label>
             <input
               type="text"
               value={semestre}
               onChange={(e) => setSemestre(e.target.value)}
-              className="input w-28"
+              className="input w-28 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
               Filtro
             </label>
             <select
               value={filtro}
               onChange={(e) => setFiltro(e.target.value)}
-              className="input w-44"
+              className="input w-44 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white"
             >
               <option value="todos">Todos ({estado.length})</option>
               <option value="completados">Completados ({completados})</option>
@@ -113,49 +113,49 @@ const EstadoDocentes = () => {
       </div>
 
       {/* Progress */}
-      <div className="card p-5 mb-6">
+      <div className="card p-5 mb-6 dark:bg-neutral-800 dark:border-neutral-700">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-neutral-700 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary-600" />
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary-600 dark:text-primary-400" />
             Progreso general
           </span>
-          <span className="text-sm text-neutral-500">
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">
             {completados} de {estado.length} docentes
           </span>
         </div>
-        <div className="w-full bg-neutral-100 rounded-full h-2.5">
+        <div className="w-full bg-neutral-100 dark:bg-neutral-700/50 rounded-full h-2.5">
           <div
-            className="bg-primary-600 h-2.5 rounded-full transition-all duration-500"
+            className="bg-primary-600 dark:bg-primary-500 h-2.5 rounded-full transition-all duration-500"
             style={{ width: `${porcentaje}%` }}
           />
         </div>
-        <p className="text-xs text-neutral-400 mt-1.5">
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
           {porcentaje}% completado
         </p>
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">
+              <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700">
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Docente
                 </th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Email
                 </th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 uppercase">
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Categoría
                 </th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase">
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Asignaciones
                 </th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase">
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Con Horario
                 </th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 uppercase">
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                   Estado
                 </th>
               </tr>
@@ -164,21 +164,22 @@ const EstadoDocentes = () => {
               {filtrados.map((e) => (
                 <tr
                   key={e.docente_id}
-                  className="border-b border-neutral-100 hover:bg-neutral-50/50 transition-colors"
+                  className="border-b border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors"
                 >
-                  <td className="p-3 font-medium text-neutral-800">
+                  <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">
                     {e.nombre}
                   </td>
-                  <td className="p-3 text-neutral-500 text-xs font-mono">
+                  <td className="p-3 text-neutral-500 dark:text-neutral-400 text-xs font-mono">
                     {e.email}
                   </td>
                   <td className="p-3">
+                    {/* Nota: si badge-primary está en index.css asegúrate de que tenga compatibilidad oscura allí, si no la tiene globalmente Tailwind lo procesará por el componente base */}
                     <span className="badge-primary">{e.categoria}</span>
                   </td>
-                  <td className="p-3 text-center text-neutral-700">
+                  <td className="p-3 text-center text-neutral-700 dark:text-neutral-300">
                     {e.total_asignaciones}
                   </td>
-                  <td className="p-3 text-center text-neutral-700">
+                  <td className="p-3 text-center text-neutral-700 dark:text-neutral-300">
                     {e.asignaciones_con_horario}
                   </td>
                   <td className="p-3 text-center">
@@ -198,7 +199,7 @@ const EstadoDocentes = () => {
               ))}
               {filtrados.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-neutral-400">
+                  <td colSpan={6} className="p-12 text-center text-neutral-400 dark:text-neutral-500">
                     No hay docentes para mostrar.
                   </td>
                 </tr>

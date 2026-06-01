@@ -165,19 +165,19 @@ const Excepciones = () => {
 
   const getBadgeEstado = (estado) => {
     switch (estado) {
-      case 'Aprobado': return 'badge bg-success-50 text-success-700 border-success-200';
-      case 'Rechazado': return 'badge bg-danger-50 text-danger-700 border-danger-200';
-      default: return 'badge bg-warning-50 text-warning-700 border-warning-200';
+      case 'Aprobado': return 'badge bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/50';
+      case 'Rechazado': return 'badge bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border-danger-200 dark:border-danger-800/50';
+      default: return 'badge bg-warning-50 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 border-warning-200 dark:border-warning-800/50';
     }
   };
 
   if (loading) {
     return (
       <div className="p-6 space-y-4 max-w-5xl animate-pulse">
-        <div className="h-8 bg-neutral-200 rounded w-1/4 mb-4" />
+        <div className="h-8 bg-neutral-200 dark:bg-neutral-800 rounded w-1/4 mb-4" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="h-64 bg-neutral-200 rounded" />
-          <div className="h-64 bg-neutral-200 rounded lg:col-span-2" />
+          <div className="h-64 bg-neutral-200 dark:bg-neutral-800 rounded" />
+          <div className="h-64 bg-neutral-200 dark:bg-neutral-800 rounded lg:col-span-2" />
         </div>
       </div>
     );
@@ -186,35 +186,35 @@ const Excepciones = () => {
   return (
     <div className="animate-fade-in max-w-5xl p-4">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-          <HelpCircle className="w-6 h-6 text-amber-600" />
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+          <HelpCircle className="w-6 h-6 text-amber-600 dark:text-amber-500" />
           Excepciones de Horario
         </h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Las permutas propuestas se filtran automáticamente garantizando coincidencia estricta de <strong>Ciclo</strong>, <strong>Horas Académicas</strong> y <strong>Ambiente (Aula / Lab)</strong>.
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          Las permutas propuestas se filtran automáticamente garantizando coincidencia estricta de <strong className="dark:text-neutral-300">Ciclo</strong>, <strong className="dark:text-neutral-300">Horas Académicas</strong> y <strong className="dark:text-neutral-300">Ambiente (Aula / Lab)</strong>.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulario */}
-        <div className="card p-5 bg-white border border-neutral-200 rounded-xl shadow-sm h-fit">
-          <h2 className="text-sm font-bold text-neutral-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-primary-500" /> Nueva Solicitud
+        <div className="card p-5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-sm h-fit">
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-primary-500 dark:text-primary-400" /> Nueva Solicitud
           </h2>
 
-          {error && <div className="mb-4 px-3 py-2 bg-danger-50 text-danger-700 border border-danger-200 rounded-lg text-xs">{error}</div>}
-          {success && <div className="mb-4 px-3 py-2 bg-success-50 text-success-700 border border-success-200 rounded-lg text-xs">{success}</div>}
+          {error && <div className="mb-4 px-3 py-2 bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 border border-danger-200 dark:border-danger-800/50 rounded-lg text-xs">{error}</div>}
+          {success && <div className="mb-4 px-3 py-2 bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/50 rounded-lg text-xs">{success}</div>}
 
           {misCursosPendientes.length === 0 ? (
-            <div className="text-center py-6 text-neutral-400 text-xs">
-              <CheckCircle className="w-8 h-8 mx-auto mb-2 text-success-400" />
+            <div className="text-center py-6 text-neutral-400 dark:text-neutral-500 text-xs">
+              <CheckCircle className="w-8 h-8 mx-auto mb-2 text-success-400 dark:text-success-500" />
               Todos tus cursos ya cuentan con un horario asignado o una solicitud registrada.
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 text-sm">
               <div>
-                <label className="block font-medium text-neutral-700 mb-1">Curso sin Horario</label>
-                <select value={asignacionId} onChange={(e) => setAsignacionId(e.target.value)} className="input text-xs w-full border border-neutral-300 rounded p-2 bg-white text-neutral-800">
+                <label className="block font-medium text-neutral-700 dark:text-neutral-300 mb-1">Curso sin Horario</label>
+                <select value={asignacionId} onChange={(e) => setAsignacionId(e.target.value)} className="input text-xs w-full border border-neutral-300 dark:border-neutral-700 rounded p-2 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white">
                   <option value="">Selecciona la asignatura...</option>
                   {misCursosPendientes.map(c => {
                     const esTeoria = c.tipo === 'Teoria' || c.tipo === 'Teoría';
@@ -227,20 +227,20 @@ const Excepciones = () => {
                   })}
                 </select>
                 {horasRequeridas && (
-                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-2xs text-amber-800 flex items-center gap-1.5 font-medium">
-                    <Layers className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-2xs text-amber-800 dark:text-amber-400 flex items-center gap-1.5 font-medium">
+                    <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
                     Requisito: Ciclo {cursoSeleccionado.ciclo || cursoSeleccionado.curso_ciclo} · {horasRequeridas}h en {cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría' ? 'AULA' : 'LABORATORIO'}
                   </div>
                 )}
               </div>
 
               {asignacionId && (
-                <div className="space-y-3 bg-neutral-50 p-3 rounded-lg border border-neutral-200">
-                  <label className="block font-bold text-neutral-800 text-xs uppercase tracking-wide">Propuestas de Permuta (Mismo Ciclo, Tamaño y Ambiente)</label>
+                <div className="space-y-3 bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                  <label className="block font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wide">Propuestas de Permuta (Mismo Ciclo, Tamaño y Ambiente)</label>
                   
                   <div>
-                    <span className="text-2xs font-medium text-neutral-500 block mb-1">Opción Prioridad 1</span>
-                    <select value={opcion1} onChange={(e) => setOpcion1(e.target.value)} className="input text-3xs w-full border border-neutral-300 rounded bg-white p-1.5 text-neutral-800">
+                    <span className="text-2xs font-medium text-neutral-500 dark:text-neutral-400 block mb-1">Opción Prioridad 1</span>
+                    <select value={opcion1} onChange={(e) => setOpcion1(e.target.value)} className="input text-3xs w-full border border-neutral-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 p-1.5 text-neutral-800 dark:text-white">
                       <option value="">Dejar Opción 1 a criterio de Secretaría</option>
                       {horariosOpcionesFiltradas.map(h => {
                         const hIn = parseInt(h.hora_inicio?.slice(0,2));
@@ -256,8 +256,8 @@ const Excepciones = () => {
                   </div>
 
                   <div>
-                    <span className="text-2xs font-medium text-neutral-500 block mb-1">Opción Prioridad 2 (Opcional)</span>
-                    <select value={opcion2} disabled={!opcion1} onChange={(e) => setOpcion2(e.target.value)} className="input text-3xs w-full border border-neutral-300 rounded bg-white p-1.5 text-neutral-800 disabled:bg-neutral-100 disabled:cursor-not-allowed">
+                    <span className="text-2xs font-medium text-neutral-500 dark:text-neutral-400 block mb-1">Opción Prioridad 2 (Opcional)</span>
+                    <select value={opcion2} disabled={!opcion1} onChange={(e) => setOpcion2(e.target.value)} className="input text-3xs w-full border border-neutral-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 p-1.5 text-neutral-800 dark:text-white disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed">
                       <option value="">Ninguno</option>
                       {horariosOpcionesFiltradas.filter(h => h.id !== Number(opcion1)).map(h => {
                         const hIn = parseInt(h.hora_inicio?.slice(0,2));
@@ -273,8 +273,8 @@ const Excepciones = () => {
                   </div>
 
                   <div>
-                    <span className="text-2xs font-medium text-neutral-500 block mb-1">Opción Prioridad 3 (Opcional)</span>
-                    <select value={opcion3} disabled={!opcion2} onChange={(e) => setOpcion3(e.target.value)} className="input text-3xs w-full border border-neutral-300 rounded bg-white p-1.5 text-neutral-800 disabled:bg-neutral-100 disabled:cursor-not-allowed">
+                    <span className="text-2xs font-medium text-neutral-500 dark:text-neutral-400 block mb-1">Opción Prioridad 3 (Opcional)</span>
+                    <select value={opcion3} disabled={!opcion2} onChange={(e) => setOpcion3(e.target.value)} className="input text-3xs w-full border border-neutral-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 p-1.5 text-neutral-800 dark:text-white disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed">
                       <option value="">Ninguno</option>
                       {horariosOpcionesFiltradas.filter(h => h.id !== Number(opcion1) && h.id !== Number(opcion2)).map(h => {
                         const hIn = parseInt(h.hora_inicio?.slice(0,2));
@@ -292,17 +292,17 @@ const Excepciones = () => {
               )}
 
               <div>
-                <label className="block font-medium text-neutral-700 mb-1">Justificación del Conflicto</label>
+                <label className="block font-medium text-neutral-700 dark:text-neutral-300 mb-1">Justificación del Conflicto</label>
                 <textarea
                   rows="3"
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
                   placeholder="Detalla tu cruce horario externo..."
-                  className="input text-xs w-full resize-none border border-neutral-300 rounded p-2 text-neutral-800"
+                  className="input text-xs w-full resize-none border border-neutral-300 dark:border-neutral-700 rounded p-2 text-neutral-800 dark:text-white bg-white dark:bg-neutral-900"
                 />
               </div>
 
-              <button type="submit" disabled={enviando || !asignacionId} className="btn-primary w-full flex items-center justify-center gap-1.5 py-2 text-xs bg-amber-600 hover:bg-amber-700 border-none text-white rounded font-medium disabled:bg-neutral-300 transition-colors">
+              <button type="submit" disabled={enviando || !asignacionId} className="btn-primary w-full flex items-center justify-center gap-1.5 py-2 text-xs bg-amber-600 hover:bg-amber-700 border-none text-white rounded font-medium disabled:bg-neutral-300 dark:disabled:bg-neutral-700 transition-colors">
                 <Send className="w-3.5 h-3.5" />
                 {enviando ? "Procesando..." : "Enviar Solicitud"}
               </button>
@@ -311,48 +311,48 @@ const Excepciones = () => {
         </div>
 
         {/* Historial */}
-        <div className="lg:col-span-2 card p-5 bg-white border border-neutral-200 rounded-xl shadow-sm">
-          <h2 className="text-sm font-bold text-neutral-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+        <div className="lg:col-span-2 card p-5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-sm">
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-amber-500" /> Historial de Excepciones
           </h2>
 
           {misExcepciones.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-neutral-400 border border-dashed border-neutral-200 rounded-xl">
-              <Inbox className="w-10 h-10 mb-2 text-neutral-300" />
+            <div className="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500 border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
+              <Inbox className="w-10 h-10 mb-2 text-neutral-300 dark:text-neutral-600" />
               <p className="text-sm">No has registrado excepciones para el semestre {semestre}.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
-                  <tr className="bg-neutral-50 text-neutral-500 font-semibold border-b border-neutral-200">
+                  <tr className="bg-neutral-50 dark:bg-neutral-900/50 text-neutral-500 dark:text-neutral-400 font-semibold border-b border-neutral-200 dark:border-neutral-700">
                     <th className="p-3">Asignatura</th>
                     <th className="p-3">Justificación</th>
                     <th className="p-3">Bloques Propuestos</th>
                     <th className="p-3 text-center">Estado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100">
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700/50">
                   {misExcepciones.map((ex) => (
-                    <tr key={ex.id} className="hover:bg-neutral-50/50 transition-colors">
-                      <td className="p-3 font-medium text-neutral-800">
+                    <tr key={ex.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                      <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">
                         Ciclo {ex.ciclo || ex.curso_ciclo} | {ex.curso_codigo} <br />
-                        <span className="text-neutral-400 font-normal">{ex.curso_nombre} ({ex.tipo})</span>
+                        <span className="text-neutral-400 dark:text-neutral-500 font-normal">{ex.curso_nombre} ({ex.tipo})</span>
                       </td>
-                      <td className="p-3 text-neutral-600 italic max-w-xs truncate" title={ex.motivo}>
+                      <td className="p-3 text-neutral-600 dark:text-neutral-400 italic max-w-xs truncate" title={ex.motivo}>
                         &quot;{ex.motivo}&quot;
                       </td>
-                      <td className="p-3 text-neutral-600">
+                      <td className="p-3 text-neutral-600 dark:text-neutral-300">
                         {ex.horarios_solicitados && ex.horarios_solicitados.length > 0 ? (
                           <div className="space-y-1">
                             {ex.horarios_solicitados.map((hor, idx) => (
-                              <div key={hor.id} className="bg-neutral-50 border border-neutral-200 px-1.5 py-1 rounded text-3xs font-medium text-neutral-700">
-                                <span className="font-bold text-amber-700">Opc {idx + 1}:</span> {hor.dia} {hor.hora_inicio?.slice(0,5)} ({hor.docente_apellidos})
+                              <div key={hor.id} className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 px-1.5 py-1 rounded text-3xs font-medium text-neutral-700 dark:text-neutral-300">
+                                <span className="font-bold text-amber-700 dark:text-amber-500">Opc {idx + 1}:</span> {hor.dia} {hor.hora_inicio?.slice(0,5)} ({hor.docente_apellidos})
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-neutral-400 italic text-2xs">Evaluación libre de Jefatura</span>
+                          <span className="text-neutral-400 dark:text-neutral-500 italic text-2xs">Evaluación libre de Jefatura</span>
                         )}
                       </td>
                       <td className="p-3 text-center whitespace-nowrap">

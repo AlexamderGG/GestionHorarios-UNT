@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+// 🌟 SE IMPORTÓ EL BOTÓN DEL TEMA (Asegúrate de que la ruta sea correcta según donde guardaste ThemeToggle.jsx)
+import ThemeToggle from './ThemeToggle'; 
 import {
   Calendar,
   LayoutDashboard,
@@ -55,7 +57,6 @@ const Navbar = () => {
     const fetchConfig = async () => {
       try {
         const res = await api.get('/configuracion');
-        // Guardamos la configuración y convertimos el texto a booleano por seguridad
         setConfig({
           ...res.data.data,
           docentes_pueden_asignar: String(res.data.data.docentes_pueden_asignar).toLowerCase() === 'true'
@@ -96,21 +97,24 @@ const Navbar = () => {
   return (
     <>
       {/* Desktop Sidebar */}
+      {/* 🌟 MODO OSCURO: bg-white -> dark:bg-neutral-900, border-neutral-200 -> dark:border-neutral-800 */}
       <aside
-        className={`hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 bg-white border-r border-neutral-200 transition-[width] duration-200 ease-in-out ${
+        className={`hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transition-[width,background-color] duration-300 ease-in-out ${
           sidebarCollapsed ? 'w-[68px]' : 'w-60'
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center h-16 px-4 border-b border-neutral-100">
+        {/* 🌟 MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
+        <div className="flex items-center h-16 px-4 border-b border-neutral-100 dark:border-neutral-800 transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex-shrink-0 w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             {!sidebarCollapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-neutral-900 truncate">Scheduling</p>
-                <p className="text-xs text-neutral-500 truncate">UNT</p>
+                {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate transition-colors">Scheduling</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate transition-colors">UNT</p>
               </div>
             )}
           </div>
@@ -126,15 +130,16 @@ const Navbar = () => {
                 key={link.to}
                 to={link.to}
                 title={sidebarCollapsed ? link.label : undefined}
+                // 🌟 MODO OSCURO: Se ajustaron los colores del hover y del botón activo
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group ${
                   active
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                    ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 hover:text-neutral-900 dark:hover:text-white'
                 }`}
               >
                 <Icon
                   className={`w-5 h-5 flex-shrink-0 ${
-                    active ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600'
+                    active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300'
                   }`}
                 />
                 {!sidebarCollapsed && <span className="truncate">{link.label}</span>}
@@ -144,26 +149,32 @@ const Navbar = () => {
         </nav>
 
         {/* User + Collapse */}
-        <div className="border-t border-neutral-100 p-3 space-y-2">
+        {/* 🌟 MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
+        <div className="border-t border-neutral-100 dark:border-neutral-800 p-3 space-y-2 transition-colors">
           {!sidebarCollapsed && user && (
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-primary-600" />
+              <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-neutral-900 truncate">
+                {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate transition-colors">
                   {user.role === 'admin' ? 'Administrador' : user.nombre}
                 </p>
-                <p className="text-xs text-neutral-500 capitalize">{user.role}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 capitalize transition-colors">{user.role}</p>
               </div>
             </div>
           )}
           <div className="flex items-center gap-2">
+            
+            {/* 🌟 AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (ESCRITORIO) */}
+            <ThemeToggle />
+
             {user && (
               <button
                 onClick={logout}
                 title="Cerrar sesión"
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-500 hover:text-danger-600 hover:bg-danger-50 transition-colors duration-150 ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-500 dark:text-neutral-400 hover:text-danger-600 dark:hover:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-500/10 transition-colors duration-150 ${
                   sidebarCollapsed ? 'flex-1 justify-center' : 'flex-1'
                 }`}
               >
@@ -173,7 +184,7 @@ const Navbar = () => {
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors duration-150"
+              className="p-2 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
               title={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
             >
               {sidebarCollapsed ? (
@@ -187,7 +198,8 @@ const Navbar = () => {
       </aside>
 
       {/* Mobile Top Bar */}
-      <nav className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-neutral-200">
+      {/* 🌟 MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95 */}
+      <nav className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
         <div className="flex items-center justify-between h-14 px-4">
           <Link
             to={user ? (user.role === 'admin' ? '/admin' : '/docente') : '/'}
@@ -196,18 +208,23 @@ const Navbar = () => {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-neutral-900 text-sm">Scheduling UNT</span>
+            {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+            <span className="font-semibold text-neutral-900 dark:text-white text-sm transition-colors">Scheduling UNT</span>
           </Link>
 
           <div className="flex items-center gap-2">
             {user && (
-              <span className="text-xs text-neutral-500 hidden sm:block">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block transition-colors">
                 {user.role === 'admin' ? 'Admin' : user.nombre}
               </span>
             )}
+            
+            {/* 🌟 AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (MÓVIL) */}
+            <ThemeToggle />
+
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors"
+              className="p-2 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -217,7 +234,8 @@ const Navbar = () => {
 
         {/* Mobile Dropdown */}
         {mobileOpen && (
-          <div className="border-t border-neutral-100 py-2 px-3 animate-slide-down bg-white">
+          // 🌟 MODO OSCURO: bg-white -> dark:bg-neutral-900
+          <div className="border-t border-neutral-100 dark:border-neutral-800 py-2 px-3 animate-slide-down bg-white dark:bg-neutral-900 transition-colors duration-300">
             {links.map((link) => {
               const Icon = link.icon;
               const active = isActive(link.to);
@@ -226,13 +244,13 @@ const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     active
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-neutral-600 hover:bg-neutral-50'
+                      ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 font-medium'
+                      : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-primary-600' : 'text-neutral-400'}`} />
+                  <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500'}`} />
                   <span>{link.label}</span>
                 </Link>
               );
@@ -240,7 +258,7 @@ const Navbar = () => {
             {user && (
               <button
                 onClick={() => { logout(); setMobileOpen(false); }}
-                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-danger-600 hover:bg-danger-50 mt-1 transition-colors"
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-500/10 mt-1 transition-colors"
               >
                 <LogOut className="w-5 h-5" />
                 <span>Cerrar Sesión</span>
@@ -252,7 +270,8 @@ const Navbar = () => {
 
       {/* Mobile Bottom Navigation (max 5 items) */}
       {user && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-neutral-200">
+        // 🌟 MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
           <div className="flex items-center justify-around h-16 px-2">
             {links.slice(0, 5).map((link) => {
               const Icon = link.icon;
@@ -262,13 +281,13 @@ const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                    active ? 'text-primary-600' : 'text-neutral-500'
+                    active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-500 dark:text-neutral-400'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-primary-600' : 'text-neutral-400'}`} />
+                  <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500'}`} />
                   <span className="font-medium">{link.label}</span>
                   {active && (
-                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-600 rounded-full" />
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-600 dark:bg-primary-500 rounded-full" />
                   )}
                 </Link>
               );

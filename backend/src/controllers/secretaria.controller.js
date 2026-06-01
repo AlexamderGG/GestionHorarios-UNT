@@ -198,8 +198,8 @@ const SecretariaController = {
               const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
               const hashedPassword = await bcrypt.hash(passwordTemporal, 10);
               
-              // Actualizar clave y cambiar estado SOLO a Notificado
-              await DocenteModel.updateEstadoTurno(docente.id, 'Notificado', client);
+              // Actualizar clave y cambiar estado SOLO a Completado
+              await DocenteModel.updateEstadoTurno(docente.id, 'Completado', client);
               await DocenteModel.updatePassword(docente.id, hashedPassword, client);
 
               const mailOptions = {
@@ -239,6 +239,26 @@ const SecretariaController = {
       client.release();
       console.error('Error al preparar el envío masivo:', error);
       return res.status(500).json({ success: false, message: 'Error interno al procesar el envío masivo.' });
+    }
+  },
+
+  // Marcar a todos como Completados (Candado global)
+  completarTodos: async (req, res) => {
+    const client = await pool.connect();
+    try {
+      // Actualizamos a todos los que no estén ya en Completado
+      const query = `UPDATE docentes SET estado_turno = 'Completado' WHERE estado_turno != 'Completado'`;
+      await client.query(query);
+      
+      return res.json({ 
+        success: true, 
+        message: 'Todos los turnos han sido bloqueados (marcados como Completados).' 
+      });
+    } catch (error) {
+      console.error('Error al completar todos los turnos:', error);
+      return res.status(500).json({ success: false, message: 'Error interno al actualizar los turnos.' });
+    } finally {
+      client.release();
     }
   }
 }; 

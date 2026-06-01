@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle, Clock, AlertCircle, Send, RotateCcw, RefreshCw } from 'lucide-react';
+import { Mail, CheckCircle, Clock, AlertCircle, Send, RotateCcw, RefreshCw, Search, Lock} from 'lucide-react';
 import api from '../../services/api'; 
 
 const SecretariaPanel = () => {
@@ -9,6 +9,8 @@ const SecretariaPanel = () => {
   const [error, setError] = useState(null);
   const [reiniciando, setReiniciando] = useState(false);
   const [enviandoMasivo, setEnviandoMasivo] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [completando, setCompletando] = useState(false);
 
   // Cargar la lista ordenada de docentes
   const fetchDocentes = async () => {
@@ -55,6 +57,20 @@ const SecretariaPanel = () => {
   };
 
   const handleCambioEstadoManual = async (docenteId, nuevoEstado) => {
+    // NUEVA REGLA DE SEGURIDAD ANTI-ERRORES
+    const docenteActual = docentes.find(d => d.id === docenteId);
+    
+    // Validamos que no pueda pasar a Notificado NI a Completado si no tiene credenciales
+    if ((nuevoEstado === 'Notificado' || nuevoEstado === 'Completado') && !docenteActual?.tiene_credenciales) {
+      alert(
+        "⚠️ ACCIÓN DENEGADA\n\n" +
+        "Este docente no tiene credenciales (contraseña) activas.\n" +
+        `No puedes cambiar su estado a "${nuevoEstado}" porque no tendría cómo ingresar al sistema.\n\n` +
+        "Por favor, utiliza el botón azul 'Habilitar Turno' o 'Notificar a Todos' para generarle un acceso primero."
+      );
+      return; // Detenemos la ejecución aquí mismo
+    }
+
     if (!window.confirm(`¿Está seguro de cambiar manualmente el estado a "${nuevoEstado}"?`)) return;
 
     try {
@@ -63,7 +79,6 @@ const SecretariaPanel = () => {
       });
 
       if (response.data.success) {
-        // Actualizar la tabla localmente sin recargar la página
         setDocentes(docentes.map(d => 
           d.id === docenteId ? { ...d, estado_turno: nuevoEstado } : d
         ));
@@ -73,6 +88,16 @@ const SecretariaPanel = () => {
       alert('Hubo un error al actualizar el estado manualmente.');
     }
   };
+
+  const docentesFiltrados = (docentes || []).filter(docente => {
+    if (!busqueda) return true; // Si no hay búsqueda, mostramos todos
+    
+    const termino = busqueda.toLowerCase().trim();
+    const nombreCompleto = `${docente.nombres || ''} ${docente.apellidos || ''}`.toLowerCase();
+    const email = (docente.email || '').toLowerCase();
+    
+    return nombreCompleto.includes(termino) || email.includes(termino);
+  });
 
   const handleNotificarTodos = async () => {
     // Agregamos un texto de confirmación inteligente
@@ -121,6 +146,30 @@ const SecretariaPanel = () => {
     }
   };
 
+  const handleCompletarTodos = async () => {
+    const confirmar = confirm(
+      "¿Está seguro de marcar a TODOS los docentes como 'Completado'? \n\nEsto funcionará como un candado global: bloqueará la edición para todos. Úselo si desea cerrar la programación masiva y habilitar excepciones manualmente a un solo docente."
+    );
+    
+    if (!confirmar) return;
+
+    setCompletando(true);
+    try {
+      // Ajusta la ruta si en tu backend la llamaste distinto
+      const res = await api.put("/secretaria/completar-todos"); 
+      
+      if (res.data?.success) {
+        alert(res.data.message);
+        fetchDocentes(); // Recargamos la tabla para ver todos en verde
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error al bloquear los turnos.");
+    } finally {
+      setCompletando(false);
+    }
+  };
+
   // Encontrar el ID del PRIMER docente que está en estado "Pendiente"
   const idSiguienteEnTurno = docentes.find(d => d.estado_turno === 'Pendiente')?.id;
 
@@ -130,55 +179,86 @@ const SecretariaPanel = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in">
       
-      {/* 👇 MODIFICADO: Cabecera alineada en Flexbox con Botón de Actualización Manual y Reset */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      {/* CABECERA REDISEÑADA: Título arriba, Herramientas abajo */}
+      <div className="mb-6 space-y-5">
+        
+        {/* 1. Área de Título (Arriba) */}
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Gestión de Turnos (Escalafón)</h1>
           <p className="text-sm text-neutral-500 mt-1">
             Control de flujo y asignación de prioridades horarias para los docentes.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleNotificarTodos} 
-            disabled={enviandoMasivo}
-            className="btn-primary flex items-center justify-center gap-2 px-4 py-2"
-          >
-            {enviandoMasivo ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Enviando a todos...
-              </>
-            ) : (
-              <>
-                <Mail className="w-4 h-4" />
-                Notificar a Todos
-              </>
-            )}
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Botón de recarga silenciosa en grilla */}
-          <button 
-            onClick={fetchDocentes} 
-            disabled={loading}
-            className="p-2 border border-neutral-200 text-neutral-500 hover:bg-neutral-50 rounded-lg transition-colors bg-white"
-            title="Actualizar escalafón"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+
+        {/* 2. Barra de Herramientas (Buscador a la Izquierda / Botones a la Derecha) */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           
-          <button
-            onClick={handleReiniciarTurnosGlobal}
-            disabled={reiniciando}
-            className="btn-secondary flex items-center gap-2 bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100 px-4 py-2 rounded-lg font-medium text-sm transition-all"
-          >
-            {reiniciando ? (
-              <><RefreshCw className="w-4 h-4 animate-spin" /> Reiniciando...</>
-            ) : (
-              <><RotateCcw className="w-4 h-4" /> Reiniciar Todos los Turnos</>
-            )}
-          </button>
+          {/* Izquierda: Buscador */}
+          <div className="relative w-full lg:w-80 flex-shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Buscar docente o correo..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="input w-full pl-9 py-2 text-sm bg-white border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all shadow-sm"
+            />
+          </div>
+
+          {/* Derecha: Grupo de Acciones Rápidas */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
+            
+            {/* Botón Actualizar (Solo ícono) */}
+            <button 
+              onClick={fetchDocentes} 
+              disabled={loading}
+              className="p-2 border border-neutral-200 text-neutral-500 hover:bg-neutral-50 rounded-lg transition-colors bg-white flex-shrink-0 shadow-sm"
+              title="Actualizar escalafón"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            {/* Botón Notificar */}
+            <button 
+              onClick={handleNotificarTodos} 
+              disabled={enviandoMasivo}
+              className="btn-primary flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
+            >
+              {enviandoMasivo ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando...</>
+              ) : (
+                <><Mail className="w-4 h-4" /> Notificar a Todos</>
+              )}
+            </button>
+
+            {/* Botón Completar (Candado) */}
+            <button
+              onClick={handleCompletarTodos}
+              disabled={completando}
+              className="flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
+              title="Bloquear edición para todos los docentes"
+            >
+              {completando ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Bloqueando...</>
+              ) : (
+                <><Lock className="w-4 h-4" /> Completar Todos</>
+              )}
+            </button>
+            
+            {/* Botón Reiniciar (Peligro) */}
+            <button
+              onClick={handleReiniciarTurnosGlobal}
+              disabled={reiniciando}
+              className="flex items-center justify-center gap-1.5 bg-danger-50 text-danger-700 border border-danger-200 hover:bg-danger-100 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap shadow-sm flex-grow sm:flex-grow-0"
+            >
+              {reiniciando ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Reiniciando...</>
+              ) : (
+                <><RotateCcw className="w-4 h-4" /> Reiniciar Turnos</>
+              )}
+            </button>
+
+          </div>
         </div>
       </div>
 
@@ -196,7 +276,7 @@ const SecretariaPanel = () => {
               </tr>
             </thead>
             <tbody>
-              {docentes.map((docente, index) => {
+              {docentesFiltrados.map((docente, index) => {
                 const esSuTurno = docente.id === idSiguienteEnTurno;
                 const nombreCompleto = `${docente.apellidos}, ${docente.nombres}`;
 
@@ -208,6 +288,21 @@ const SecretariaPanel = () => {
                     <td className="px-4 py-3">
                       <div className="font-semibold text-neutral-800">{nombreCompleto}</div>
                       <div className="text-xs text-neutral-400">{docente.email}</div>
+                      {/* 🌟 NUEVO: INDICADOR VISUAL DE CREDENCIALES */}
+                      <div>
+                        {docente.tiene_credenciales ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                            <CheckCircle className="w-3 h-3" /> Con Acceso
+                          </span>
+                        ) : (
+                          <span 
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 cursor-help" 
+                            title="Debe usar 'Habilitar Turno' o 'Notificar a Todos' para generarle contraseña"
+                          >
+                            <AlertCircle className="w-3 h-3" /> Sin Credenciales
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-neutral-700">
                       {docente.categoria}
@@ -222,14 +317,12 @@ const SecretariaPanel = () => {
                         className={`text-xs font-bold rounded-full px-3 py-1 border border-transparent outline-none cursor-pointer text-center ${
                           docente.estado_turno === 'Completado' ? 'bg-green-100 text-green-800 border-green-200' :
                           docente.estado_turno === 'Notificado' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                          docente.estado_turno === 'Automatico' ? 'bg-purple-100 text-purple-800 border-purple-200' :
                           'bg-neutral-100 text-neutral-600 border-neutral-200'
                         }`}
                       >
                         <option value="Pendiente" className="bg-white text-neutral-800">Pendiente</option>
                         <option value="Notificado" className="bg-white text-neutral-800">Notificado / Eligiendo</option>
                         <option value="Completado" className="bg-white text-neutral-800">Completado</option>
-                        <option value="Automatico" className="bg-white text-neutral-800">Automático</option>
                       </select>
                     </td>
                     <td className="px-4 py-3 text-center">

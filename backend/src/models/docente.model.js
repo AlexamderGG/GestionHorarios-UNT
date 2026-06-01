@@ -103,7 +103,8 @@ const DocenteModel = {
           d.categoria, 
           d.tipo_nombramiento, 
           d.antiguedad_anios, 
-          d.estado_turno
+          d.estado_turno,
+          (password IS NOT NULL AND password != '') AS tiene_credenciales
       FROM docentes d
       WHERE d.activo = TRUE
         -- FILTRO MÁGICO: Solo docentes con asignaciones en el semestre activo

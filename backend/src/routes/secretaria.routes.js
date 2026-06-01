@@ -24,4 +24,6 @@ router.delete("/excepciones/:id", authenticate, requireRole("admin"), ExcepcionC
 
 router.get("/docentes-disponibles", authenticate, requireRole("admin"), SecretariaController.getDocentesDisponibles);
 
+router.put('/completar-todos', authenticate, SecretariaController.completarTodos);
+
 module.exports = router;

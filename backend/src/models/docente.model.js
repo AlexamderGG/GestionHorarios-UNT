@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const DocenteModel = {
   getAll: async () => {
     const result = await pool.query(
-      'SELECT * FROM docentes WHERE activo = TRUE ORDER BY tipo_nombramiento DESC, categoria, antiguedad_anios DESC'
+      'SELECT * FROM docentes WHERE activo = TRUE ORDER BY antiguedad_anios DESC, categoria, antiguedad_anios DESC'
     );
     return result.rows;
   },

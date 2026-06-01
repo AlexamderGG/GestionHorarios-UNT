@@ -93,7 +93,7 @@ const PlanificacionSecretaria = () => {
 
   const handleAbrirModal = (asig) => {
     setAsigModal(asig);
-    setForm({ dia: 'Lunes', hora_inicio: '', hora_fin: '', ambiente_id: '' });
+    setForm({ dia: diasHabiles[0] || 'Lunes', hora_inicio: '', hora_fin: '', ambiente_id: '' });
   };
 
   const calcularHoraFin = (horaIni) => {
@@ -145,6 +145,11 @@ const PlanificacionSecretaria = () => {
 
     return { invalida: false, motivo: '' };
   };
+
+  // Leer los días hábiles de la configuración dinámica
+  const diasHabiles = config?.dias_habiles 
+    ? (Array.isArray(config.dias_habiles) ? config.dias_habiles : String(config.dias_habiles).split(','))
+    : ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 
   const handleGuardarHorario = async () => {
     setGuardando(true);
@@ -345,7 +350,9 @@ const PlanificacionSecretaria = () => {
                   onChange={(e) => setForm({...form, dia: e.target.value, hora_inicio: '', hora_fin: '', ambiente_id: ''})} 
                   className="input w-full"
                 >
-                  {['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'].map(d => <option key={d} value={d}>{d}</option>)}
+                  {diasHabiles.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
 

@@ -82,7 +82,7 @@ INSERT INTO cursos (codigo, nombre, creditos, ciclo, semestre, activo, especiali
 ('EE-703', 'Redes y Comunicaciones I', 3, 7, '2026-1', TRUE, 'Ingenieria de Sistemas', 2, 3),
 ('EE-704', 'Ingenieria del Software I', 4, 7, '2026-1', TRUE, 'Ingenieria de Sistemas', 3, 3),
 ('EL-701', 'Administracion de Base de Datos', 3, 7, '2026-1', TRUE, 'Ingenieria de Sistemas', 2, 3),
-('EL-702', 'Negocios Electronicos', 3, 7, '2026-1', TRUE, 'Administracion', 2, 2),
+('EL-702', 'Negocios Electronicos', 3, 7, '2026-1', TRUE, 'Ingenieria de Sistemas', 2, 2),
 
 -- VIII Ciclo (ciclo 8)
 ('EP-801', 'Marketing y Medios Sociales', 3, 8, '2026-1', TRUE, 'Administracion', 3, 2),

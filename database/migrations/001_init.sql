@@ -109,26 +109,7 @@ CREATE TABLE IF NOT EXISTS laboratorios (
 COMMENT ON TABLE laboratorios IS 'Laboratorios de uso general. Cualquier curso puede reservarlos';
 
 -- --------------------------------------------------------------
--- 5. Tabla: excepciones_horario
--- --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS excepciones_horario (
-    id SERIAL PRIMARY KEY,
-    docente_id INT REFERENCES docentes(id) ON DELETE CASCADE,
-    asignacion_id INT REFERENCES asignacion_docente_curso(id) ON DELETE CASCADE,
-    motivo TEXT NOT NULL, -- "Cruce con otra universidad"
-    horario_solicitado_id INT REFERENCES horarios(id) ON DELETE SET NULL, -- El horario acaparado que desearía tomar
-    estado VARCHAR(20) DEFAULT 'Pendiente', -- 'Pendiente', 'Aprobado', 'Rechazado'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Eliminar la columna individual anterior
-ALTER TABLE excepciones_horario DROP COLUMN horario_solicitado_id;
-
--- Crear la nueva columna que almacena hasta 3 IDs de horarios como un arreglo
-ALTER TABLE excepciones_horario ADD COLUMN horarios_solicitados_ids INT[] DEFAULT '{}';
-
--- --------------------------------------------------------------
--- 6. Tabla: configuracion
+-- 5. Tabla: configuracion
 -- --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS configuracion (
     id SERIAL PRIMARY KEY,
@@ -152,7 +133,7 @@ ALTER TABLE configuracion
 ADD COLUMN docentes_pueden_asignar BOOLEAN DEFAULT false;
 
 -- --------------------------------------------------------------
--- 7. Tabla: asignacion_docente_curso
+-- 6. Tabla: asignacion_docente_curso
 -- --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
     id SERIAL PRIMARY KEY,
@@ -177,7 +158,7 @@ CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
 COMMENT ON TABLE asignacion_docente_curso IS 'Relaciona docentes con cursos que dictan (teoria o lab)';
 
 -- --------------------------------------------------------------
--- 8. Tabla: horarios
+-- 7. Tabla: horarios
 -- --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS horarios (
     id SERIAL PRIMARY KEY,
@@ -213,7 +194,7 @@ CREATE TABLE IF NOT EXISTS horarios (
 COMMENT ON TABLE horarios IS 'Horarios finales asignados tras ejecutar el algoritmo o edicion manual';
 
 -- --------------------------------------------------------------
--- 9. Tabla: restricciones_horarias (opcional, para futuro)
+-- 8. Tabla: restricciones_horarias (opcional, para futuro)
 -- --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS restricciones_horarias (
     id SERIAL PRIMARY KEY,
@@ -225,6 +206,26 @@ CREATE TABLE IF NOT EXISTS restricciones_horarias (
     motivo TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- --------------------------------------------------------------
+-- 9. Tabla: excepciones_horario
+-- --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS excepciones_horario (
+    id SERIAL PRIMARY KEY,
+    docente_id INT REFERENCES docentes(id) ON DELETE CASCADE,
+    asignacion_id INT REFERENCES asignacion_docente_curso(id) ON DELETE CASCADE,
+    motivo TEXT NOT NULL, -- "Cruce con otra universidad"
+    horario_solicitado_id INT REFERENCES horarios(id) ON DELETE SET NULL, -- El horario acaparado que desearía tomar
+    estado VARCHAR(20) DEFAULT 'Pendiente', -- 'Pendiente', 'Aprobado', 'Rechazado'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Eliminar la columna individual anterior
+ALTER TABLE excepciones_horario DROP COLUMN horario_solicitado_id;
+
+-- Crear la nueva columna que almacena hasta 3 IDs de horarios como un arreglo
+ALTER TABLE excepciones_horario ADD COLUMN horarios_solicitados_ids INT[] DEFAULT '{}';
+
 
 -- --------------------------------------------------------------
 -- 10. Tabla: disponibilidad_docente

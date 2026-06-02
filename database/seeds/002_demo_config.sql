@@ -1,6 +1,7 @@
 -- ============================================================
 -- SEED 002: Configuración para modo demo y selección
 -- ============================================================
+SET client_encoding = 'UTF8';
 
 INSERT INTO configuracion (clave, valor, descripcion) VALUES
   ('demo_mode', 'false', 'Activa el modo demo para control de turnos'),

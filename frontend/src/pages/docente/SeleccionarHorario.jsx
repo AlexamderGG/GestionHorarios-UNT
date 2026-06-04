@@ -135,63 +135,79 @@ const SeleccionarHorario = () => {
   const opcionesHora = generarOpcionesHora();
   const asignacionSeleccionada = cursos.find(c => String(c.id) === String(asignacionId));
 
-  // 1. CÁLCULO DE HORA FIN (Corregido y blindado)
-  const calcularHoraFin = (inicio) => {
-    if (!inicio || !asignacionSeleccionada) return '';
+  const calcularHoraFin = (inicio, asig) => {
+    const asigRef = asig || asignacionSeleccionada;
+    if (!inicio || !asigRef) return "";
+    
     const [h, m] = inicio.split(':').map(Number);
     
-    const horasAula = Number(asignacionSeleccionada.curso_horas_aula || asignacionSeleccionada.horas_aula) || 0;
-    const horasLab = Number(asignacionSeleccionada.curso_horas_lab || asignacionSeleccionada.horas_lab) || 0;
-    const horasCurso = asignacionSeleccionada.tipo === 'Teoria' ? horasAula : horasLab;
+    // CORRECCIÓN 1: Priorizar 'horas_asignadas' y tener fallbacks sólidos
+    let horasAsignadas = Number(asigRef.horas_asignadas || 0);
     
-    if (horasCurso === 0) return '';
+    if (horasAsignadas === 0) {
+      if (asigRef.tipo === 'Teoria' || asigRef.tipo === 'Practica') {
+        horasAsignadas = Number(asigRef.curso_horas_aula || asigRef.curso_horas_t || asigRef.curso_horas_p || 0);
+      } else if (asigRef.tipo === 'Laboratorio') {
+        horasAsignadas = Number(asigRef.curso_horas_lab || asigRef.curso_horas_l || 0);
+      }
+    }
     
-    const totalMinutos = h * 60 + m + (horasCurso * 60);
+    if (horasAsignadas === 0) return "";
+    
+    const totalMinutos = (h * 60) + m + (horasAsignadas * 60);
     const hf = String(Math.floor(totalMinutos / 60)).padStart(2, '0');
     const mf = String(totalMinutos % 60).padStart(2, '0');
+    
     return `${hf}:${mf}`;
   };
 
-  // 2. VERIFICACIÓN DE CONFLICTOS
+  // VALIDACIÓN INTELIGENTE (REGLA 50/50) PARA EL DOCENTE
   const verificarConflicto = (horaIniPropuesta) => {
-    if (!asignacionSeleccionada) return null;
+    if (!asignacionSeleccionada || !dia) return null;
     const horaFinPropuesta = calcularHoraFin(horaIniPropuesta);
     if (!horaFinPropuesta) return null;
 
     const iniPropuestoMin = timeToMinutes(horaIniPropuesta);
     const finPropuestoMin = timeToMinutes(horaFinPropuesta);
     
-    // NUEVA VALIDACIÓN: Verifica que la clase no termine después de la hora de cierre
+    // Validar hora de cierre
     const limiteFinMin = timeToMinutes(config?.hora_fin || '22:00');
-    if (finPropuestoMin > limiteFinMin) {
-      // Retorna el mensaje para deshabilitar la opción
-      return `Excede el cierre (${config.hora_fin})`; 
-    }
+    if (finPropuestoMin > limiteFinMin) return `Excede cierre (${config.hora_fin})`;
 
-    const cicloCursoActual = asignacionSeleccionada.curso_ciclo || asignacionSeleccionada.ciclo;
+    const cicloModal = asignacionSeleccionada.curso_ciclo || asignacionSeleccionada.ciclo;
+    const isIncomingException = (asignacionSeleccionada.curso_codigo || '').startsWith('EL-') || asignacionSeleccionada.tipo === 'Laboratorio';
+    
+    let overlapsCount = 0;
 
     for (const h of horariosGlobales) {
-      if (h.dia === dia) { 
+      if (h.dia === dia) {
         const hIniMin = timeToMinutes(h.hora_inicio);
         const hFinMin = timeToMinutes(h.hora_fin);
 
-        // Si hay cruce en el tiempo
         if (iniPropuestoMin < hFinMin && finPropuestoMin > hIniMin) {
-          
-          // 1. Verificar si choca con este mismo docente
+          // 1. Conflicto Docente (siempre bloqueante)
           const hDocenteId = h.docente?.id || h.docente_id;
           if (String(hDocenteId) === String(user?.id)) {
             return "Cruza con tu horario";
           }
+
+          // 2. Conflicto de Ciclo con Regla 50/50
+          const cicloH = h.curso?.ciclo || h.ciclo;
           
-          // 2. Verificar si choca con el ciclo de los alumnos
-          const hCiclo = h.curso?.ciclo || h.ciclo;
-          if (hCiclo && cicloCursoActual && String(hCiclo) === String(cicloCursoActual)) {
-            return `Ciclo ${hCiclo} ocupado`;
+          // CORRECCIÓN 2: Asegurar que ambos ciclos existen antes de compararlos
+          if (cicloModal && cicloH && String(cicloModal) !== "0" && String(cicloH) === String(cicloModal)) {
+            const isExistingException = (h.curso?.codigo || h.curso_codigo || '').startsWith('EL-') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
+            
+            if (!isIncomingException || !isExistingException) {
+              return `Cruce regular Ciclo ${cicloModal}`;
+            }
+            overlapsCount++;
           }
         }
       }
     }
+    
+    if (overlapsCount >= 2) return `Ciclo ${cicloModal} lleno`;
     return null; 
   };
 

@@ -25,6 +25,7 @@ import {
   BarChart3,
   ListOrdered,
   HelpCircle,
+  FileClock,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
@@ -75,6 +76,7 @@ const Navbar = () => {
     config?.docentes_pueden_asignar 
       ? { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle } 
       : null,
+    { to: '/docente/carga-horaria', label: 'Carga Horaria', icon: FileClock },
     { to: '/docente/excepciones', label: 'Excepciones/ Permuta', icon: Lock },
   ].filter(Boolean);
 

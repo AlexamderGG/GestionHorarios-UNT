@@ -17,6 +17,7 @@ const docenteAuthRoutes = require('./docente-auth.routes');
 const secretariaRoutes = require('./secretaria.routes');
 const excepcionRoutes = require('./excepcion.routes');
 const disponibilidadRoutes = require('./disponibilidad.routes');
+const cargaRoutes = require('./carga.routes');
 
 // Rutas públicas
 router.use('/auth', authRoutes);
@@ -43,6 +44,9 @@ router.use('/excepciones', excepcionRoutes);
 
 // Rutas de disponibilidades (Preferencias de docentes)
 router.use('/disponibilidades', disponibilidadRoutes);
+
+// Rutas de carga horaria
+router.use('/carga', cargaRoutes);
 
 // Rutas protegidas - secretaría
 router.use('/secretaria', secretariaRoutes);

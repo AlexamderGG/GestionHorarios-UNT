@@ -71,16 +71,24 @@ const Excepciones = () => {
     return misCursosPendientes.find(c => Number(c.asignacion_id || c.id) === Number(asignacionId));
   }, [asignacionId, misCursosPendientes]);
 
-  // Mapeo exacto de las horas requeridas
+  // CORRECCIÓN: Mapeo exacto de las horas requeridas basado en la base de datos
   const horasRequeridas = useMemo(() => {
     if (!cursoSeleccionado) return null;
-    const esTeoria = cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría';
     
-    const h = esTeoria
-      ? (cursoSeleccionado.curso_horas_aula || cursoSeleccionado.horas_aula)
-      : (cursoSeleccionado.curso_horas_lab || cursoSeleccionado.horas_lab || cursoSeleccionado.horas);
+    // 1. Prioridad principal: la columna horas_asignadas
+    let horas = Number(cursoSeleccionado.horas_asignadas || 0);
+    
+    // 2. Fallbacks si horas_asignadas no está disponible
+    if (horas === 0) {
+      const tipo = cursoSeleccionado.tipo;
+      if (tipo === 'Teoria' || tipo === 'Teoría' || tipo === 'Practica' || tipo === 'Práctica') {
+        horas = Number(cursoSeleccionado.curso_horas_t || cursoSeleccionado.curso_horas_p || cursoSeleccionado.curso_horas_aula || 0);
+      } else if (tipo === 'Laboratorio') {
+        horas = Number(cursoSeleccionado.curso_horas_l || cursoSeleccionado.curso_horas_lab || 0);
+      }
+    }
                 
-    return h ? Number(h) : 2; 
+    return horas > 0 ? horas : 2; // 2 horas por defecto como salvavidas
   }, [cursoSeleccionado]);
 
   // Resetear prioridades al cambiar de curso
@@ -95,8 +103,10 @@ const Excepciones = () => {
     if (!horasRequeridas || !cursoSeleccionado) return [];
 
     const cicloRequerido = Number(cursoSeleccionado.ciclo || cursoSeleccionado.curso_ciclo || 0);
-    const esTeoriaPendiente = cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría';
-    const ambienteRequerido = esTeoriaPendiente ? 'AULA' : 'LABORATORIO';
+    
+    // CORRECCIÓN: Considerar 'Práctica' también para aulas
+    const esAula = cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría' || cursoSeleccionado.tipo === 'Practica' || cursoSeleccionado.tipo === 'Práctica';
+    const ambienteRequerido = esAula ? 'AULA' : 'LABORATORIO';
 
     return horariosAcaparados.filter(h => {
       // 1. Excluir si el horario pertenece al mismo profesor logueado
@@ -121,7 +131,7 @@ const Excepciones = () => {
         ambienteOcupado = 'LABORATORIO';
       } else if (!tieneAula) {
         const t = h.tipo_asignacion || h.tipo || '';
-        if (t === 'Laboratorio' || t === 'Practica') ambienteOcupado = 'LABORATORIO';
+        if (t === 'Laboratorio') ambienteOcupado = 'LABORATORIO';
       }
 
       return ambienteOcupado === ambienteRequerido;
@@ -217,8 +227,13 @@ const Excepciones = () => {
                 <select value={asignacionId} onChange={(e) => setAsignacionId(e.target.value)} className="input text-xs w-full border border-neutral-300 dark:border-neutral-700 rounded p-2 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white">
                   <option value="">Selecciona la asignatura...</option>
                   {misCursosPendientes.map(c => {
-                    const esTeoria = c.tipo === 'Teoria' || c.tipo === 'Teoría';
-                    const hC = esTeoria ? (c.curso_horas_aula || c.horas_aula || 2) : (c.curso_horas_lab || c.horas_lab || 2);
+                    // CORRECCIÓN visual en el selector para mostrar horas reales
+                    let hC = Number(c.horas_asignadas || 0);
+                    if (hC === 0) {
+                      const esAula = c.tipo === 'Teoria' || c.tipo === 'Teoría' || c.tipo === 'Practica' || c.tipo === 'Práctica';
+                      hC = esAula ? (c.curso_horas_t || c.curso_horas_p || c.curso_horas_aula || 2) : (c.curso_horas_l || c.curso_horas_lab || 2);
+                    }
+                    
                     return (
                       <option key={c.asignacion_id || c.id} value={c.asignacion_id || c.id}>
                         Ciclo {c.ciclo || c.curso_ciclo} | {c.curso_codigo || c.codigo} — {c.curso_nombre || c.nombre} ({c.tipo}) — {hC}h
@@ -229,7 +244,7 @@ const Excepciones = () => {
                 {horasRequeridas && (
                   <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg text-2xs text-amber-800 dark:text-amber-400 flex items-center gap-1.5 font-medium">
                     <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
-                    Requisito: Ciclo {cursoSeleccionado.ciclo || cursoSeleccionado.curso_ciclo} · {horasRequeridas}h en {cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría' ? 'AULA' : 'LABORATORIO'}
+                    Requisito: Ciclo {cursoSeleccionado.ciclo || cursoSeleccionado.curso_ciclo} · {horasRequeridas}h en {cursoSeleccionado.tipo === 'Teoria' || cursoSeleccionado.tipo === 'Teoría' || cursoSeleccionado.tipo === 'Practica' || cursoSeleccionado.tipo === 'Práctica' ? 'AULA' : 'LABORATORIO'}
                   </div>
                 )}
               </div>

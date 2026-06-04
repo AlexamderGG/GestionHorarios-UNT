@@ -62,6 +62,10 @@ ALTER TABLE docentes ADD COLUMN reset_token_at INT DEFAULT 0;
 ALTER TABLE docentes 
 ADD COLUMN password VARCHAR(255);
 
+ALTER TABLE docentes 
+ADD COLUMN modalidad VARCHAR(20) DEFAULT 'Tiempo Completo' 
+CHECK (modalidad IN ('Tiempo Completo', 'Tiempo Parcial'));
+
 -- --------------------------------------------------------------
 -- 2. Tabla: cursos
 -- --------------------------------------------------------------
@@ -78,6 +82,21 @@ CREATE TABLE IF NOT EXISTS cursos (
 );
 
 COMMENT ON COLUMN cursos.especialidad IS 'Especialidad del curso. Se usa para validar asignacion a docentes con la misma especialidad';
+
+-- Eliminamos las columnas antiguas
+ALTER TABLE cursos 
+DROP COLUMN horas_aula, 
+DROP COLUMN horas_lab;
+
+-- Agregamos las nuevas columnas con mayor granularidad
+ALTER TABLE cursos 
+ADD COLUMN horas_t INTEGER DEFAULT 0,
+ADD COLUMN horas_p INTEGER DEFAULT 0,
+ADD COLUMN horas_l INTEGER DEFAULT 0;
+
+COMMENT ON COLUMN cursos.horas_t IS 'Horas de teoria';
+COMMENT ON COLUMN cursos.horas_p IS 'Horas de practica';
+COMMENT ON COLUMN cursos.horas_l IS 'Horas de laboratorio';
 
 -- --------------------------------------------------------------
 -- 3. Tabla: aulas
@@ -140,22 +159,27 @@ CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
     docente_id INTEGER NOT NULL REFERENCES docentes(id) ON DELETE CASCADE,
     curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
     
-    -- tipo de asignacion dentro del curso
-    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('Teoria', 'Laboratorio')),
+    -- Tipo de asignacion dentro del curso
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('Teoria', 'Practica', 'Laboratorio')),
+    
+    -- El grupo de la asignación (A, B, C, Único)
+    grupo VARCHAR(10) DEFAULT 'Único',
+    
+    -- Las horas congeladas y exactas que pesa este pedacito de curso
+    horas_asignadas INTEGER DEFAULT 0,
     
     -- Ambiente preferido (puede ser aula o laboratorio segun tipo)
     ambiente_preferido_id INTEGER,
-    -- Nota: No se usa FK directa porque puede referir a aulas o laboratorios.
-    --        Se valida en la aplicacion (backend).
     
     semestre_asignacion VARCHAR(20) DEFAULT '2026-1',
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE(docente_id, curso_id, tipo, semestre_asignacion)
+    -- La restricción única que ahora permite múltiples laboratorios si son de distintos grupos
+    UNIQUE(docente_id, curso_id, tipo, grupo, semestre_asignacion)
 );
 
-COMMENT ON TABLE asignacion_docente_curso IS 'Relaciona docentes con cursos que dictan (teoria o lab)';
+COMMENT ON TABLE asignacion_docente_curso IS 'Relaciona docentes con cursos que dictan separados por grupos y horas congeladas';
 
 -- --------------------------------------------------------------
 -- 7. Tabla: horarios

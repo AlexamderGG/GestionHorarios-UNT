@@ -14,7 +14,6 @@ const MisCursos = () => {
 
   const [config, setConfig] = useState(null);
   
-  // Variables de Estado de Control Académico
   const [estadoTurno, setEstadoTurno] = useState('');
   const [docenteEstadoReal, setDocenteEstadoReal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,37 +29,30 @@ const MisCursos = () => {
         console.error("Error cargando la configuración:", error);
       }
     };
-
     fetchConfiguracion();
   }, []);
 
-  // MEJORA: Unificamos todas las peticiones aquí para evitar llamadas duplicadas
   const cargarDatos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setErrorMsg(null);
     try {
-      // 1. Primero obtener la configuración para saber el semestre activo
       const resConfig = await api.get('/configuracion');
       const semestreActivo = resConfig.data?.data?.semestre_activo || '2026-1';
       setSemestre(semestreActivo);
 
-      // 2. Ejecutar peticiones en paralelo para cargar los datos en tiempo real de la Base de Datos
       const [resCursos, resStatus, resPerfil] = await Promise.all([
         api.get('/docente/mis-cursos', { params: { semestre: semestreActivo } }),
         api.get('/docente/mi-estado').catch(() => null),
         api.get('/auth/me').catch(() => null)
       ]);
 
-      // Guardar Cursos asignados
       setCursos(resCursos?.data?.data || []);
 
-      // Sincronizar el estado del turno actual
       if (resStatus?.data?.success) {
         setEstadoTurno(resStatus.data.data.estado_turno || '');
       }
 
-      // Sincronizar el perfil vivo de la BD
       if (resPerfil?.data?.success) {
         setDocenteEstadoReal(resPerfil.data.data.estado || '');
       }
@@ -131,7 +123,6 @@ const MisCursos = () => {
         </p>
       </div>
 
-      {/* Solo se muestra si el modo turnos está activado Y el turno no está completado */}
       {(String(config?.docentes_pueden_asignar).toLowerCase() === 'true' && estadoTurno !== 'Completado' && docenteEstadoReal !== 'Completado') && (
         <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-xs sm:text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2.5 shadow-3xs animate-fade-in">
           <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
@@ -159,81 +150,97 @@ const MisCursos = () => {
                   <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Código</th>
                   <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Curso</th>
                   <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Tipo</th>
+                  <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Duración</th>
                   <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Ambiente</th>
                   <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Estado</th>
                   <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {cursos.map((c) => (
-                  <tr key={`${c.id}-${c.tipo}`} className="border-b border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
-                    <td className="p-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">{c.curso_codigo || '—'}</td>
-                    <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">{c.curso_nombre || '—'}</td>
-                    <td>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-2xs font-medium border ${
-                        c.tipo === 'Teoria' 
-                          ? 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800/50' 
-                          : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/50'
-                      }`}>
-                        {c.tipo}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-300">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4 text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
-                        <span>
-                          {c.horario?.aula?.codigo ||
-                          c.horario?.laboratorio?.codigo ||
-                          c.horario?.ambiente_secretaria_codigo ||
-                          c.aula_codigo ||
-                          c.ambiente_codigo ||
-                          '—'}
+                {cursos.map((c) => {
+                  // 🌟 LECTOR BLINDADO: Extrae el código y nombre sin importar cómo venga del backend
+                  const codigoDinamico = c.curso_codigo || c.curso?.codigo || c.codigo || '—';
+                  const nombreDinamico = c.curso_nombre || c.curso?.nombre || c.nombre || '—';
+
+                  return (
+                    <tr key={`${c.id}-${c.tipo}`} className="border-b border-neutral-100 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                      <td className="p-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                        {codigoDinamico}
+                      </td>
+                      <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">
+                        {nombreDinamico}
+                        {c.grupo && c.grupo !== 'Único' && (
+                          <span className="ml-2 text-xs font-bold text-primary-600 dark:text-primary-400">[G.{c.grupo}]</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-2xs font-medium border ${
+                          c.tipo === 'Teoria' || c.tipo === 'Teoría'
+                            ? 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800/50' 
+                            : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/50'
+                        }`}>
+                          {c.tipo}
                         </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-center">
-                      {c.tiene_horario ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-success-50 text-success-700 border border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800/50">
-                          <CheckCircle className="w-3 h-3" /> Con horario
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-warning-50 text-warning-700 border border-warning-200 dark:bg-warning-900/30 dark:text-warning-400 dark:border-warning-800/50">
-                          <AlertCircle className="w-3 h-3" /> Pendiente
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      {c.tiene_horario ? (
-                        <button
-                          onClick={() => navigate('/docente/horario')}
-                          className="btn-ghost flex items-center gap-1 mx-auto text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 dark:hover:bg-neutral-700"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          Ver horario
-                        </button>
-                      ) : (
-                        // AQUÍ ENTRA LA MAGIA DEL INTERRUPTOR
-                        String(config?.docentes_pueden_asignar).toLowerCase() === 'true' ? (
+                      </td>
+                      <td className="p-3 text-center text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                        {Number(c.horas_asignadas || 0)}h
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-300">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                          <span>
+                            {c.horario?.aula?.codigo ||
+                            c.horario?.laboratorio?.codigo ||
+                            c.horario?.ambiente_secretaria_codigo ||
+                            c.aula_codigo ||
+                            c.ambiente_codigo ||
+                            '—'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        {c.tiene_horario ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-success-50 text-success-700 border border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800/50">
+                            <CheckCircle className="w-3 h-3" /> Con horario
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-warning-50 text-warning-700 border border-warning-200 dark:bg-warning-900/30 dark:text-warning-400 dark:border-warning-800/50">
+                            <AlertCircle className="w-3 h-3" /> Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {c.tiene_horario ? (
                           <button
-                            onClick={() => navigate(`/docente/seleccionar?asignacion_id=${c.id}`)}
+                            onClick={() => navigate('/docente/horario')}
                             className="btn-ghost flex items-center gap-1 mx-auto text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 dark:hover:bg-neutral-700"
                           >
-                            <Clock className="w-3.5 h-3.5" />
-                            Seleccionar
+                            <Calendar className="w-3.5 h-3.5" />
+                            Ver horario
                           </button>
                         ) : (
-                          <span 
-                            className="flex items-center justify-center gap-1 mx-auto text-neutral-400 dark:text-neutral-500 cursor-not-allowed text-sm font-medium" 
-                            title="La secretaría asignará este horario"
-                          >
-                            <Clock className="w-3.5 h-3.5" />
-                            En espera
-                          </span>
-                        )
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          String(config?.docentes_pueden_asignar).toLowerCase() === 'true' ? (
+                            <button
+                              onClick={() => navigate(`/docente/seleccionar?asignacion_id=${c.id}`)}
+                              className="btn-ghost flex items-center gap-1 mx-auto text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 dark:hover:bg-neutral-700"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              Seleccionar
+                            </button>
+                          ) : (
+                            <span 
+                              className="flex items-center justify-center gap-1 mx-auto text-neutral-400 dark:text-neutral-500 cursor-not-allowed text-sm font-medium" 
+                              title="La secretaría asignará este horario"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              En espera
+                            </span>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

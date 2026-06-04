@@ -48,6 +48,8 @@ const selectHorarioCompleto = `
     h.created_at,
     h.updated_at,
     adc.tipo AS tipo_asignacion,
+    adc.grupo, -- 🌟 AÑADIDO: Soporte para grupos
+    adc.horas_asignadas, -- 🌟 AÑADIDO: Horas fraccionadas
     adc.semestre_asignacion,
     json_build_object(
       'id', d.id,
@@ -88,8 +90,8 @@ const selectHorarioCompleto = `
   JOIN cursos c ON c.id = adc.curso_id
   LEFT JOIN aulas a ON a.id = h.aula_id
   LEFT JOIN laboratorios l ON l.id = h.laboratorio_id
-  -- Joins para capturar el ambiente pre-configurado por la secretaría
-  LEFT JOIN aulas a_pref ON a_pref.id = adc.ambiente_preferido_id AND adc.tipo = 'Teoria'
+  -- 🌟 ACTUALIZADO: Práctica también usa Aulas
+  LEFT JOIN aulas a_pref ON a_pref.id = adc.ambiente_preferido_id AND (adc.tipo = 'Teoria' OR adc.tipo = 'Practica')
   LEFT JOIN laboratorios l_pref ON l_pref.id = adc.ambiente_preferido_id AND adc.tipo = 'Laboratorio'
 `;
 
@@ -131,7 +133,6 @@ const HorarioModel = {
     return result.rows[0]?.total || 0;
   },
 
-  // NUEVO METODO: Cuenta solo los generados automáticamente
   countAutomaticosBySemestre: async (semestre, client = pool) => {
     const result = await client.query('SELECT COUNT(*)::int AS total FROM horarios WHERE semestre = $1 AND generado_automaticamente = TRUE', [semestre]);
     return result.rows[0]?.total || 0;
@@ -142,7 +143,6 @@ const HorarioModel = {
     return result.rowCount;
   },
 
-  // NUEVO METODO: Borra solo los generados automáticamente
   deleteAutomaticosBySemestre: async (semestre, client = pool) => {
     const result = await client.query('DELETE FROM horarios WHERE semestre = $1 AND generado_automaticamente = TRUE RETURNING id', [semestre]);
     return result.rowCount;
@@ -200,7 +200,6 @@ const HorarioModel = {
     return result.rows[0] || null;
   },
 
-  // MODIFICADO: Excluye asignaciones con horarios ya creados
   getAsignacionesParaScheduling: async (semestre, client = pool) => {
     const semestreTrim = String(semestre).trim();
     const isOddSemester = semestreTrim.endsWith('-1');
@@ -214,6 +213,8 @@ const HorarioModel = {
          adc.docente_id,
          adc.curso_id,
          adc.tipo,
+         adc.grupo,               -- 🌟 AÑADIDO
+         adc.horas_asignadas,     -- 🌟 AÑADIDO
          adc.ambiente_preferido_id,
          adc.semestre_asignacion,
          d.nombres AS docente_nombres,
@@ -225,8 +226,9 @@ const HorarioModel = {
          c.nombre AS curso_nombre,
          c.creditos AS curso_creditos,
          c.ciclo AS curso_ciclo,
-         c.horas_aula AS curso_horas_aula,
-         c.horas_lab AS curso_horas_lab,
+         c.horas_t AS curso_horas_t, -- 🌟 ACTUALIZADO A LA NUEVA BD
+         c.horas_p AS curso_horas_p, -- 🌟 ACTUALIZADO A LA NUEVA BD
+         c.horas_l AS curso_horas_l, -- 🌟 ACTUALIZADO A LA NUEVA BD
          CASE d.tipo_nombramiento WHEN 'Nombrado' THEN 1 ELSE 2 END AS prioridad_tipo,
          CASE d.categoria
            WHEN 'Principal' THEN 1
@@ -238,9 +240,9 @@ const HorarioModel = {
        FROM asignacion_docente_curso adc
        JOIN docentes d ON d.id = adc.docente_id AND d.activo = TRUE
        JOIN cursos c ON c.id = adc.curso_id AND c.activo = TRUE
-       LEFT JOIN horarios h ON h.asignacion_id = adc.id -- Se une para revisar si ya hay horario
+       LEFT JOIN horarios h ON h.asignacion_id = adc.id
        WHERE adc.semestre_asignacion = $1
-         AND h.id IS NULL -- Filtrar para traer solo las que NO tienen horario
+         AND h.id IS NULL
          ${cicloParityFilter}
        ORDER BY prioridad_tipo ASC, prioridad_categoria ASC, d.antiguedad_anios DESC, d.apellidos ASC, d.nombres ASC, c.codigo ASC`,
       [semestre]
@@ -282,7 +284,6 @@ const HorarioModel = {
   },
 
   existeConflictoAula: async ({ aula_id, semestre, dia, hora_inicio, hora_fin, excludeId }, client) => {
-    // Base de la consulta
     let sql = `
       SELECT 1 FROM horarios 
       WHERE aula_id = $1 
@@ -293,7 +294,6 @@ const HorarioModel = {
     `;
     const params = [aula_id, semestre, dia, hora_inicio, hora_fin];
 
-    // 🌟 SI VIENE UN ID A EXCLUIR (Modo edición), LO AGREGAMOS DINÁMICAMENTE
     if (excludeId) {
       sql += ` AND id <> $6`;
       params.push(excludeId);
@@ -325,28 +325,44 @@ const HorarioModel = {
     return result.rows.length > 0;
   },
 
-  existeConflictoCiclo: async ({ ciclo, semestre, dia, hora_inicio, hora_fin, excludeId = null }, client = pool) => {
+  existeConflictoCiclo: async ({ ciclo, semestre, dia, hora_inicio, hora_fin, excludeId = null, curso_codigo, tipo }, client) => {
     const params = [ciclo, semestre, dia, hora_inicio, hora_fin];
     let exclude = '';
     if (excludeId) {
       params.push(excludeId);
       exclude = `AND h.id != $${params.length}`;
     }
-    const result = await client.query(
-      `SELECT h.id
+    
+    const executor = client || pool;
+    const result = await executor.query(
+      `SELECT h.id, c.codigo, adc.tipo
        FROM horarios h
        JOIN asignacion_docente_curso adc ON adc.id = h.asignacion_id
        JOIN cursos c ON c.id = adc.curso_id
-       WHERE c.ciclo = $1
+       WHERE c.ciclo = $1::int
          AND h.semestre = $2
          AND h.dia = $3
          AND h.hora_inicio < $5::time
          AND h.hora_fin > $4::time
-         ${exclude}
-       LIMIT 1`,
+         ${exclude}`,
       params
     );
-    return result.rows[0] || null;
+
+    const overlaps = result.rows;
+    if (overlaps.length === 0) return null;
+
+    const isIncomingException = (curso_codigo && curso_codigo.startsWith('EL-')) || tipo === 'Laboratorio';
+
+    if (!isIncomingException) return overlaps[0];
+
+    if (overlaps.length >= 2) return overlaps[0];
+
+    const existing = overlaps[0];
+    const isExistingException = (existing.codigo && existing.codigo.startsWith('EL-')) || existing.tipo === 'Laboratorio';
+
+    if (!isExistingException) return existing;
+
+    return null;
   },
 
   existeRestriccionDocente: async ({ docente_id, dia, hora_inicio, hora_fin }, client = pool) => {
@@ -376,6 +392,8 @@ const HorarioModel = {
          adc.docente_id,
          adc.curso_id,
          adc.tipo,
+         adc.grupo,             -- 🌟 AÑADIDO
+         adc.horas_asignadas,   -- 🌟 AÑADIDO
          d.nombres AS docente_nombres,
          d.apellidos AS docente_apellidos,
          d.email AS docente_email,
@@ -471,9 +489,11 @@ const HorarioModel = {
       ),
     ]);
 
-    const distribucionMap = { teoria: 0, laboratorio: 0 };
+    // 🌟 ACTUALIZADO: Se incluyó Práctica en la distribución de estadísticas
+    const distribucionMap = { teoria: 0, practica: 0, laboratorio: 0 };
     distribucion.rows.forEach((row) => {
       if (row.tipo === 'Teoria') distribucionMap.teoria = row.total;
+      if (row.tipo === 'Practica') distribucionMap.practica = row.total;
       if (row.tipo === 'Laboratorio') distribucionMap.laboratorio = row.total;
     });
 

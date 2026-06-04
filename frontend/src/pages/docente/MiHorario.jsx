@@ -87,12 +87,11 @@ const MiHorario = () => {
       setHorarios(Array.isArray(resHorariosDocente?.data?.data) ? resHorariosDocente.data.data : []);
       setHorariosGlobales(Array.isArray(resHorariosGlobales?.data?.data) ? resHorariosGlobales.data.data : []); 
 
-      // Obtener el perfil del docente por separado para no romper la carga si falla
       try {
         const resPerfil = await api.get('/docente/mi-perfil');
         setMiPerfil(resPerfil.data?.data);
       } catch (err) {
-        console.warn("No se pudo cargar el perfil del docente (ruta no disponible)", err);
+        console.warn("No se pudo cargar el perfil del docente", err);
       }
 
       try {
@@ -110,10 +109,8 @@ const MiHorario = () => {
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
-  // 1. Validamos estrictamente convirtiendo el valor que viene de la BD a texto minúscula
   const modoTurnosActivo = String(config?.docentes_pueden_asignar).toLowerCase() === 'true';
 
-  // 2. Evaluamos si el modo turnos está activo Y si es el turno de este docente
   const tienePermisoEdicion = 
     modoTurnosActivo && 
     (miPerfil?.estado_turno === 'Notificado' || demoEstado?.turnoActual?.docente_id === user?.id);
@@ -306,19 +303,20 @@ const MiHorario = () => {
     return bloquesLista;
   }, [config]);
 
+  // 🌟 AHORA FILTRAMOS MÚLTIPLES CURSOS EN LUGAR DE BUSCAR SOLO EL PRIMERO
   const horarioEnBloque = (dia, bloqueInicio, bloqueFin) => {
     const bloqueIniMin = timeToMinutes(bloqueInicio);
     const bloqueFinMin = timeToMinutes(bloqueFin);
     const targetDia = String(dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
-    return (horarios || []).find(h => {
+    return (horarios || []).filter(h => {
       if (!h) return false;
       const currentDia = String(h.dia).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
       if (currentDia !== targetDia) return false;
 
       const hIniMin = timeToMinutes(h.hora_inicio);
       const hFinMin = timeToMinutes(h.hora_fin);
-      return hIniMin <= bloqueIniMin && hFinMin >= bloqueFinMin;
+      return hIniMin < bloqueFinMin && hFinMin > bloqueIniMin;
     });
   };
 
@@ -348,7 +346,6 @@ const MiHorario = () => {
   return (
     <div className="animate-fade-in max-w-7xl mx-auto">
       
-      {/* 🌟 AVISO DE FASE DE DISPONIBILIDAD (Solo visible si no pueden editar) 🌟 */}
       {!config?.docentes_pueden_asignar && (
         <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800/50 text-indigo-800 dark:text-indigo-300 p-4 rounded-xl mb-6 flex gap-3 shadow-sm">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
@@ -398,14 +395,14 @@ const MiHorario = () => {
           {/* Desktop Grid */}
           <div className="hidden md:block card overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-fixed min-w-[900px]">
                 <thead>
                   <tr className="bg-neutral-50 dark:bg-neutral-900/50">
-                    <th className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-left text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-36 sticky left-0 bg-neutral-50 dark:bg-neutral-900 z-10">
+                    <th className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-left text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-[100px] sticky left-0 bg-neutral-50 dark:bg-neutral-900 z-10">
                       Bloque
                     </th>
                     {dias.map(dia => (
-                      <th key={`th-${dia}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-center text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase min-w-[160px] last:border-r-0">
+                      <th key={`th-${dia}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-2 text-center text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">
                         {dia}
                       </th>
                     ))}
@@ -413,59 +410,68 @@ const MiHorario = () => {
                 </thead>
                 <tbody>
                   {bloques.map((bloque, idx) => (
-                    <tr key={`tr-${bloque.label}-${idx}`} className={idx % 2 === 0 ? 'bg-white dark:bg-neutral-800' : 'bg-neutral-50/30 dark:bg-neutral-800/50'}>
-                      <td className="border-b border-r border-neutral-200 dark:border-neutral-700 p-3 text-neutral-600 dark:text-neutral-400 text-sm font-medium sticky left-0 bg-inherit z-10 whitespace-nowrap">
+                    <tr key={`tr-${bloque.label}-${idx}`} className={`h-[90px] ${idx % 2 === 0 ? 'bg-white dark:bg-neutral-800' : 'bg-neutral-50/30 dark:bg-neutral-800/50'}`}>
+                      <td className="border-b border-r border-neutral-200 dark:border-neutral-700 p-2 text-neutral-600 dark:text-neutral-400 text-xs font-medium w-[100px] sticky left-0 bg-inherit z-10">
                         {bloque.label}
                       </td>
                       {dias.map(dia => {
-                        const h = !loading ? horarioEnBloque(dia, bloque.inicio, bloque.fin) : null;
+                        const hs = !loading ? horarioEnBloque(dia, bloque.inicio, bloque.fin) : [];
                         return (
-                          <td key={`td-${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-1.5 align-top last:border-r-0">
-                            {h ? (
-                              (() => {
-                                const color = getColorCurso(h?.curso?.codigo);
-                                return (
-                                  <div
-                                    className={`rounded-lg p-2.5 group border-l-[3px] transition-all ${
-                                      tienePermisoEdicion ? 'cursor-pointer hover:shadow-sm' : 'cursor-default opacity-90'
-                                    }`}
-                                    style={{
-                                      backgroundColor: color.bg,
-                                      borderLeftColor: color.border,
-                                    }}
-                                    onClick={() => tienePermisoEdicion && abrirEdicion(h)}
-                                  >
-                                    <p className="text-xs font-semibold truncate" style={{ color: color.text }}>{h?.curso?.codigo || 'S/C'}</p>
-                                    <p className="text-xs truncate" style={{ color: color.sub }}>{h?.curso?.nombre || 'Sin Nombre'}</p>
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <Clock className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
-                                      <span className="text-2xs" style={{ color: color.sub }}>
-                                        {formatAMPM(h?.hora_inicio)} - {formatAMPM(h?.hora_fin)}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
-                                      <span className="text-2xs font-medium" style={{ color: color.sub }}>
-                                        {h?.aula?.codigo || h?.laboratorio?.codigo || h?.ambiente_secretaria_codigo || 'Sin ambiente'}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Botón Eliminar solo visible si hay permisos */}
-                                    {tienePermisoEdicion && (
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); eliminarHorario(h.id); }}
-                                          className="flex items-center gap-1 text-danger-500 hover:text-danger-700 text-2xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                          Eliminar
-                                        </button>
+                          <td key={`td-${dia}-${bloque.label}`} className="border-b border-r border-neutral-200 dark:border-neutral-700 p-1 align-top relative last:border-r-0">
+                            {hs.length > 0 && (
+                              <div className={`grid h-full w-full gap-1 ${hs.length === 1 ? 'grid-cols-1' : hs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                {hs.map((h) => {
+                                  const color = getColorCurso(h?.curso?.codigo);
+                                  const tipoAbrv = (h.tipo || h.tipo_asignacion || h.curso?.tipo || '').substring(0,3) + '.';
+                                  
+                                  return (
+                                    <div
+                                      key={h.id}
+                                      className={`flex flex-col rounded-lg p-1.5 border-l-[3px] group relative overflow-hidden transition-all min-w-0 ${
+                                        tienePermisoEdicion ? 'cursor-pointer hover:shadow-md' : 'cursor-default opacity-90'
+                                      }`}
+                                      style={{
+                                        backgroundColor: color.bg,
+                                        borderLeftColor: color.border,
+                                      }}
+                                      onClick={() => tienePermisoEdicion && abrirEdicion(h)}
+                                    >
+                                      <p className="text-[11px] font-semibold truncate" style={{ color: color.text }}>{h?.curso?.codigo || 'S/C'}</p>
+                                      <p className="text-[9px] leading-tight truncate" style={{ color: color.sub }}>{tipoAbrv} {h?.curso?.nombre || 'Sin Nombre'}</p>
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <Clock className="w-2.5 h-2.5 flex-shrink-0" style={{ color: color.sub }} />
+                                        <span className="text-[9px] font-medium" style={{ color: color.sub }}>
+                                          {formatAMPM(h?.hora_inicio)} - {formatAMPM(h?.hora_fin)}
+                                        </span>
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })()
-                            ) : null}
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <MapPin className="w-2.5 h-2.5 flex-shrink-0" style={{ color: color.sub }} />
+                                        <span className="text-[9px] font-medium" style={{ color: color.sub }}>
+                                          {h?.aula?.codigo || h?.laboratorio?.codigo || h?.ambiente_secretaria_codigo || 'Sin ambiente'}
+                                        </span>
+                                      </div>
+                                      
+                                      {tienePermisoEdicion && (
+                                        <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex flex-col gap-1 bg-white/80 dark:bg-black/50 p-1 rounded backdrop-blur-sm">
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); abrirEdicion(h); }}
+                                            className="text-primary-600 dark:text-primary-400 hover:text-primary-800 text-xs flex items-center gap-0.5 font-medium transition-colors"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); eliminarHorario(h.id); }}
+                                            className="text-danger-500 dark:text-danger-400 hover:text-danger-700 text-xs flex items-center gap-0.5 font-medium transition-colors"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </td>
                         );
                       })}
@@ -503,6 +509,7 @@ const MiHorario = () => {
                           </div>
                           {(() => {
                             const color = getColorCurso(h?.curso?.codigo);
+                            const tipoAbrv = (h.tipo || h.tipo_asignacion || h.curso?.tipo || '').substring(0,3) + '.';
                             return (
                               <div
                                 className={`flex-1 rounded-lg p-2.5 border-l-[3px] ${
@@ -515,8 +522,8 @@ const MiHorario = () => {
                                 onClick={() => tienePermisoEdicion && abrirEdicion(h)}
                               >
                                 <p className="text-sm font-semibold" style={{ color: color.text }}>{h?.curso?.codigo || 'S/C'}</p>
-                                <p className="text-xs" style={{ color: color.sub }}>{h?.curso?.nombre || 'Sin Nombre'}</p>
-                                <div className="flex items-center gap-1 mt-1">
+                                <p className="text-xs mt-0.5" style={{ color: color.sub }}>{tipoAbrv} {h?.curso?.nombre || 'Sin Nombre'}</p>
+                                <div className="flex items-center gap-1 mt-1.5">
                                   <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: color.sub }} />
                                   <span className="text-xs font-medium" style={{ color: color.sub }}>
                                     {h?.aula?.codigo || h?.laboratorio?.codigo || h?.ambiente_secretaria_codigo || 'Sin ambiente'}
@@ -524,10 +531,17 @@ const MiHorario = () => {
                                 </div>
                                 
                                 {tienePermisoEdicion && (
-                                  <div className="flex items-center gap-3 mt-2">
+                                  <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/5 dark:border-white/10">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); abrirEdicion(h); }}
+                                      className="flex items-center gap-1 text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-400 text-xs font-medium"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                      Editar
+                                    </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); eliminarHorario(h?.id); }}
-                                      className="flex items-center gap-1 text-danger-500 hover:text-danger-700 text-xs font-medium"
+                                      className="flex items-center gap-1 text-danger-500 hover:text-danger-700 dark:text-danger-400 dark:hover:text-danger-300 text-xs font-medium"
                                     >
                                       <Trash2 className="w-3 h-3" />
                                       Eliminar
@@ -547,7 +561,6 @@ const MiHorario = () => {
         </>
       )}
 
-      {/* Edit Modal (Este solo se abre si se cumplió la condición de permiso) */}
       {editando && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditando(null)}>
           <div className="card p-6 w-full max-w-md shadow-modal animate-scale-in dark:bg-neutral-800 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>

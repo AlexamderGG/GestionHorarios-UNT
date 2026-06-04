@@ -205,18 +205,21 @@ const DocenteAuthController = {
       if (conflictoDocente)
         return error(res, "Ya tienes una clase en ese horario", 409);
 
-      // NUEVA BARRERA: CONFLICTO DE CICLO (Alumnos no pueden duplicarse)
+      // NUEVA BARRERA: CONFLICTO DE CICLO (Excepción 50/50 Electivos y Laboratorios)
       const conflictoCiclo = await HorarioModel.existeConflictoCiclo({
-        ciclo: asignacion.ciclo || asignacion.curso_ciclo, 
+        ciclo: asignacion.ciclo || asignacion.curso_ciclo || cursoInfo.ciclo, 
         semestre,
         dia,
         hora_inicio: hIni,
         hora_fin: hFin,
+        curso_codigo: cursoInfo.codigo, // AÑADIDO
+        tipo: asignacion.tipo           // AÑADIDO
       });
+      
       if (conflictoCiclo) {
         return error(
           res, 
-          `Conflicto de Ciclo: Ya existe otra asignatura programada para el Ciclo ${asignacion.ciclo} en este mismo horario. Los alumnos no pueden estar en dos ambientes a la vez.`, 
+          `Conflicto de Ciclo: Ya existe otra asignatura regular programada, o se ha alcanzado el límite máximo (2) de laboratorios/electivos simultáneos para el Ciclo ${asignacion.ciclo || cursoInfo.ciclo}.`, 
           409
         );
       }

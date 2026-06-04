@@ -21,6 +21,7 @@ import SecretariaPanel from './pages/admin/SecretariaPanel';
 import AdminExcepciones from "./pages/admin/AdminExcepciones";
 import MisDisponibilidades from './pages/docente/MisDisponibilidades';
 import PlanificacionSecretaria from './pages/admin/PlanificacionSecretaria';
+import CargaHoraria from './pages/docente/CargaHoraria';
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -42,6 +43,7 @@ function App() {
           <Route path="docente/seleccionar" element={<SeleccionarHorario />} />
           <Route path="docente/excepciones" element={<Excepciones />} />
           <Route path="docente/disponibilidad" element={<MisDisponibilidades />} />
+          <Route path="docente/carga-horaria" element={<CargaHoraria />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

@@ -24,6 +24,16 @@ const checkOverlap = (start1, end1, start2, end2) => {
   return s1 < e2 && e1 > s2; 
 };
 
+// 🌟 UTILIDAD SEGURA: Suma horas fraccionadas en minutos para evitar fallos (ej. 1.5 horas)
+const sumarHoras = (horaIni, horasSumar) => {
+  if (!horaIni) return "";
+  const [h, m] = String(horaIni).split(":").map(Number);
+  const totalMinutos = (h * 60) + m + Math.round(horasSumar * 60);
+  const newH = Math.floor(totalMinutos / 60);
+  const newM = totalMinutos % 60;
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
+};
+
 const PlanificacionSecretaria = () => {
   const [config, setConfig] = useState(null);
   const [analisis, setAnalisis] = useState([]);
@@ -66,17 +76,82 @@ const PlanificacionSecretaria = () => {
     }
   }, []); 
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useEffect(() => { cargarDatos(); }, [cargarDatos]);
+
+  // 🌟 MOTOR DE AGRUPACIÓN Y ORDENAMIENTO DE CURSOS
+  const asignacionesProcesadas = useMemo(() => {
+    if (!docenteSelect || !docenteSelect.asignaciones) return [];
+
+    let raw = [...docenteSelect.asignaciones];
+    const agrupadas = [];
+    const procesados = new Set();
+
+    raw.forEach(asig => {
+      if (procesados.has(asig.id)) return;
+
+      // 1. Detectar si el docente tiene Teoría y Práctica del mismo curso para fusionarlas
+      if (asig.tipo === 'Teoria' || asig.tipo === 'Teoría') {
+        const practicaMatch = raw.find(a => 
+          a.curso_id === asig.curso_id && 
+          (a.tipo === 'Practica' || a.tipo === 'Práctica') && 
+          !procesados.has(a.id) &&
+          a.programado === asig.programado
+        );
+
+        if (practicaMatch) {
+          agrupadas.push({
+            ...asig,
+            id: `${asig.id}-${practicaMatch.id}`, 
+            ids_reales: [asig.id, practicaMatch.id], 
+            tipo: 'Teoría y Práctica',
+            horas_asignadas: Number(asig.horas_asignadas || 0) + Number(practicaMatch.horas_asignadas || 0),
+            horas_desglose: [Number(asig.horas_asignadas || 0), Number(practicaMatch.horas_asignadas || 0)],
+          });
+          procesados.add(asig.id);
+          procesados.add(practicaMatch.id);
+          return;
+        }
+      }
+
+      // 2. Si no es un combo, lo pasamos normal
+      if (!asig.ids_reales) {
+        agrupadas.push({
+          ...asig,
+          ids_reales: [asig.id],
+          horas_desglose: [Number(asig.horas_asignadas || 0)]
+        });
+      } else {
+        agrupadas.push(asig); // Por si el backend ya lo envió agrupado
+      }
+      procesados.add(asig.id);
+    });
+
+    // 3. Ordenar: Código del Curso -> Tipo (T+P, Teoria, Practica, Lab) -> Grupo
+    agrupadas.sort((a, b) => {
+      if (a.curso_codigo !== b.curso_codigo) {
+        return String(a.curso_codigo).localeCompare(String(b.curso_codigo));
+      }
+      const order = { 'Teoría y Práctica': 1, 'Teoria': 2, 'Teoría': 2, 'Practica': 3, 'Práctica': 3, 'Laboratorio': 4 };
+      const typeA = order[a.tipo] || 5;
+      const typeB = order[b.tipo] || 5;
+      if (typeA !== typeB) return typeA - typeB;
+
+      const groupA = a.grupo || '';
+      const groupB = b.grupo || '';
+      return groupA.localeCompare(groupB);
+    });
+
+    return agrupadas;
+  }, [docenteSelect]);
 
   useEffect(() => {
     if (asigModal && form.dia && form.hora_inicio && form.hora_fin) {
       const fetchAmbientes = async () => {
         setCargandoAmbientes(true);
         try {
+          const isAula = asigModal.tipo.includes('Teor') || asigModal.tipo.includes('Prac');
           const res = await api.get('/horarios/ambientes-disponibilidad', {
-            params: { dia: form.dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, tipo: asigModal.tipo, semestre }
+            params: { dia: form.dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, tipo: isAula ? 'Teoria' : 'Laboratorio', semestre }
           });
           setAmbientesDisponibles(res.data?.data || []);
         } catch (error) {
@@ -98,22 +173,18 @@ const PlanificacionSecretaria = () => {
 
   const calcularHoraFin = (horaIni) => {
     if (!horaIni || !asigModal) return "";
-    const horasReq = asigModal.tipo === 'Teoria' ? asigModal.horas_aula : asigModal.horas_lab;
-    const [h, m] = String(horaIni).split(":").map(Number);
-    return `${String(h + horasReq).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
+    return sumarHoras(horaIni, Number(asigModal.horas_asignadas || 0));
   };
 
   const checkHoraStatus = (horaCandidate) => {
     if (!form.dia || !docenteSelect || !asigModal) return { invalida: true, motivo: '' };
     const horaFinCandidate = calcularHoraFin(horaCandidate);
 
-    // a) Límite de cierre desde la Configuración Dinámica
     const horaCierre = config?.hora_fin || "22:00";
     if (timeToMins(horaFinCandidate) > timeToMins(horaCierre)) {
       return { invalida: true, motivo: `(Excede cierre ${formatAMPM(horaCierre)})` };
     }
 
-    // b) NO choque con un bloque RESTRINGIDO del docente
     const restricciones = docenteSelect.disponibilidades.filter(d => d.tipo === 'RESTRINGIDO' && d.dia === form.dia);
     for (let r of restricciones) {
       if (checkOverlap(horaCandidate, horaFinCandidate, r.hora_inicio, r.hora_fin)) {
@@ -121,7 +192,6 @@ const PlanificacionSecretaria = () => {
       }
     }
 
-    // c) NO choque con un horario YA ASIGNADO a este docente
     const horariosProgramados = docenteSelect.horarios.filter(h => h.dia === form.dia);
     for (let h of horariosProgramados) {
       if (checkOverlap(horaCandidate, horaFinCandidate, h.hora_inicio, h.hora_fin)) {
@@ -129,39 +199,63 @@ const PlanificacionSecretaria = () => {
       }
     }
 
-    // d) NO choque con otra clase del MISMO CICLO
-    if (asigModal.curso_ciclo && String(asigModal.curso_ciclo) !== "0") {
-      const horariosMismoCiclo = horariosGlobales.filter(h => {
-        const cicloHorario = h.curso?.ciclo || h.ciclo || h.curso_ciclo;
-        return h.dia === form.dia && String(cicloHorario) === String(asigModal.curso_ciclo);
-      });
+    const cicloModal = asigModal.curso_ciclo || asigModal.ciclo;
+    if (cicloModal && String(cicloModal) !== "0") {
+      const horariosMismoCiclo = horariosGlobales.filter(h => h.dia === form.dia && String(h.curso?.ciclo || h.ciclo || h.curso_ciclo) === String(cicloModal));
       
+      // 🌟 REGLA FRONTEND: ¿Es una excepción el curso que estamos programando?
+      const isIncomingException = (asigModal.curso_codigo || '').startsWith('EL-') || asigModal.tipo === 'Laboratorio';
+      let overlapsCount = 0;
+
       for (let h of horariosMismoCiclo) {
         if (checkOverlap(horaCandidate, horaFinCandidate, h.hora_inicio, h.hora_fin)) {
-          return { invalida: true, motivo: `(Cruce en ciclo ${asigModal.curso_ciclo})` };
+          // 🌟 ¿Es una excepción el curso que ya está en el calendario?
+          const isExistingException = (h.curso?.codigo || '').startsWith('EL-') || h.tipo_asignacion === 'Laboratorio' || h.tipo === 'Laboratorio';
+          
+          // Si alguno de los dos NO es excepción, es un choque ilegal directo.
+          if (!isIncomingException || !isExistingException) {
+            return { invalida: true, motivo: `(Cruce regular en Ciclo ${cicloModal})` };
+          }
+          overlapsCount++;
         }
       }
-    }
 
+      // Si hay 2 o más excepciones cruzándose, la tercera es rechazada.
+      if (overlapsCount >= 2) {
+         return { invalida: true, motivo: `(Límite de cruces superado en Ciclo ${cicloModal})` };
+      }
+    }
     return { invalida: false, motivo: '' };
   };
-
-  // Leer los días hábiles de la configuración dinámica
   const diasHabiles = config?.dias_habiles 
     ? (Array.isArray(config.dias_habiles) ? config.dias_habiles : String(config.dias_habiles).split(','))
     : ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
 
+  // 🌟 GUARDADO DIVIDIDO: Corta el "combo" en sus partes originales para el backend
   const handleGuardarHorario = async () => {
     setGuardando(true);
     try {
-      await api.post('/horarios', {
-        asignacion_id: asigModal.id,
-        dia: form.dia,
-        hora_inicio: form.hora_inicio,
-        hora_fin: form.hora_fin,
-        aula_id: asigModal.tipo === "Teoria" ? Number(form.ambiente_id) : null,
-        laboratorio_id: asigModal.tipo === "Laboratorio" ? Number(form.ambiente_id) : null,
-      });
+      const isAula = asigModal.tipo.includes("Teor") || asigModal.tipo.includes("Prac");
+      let inicioActual = form.hora_inicio;
+
+      // Iteramos sobre las partes del combo (o de la asignación simple)
+      for (let i = 0; i < (asigModal.ids_reales || [asigModal.id]).length; i++) {
+        const idReal = (asigModal.ids_reales || [asigModal.id])[i];
+        const horasParaEstaParte = asigModal.horas_desglose ? asigModal.horas_desglose[i] : asigModal.horas_asignadas;
+        const finActual = sumarHoras(inicioActual, horasParaEstaParte);
+
+        await api.post('/horarios', {
+          asignacion_id: idReal,
+          dia: form.dia,
+          hora_inicio: inicioActual,
+          hora_fin: finActual,
+          aula_id: isAula ? Number(form.ambiente_id) : null,
+          laboratorio_id: !isAula ? Number(form.ambiente_id) : null,
+        });
+
+        inicioActual = finActual; // El siguiente bloque empieza donde acaba este
+      }
+
       setAsigModal(null);
       cargarDatos();
     } catch (err) {
@@ -171,17 +265,13 @@ const PlanificacionSecretaria = () => {
     }
   };
 
-  // Generar horas del combobox de forma dinámica según la Configuración
   const horasBase = useMemo(() => {
     const inicio = config?.hora_inicio || "07:00";
     const fin = config?.hora_fin || "22:00";
     const [hIni] = inicio.split(":").map(Number);
     const [hFin] = fin.split(":").map(Number);
-    
     const lista = [];
-    for (let h = hIni; h < hFin; h++) {
-      lista.push(`${String(h).padStart(2, "0")}:00`);
-    }
+    for (let h = hIni; h < hFin; h++) lista.push(`${String(h).padStart(2, "0")}:00`);
     return lista;
   }, [config]);
 
@@ -299,14 +389,22 @@ const PlanificacionSecretaria = () => {
               </h3>
               
               <div className="space-y-3">
-                {docenteSelect.asignaciones.map(asig => (
+                {/* 🌟 ITERAMOS SOBRE LA LISTA YA ORDENADA POR CURSOS Y AGRUPADA */}
+                {asignacionesProcesadas.map(asig => (
                   <div key={asig.id} className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${asig.programado ? 'bg-neutral-50 dark:bg-neutral-900/30 border-neutral-200 dark:border-neutral-700/50 opacity-70' : 'bg-white dark:bg-neutral-800 border-primary-200 dark:border-primary-800/50 shadow-sm'}`}>
                     <div>
-                      <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">[{asig.curso_codigo}] {asig.curso_nombre}</p>
+                      <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">
+                        [{asig.curso_codigo}] {asig.curso_nombre} <span className="text-primary-600 dark:text-primary-400">{asig.grupo && asig.grupo !== 'Único' ? `[Grupo ${asig.grupo}]` : ''}</span>
+                      </p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                        Ciclo: <span className="font-medium text-neutral-700 dark:text-neutral-300">{asig.curso_ciclo}</span> | 
-                        Tipo: <span className="font-medium text-neutral-700 dark:text-neutral-300">{asig.tipo}</span> | 
-                        Requiere: <span className="font-medium text-neutral-700 dark:text-neutral-300">{asig.tipo === 'Teoria' ? asig.horas_aula : asig.horas_lab} hrs seguidas</span>
+                        Ciclo: <span className="font-medium text-neutral-700 dark:text-neutral-300">{asig.curso_ciclo || asig.ciclo}</span> | 
+                        Tipo: <span className={`font-bold ${asig.tipo.includes('Teoría y Práctica') ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'}`}>{asig.tipo}</span> | 
+                        {/* 🌟 AQUÍ OCURRE LA MAGIA DE LA FÓRMULA 1+2=3 */}
+                        Requiere: <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                          {asig.horas_desglose?.length > 1 
+                            ? `${asig.horas_desglose.join('+')}=${asig.horas_asignadas} hrs seguidas` 
+                            : `${Number(asig.horas_asignadas)} hrs seguidas`}
+                        </span>
                       </p>
                     </div>
                     {asig.programado ? (
@@ -314,7 +412,7 @@ const PlanificacionSecretaria = () => {
                         <CheckCircle className="w-3.5 h-3.5" /> Programado
                       </span>
                     ) : (
-                      <button onClick={() => handleAbrirModal(asig)} className="btn-primary py-1.5 px-4 text-xs self-start sm:self-auto">
+                      <button onClick={() => handleAbrirModal(asig)} className={`py-1.5 px-4 text-xs self-start sm:self-auto ${asig.tipo.includes('Teoría y Práctica') ? 'btn-primary bg-indigo-600 hover:bg-indigo-700 border-none text-white' : 'btn-primary'}`}>
                         Programar
                       </button>
                     )}
@@ -339,7 +437,9 @@ const PlanificacionSecretaria = () => {
             <div className="p-5 border-b border-neutral-100 dark:border-neutral-700 flex justify-between items-center bg-neutral-50 dark:bg-neutral-900/50">
               <div>
                 <h3 className="font-bold text-neutral-900 dark:text-white">Programar: {asigModal.curso_codigo}</h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">{asigModal.curso_nombre} ({asigModal.tipo}) - Ciclo {asigModal.curso_ciclo}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {asigModal.curso_nombre} ({asigModal.tipo} {asigModal.grupo && asigModal.grupo !== 'Único' ? `G.${asigModal.grupo}` : ''})
+                </p>
               </div>
               <button onClick={() => setAsigModal(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 p-1 transition-colors"><X className="w-5 h-5"/></button>
             </div>
@@ -388,7 +488,7 @@ const PlanificacionSecretaria = () => {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1.5">
-                  {asigModal.tipo === 'Teoria' ? 'Aula Libre' : 'Lab Libre'}
+                  {asigModal.tipo.includes('Teor') || asigModal.tipo.includes('Prac') ? 'Aula Libre' : 'Lab Libre'}
                   {cargandoAmbientes && <span className="text-primary-600 dark:text-primary-400 text-[10px] ml-2 animate-pulse">(Buscando...)</span>}
                 </label>
                 <select 

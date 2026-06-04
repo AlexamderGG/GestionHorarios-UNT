@@ -14,7 +14,6 @@ const DIAS_VALIDOS = [
   "Domingo",
 ];
 
-// 🌟 UTILIDAD DE NORMALIZACIÓN: Elimina tildes y pasa a minúsculas para evitar que "Sábado" o "Miércoles" se descarten
 const limpiarTextoDia = (str) => {
   return String(str)
     .normalize("NFD")
@@ -47,7 +46,6 @@ const minutesToTime = (totalMinutes) => {
 };
 
 const generarBloques = (configuracion) => {
-  // BLINDAJE 1 CORREGIDO: Soporta String o Array y limpia tildes (Sábado/Miércoles ya no se rompen)
   let diasParseados = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
   
   if (configuracion.dias_habiles) {
@@ -64,7 +62,6 @@ const generarBloques = (configuracion) => {
     }
   }
 
-  // BLINDAJE 2: Toma la hora de fin dinámicamente de la configuración
   const horaInicio = normalizarHora(configuracion.hora_inicio || "07:00");
   const horaFin = normalizarHora(configuracion.hora_fin || "22:00"); 
   const duracion = Number(configuracion.duracion_bloque || 60);
@@ -189,7 +186,8 @@ const SchedulerService = {
       const usoPorHora = {};
 
       for (const asignacion of asignaciones) {
-        const ambientesBase = asignacion.tipo === "Teoria" ? aulas : laboratorios;
+        const isAula = asignacion.tipo === "Teoria" || asignacion.tipo === "Practica";
+        const ambientesBase = isAula ? aulas : laboratorios;
         const ambientes = ordenarAmbientes(
           ambientesBase,
           asignacion.ambiente_preferido_id,
@@ -201,15 +199,12 @@ const SchedulerService = {
             curso: `${asignacion.curso_codigo} - ${asignacion.curso_nombre}`,
             docente: `${asignacion.docente_nombres} ${asignacion.docente_apellidos}`,
             tipo: asignacion.tipo,
-            motivo: asignacion.tipo === "Teoria" ? "No existen aulas activas" : "No existen laboratorios activos",
+            motivo: isAula ? "No existen aulas activas" : "No existen laboratorios activos",
           });
           continue;
         }
 
-        let horasRequeridas = 0;
-        if (asignacion.tipo === "Teoria")
-          horasRequeridas = Number(asignacion.curso_horas_aula || 0);
-        else horasRequeridas = Number(asignacion.curso_horas_lab || 0);
+        const horasRequeridas = Number(asignacion.horas_asignadas || 0);
 
         if (horasRequeridas <= 0) {
           continue;
@@ -237,7 +232,6 @@ const SchedulerService = {
           const finMin = inicioMin + minutosRequeridos;
           const horaFinStr = minutesToTime(finMin);
 
-          // BLINDAJE 3: Validación estricta con la configuración dinámica
           if (finMin > horaFinMaximaMinutos) {
             ultimoMotivo = `El bloque ${bloque.dia} ${bloque.hora_inicio} termina a las ${horaFinStr}, excediendo el cierre (${horaFinMaximaStr})`;
             continue;
@@ -282,23 +276,24 @@ const SchedulerService = {
 
           const conflictoCiclo = await HorarioModel.existeConflictoCiclo(
             {
-              ciclo: asignacion.curso_ciclo || asignacion.ciclo, // 🌟 Safe fallback de nomenclatura de propiedades
+              ciclo: asignacion.curso_ciclo || asignacion.ciclo, 
               semestre: semestreNormalizado,
               dia: bloque.dia,
               hora_inicio: bloque.hora_inicio,
               hora_fin: horaFinStr,
+              curso_codigo: asignacion.curso_codigo, 
+              tipo: asignacion.tipo                  
             },
             client,
           );
 
           if (conflictoCiclo) {
-            ultimoMotivo = `Ciclo ${asignacion.curso_ciclo || asignacion.ciclo} ya tiene una clase en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
+            ultimoMotivo = `Ciclo ${asignacion.curso_ciclo || asignacion.ciclo} ocupado/sin excepciones disponibles en ${bloque.dia} ${bloque.hora_inicio}-${horaFinStr}`;
             continue;
           }
 
           for (const ambiente of ambientes) {
-            const conflictoAmbiente =
-              asignacion.tipo === "Teoria"
+            const conflictoAmbiente = isAula
                 ? await HorarioModel.existeConflictoAula(
                     {
                       aula_id: ambiente.id,
@@ -332,8 +327,8 @@ const SchedulerService = {
                 dia: bloque.dia,
                 hora_inicio: bloque.hora_inicio,
                 hora_fin: horaFinStr,
-                aula_id: asignacion.tipo === "Teoria" ? ambiente.id : null,
-                laboratorio_id: asignacion.tipo === "Laboratorio" ? ambiente.id : null,
+                aula_id: isAula ? ambiente.id : null,
+                laboratorio_id: !isAula ? ambiente.id : null,
                 generado_automaticamente: true,
                 editado_manualmente: false,
               },
@@ -425,9 +420,9 @@ const SchedulerService = {
       errores.push("hora_inicio debe ser menor que hora_fin");
     }
 
-    if (horario.tipo_asignacion === "Teoria") {
+    if (horario.tipo_asignacion === "Teoria" || horario.tipo_asignacion === "Practica") {
       if (!data.aula_id)
-        errores.push("Una asignación de Teoria debe tener aula_id");
+        errores.push(`Una asignación de ${horario.tipo_asignacion} debe tener aula_id`);
       data.laboratorio_id = null;
     }
 
@@ -487,6 +482,39 @@ const SchedulerService = {
       };
     }
 
+    const asigInfo = await pool.query(
+      `SELECT a.tipo, c.ciclo, c.codigo 
+       FROM asignacion_docente_curso a 
+       JOIN cursos c ON a.curso_id = c.id 
+       WHERE a.id = $1`, 
+      [horario.asignacion_id]
+    );
+    
+    const cursoCiclo = asigInfo.rows[0]?.ciclo;
+    const cursoCodigo = asigInfo.rows[0]?.codigo;
+    const asigTipo = asigInfo.rows[0]?.tipo;
+
+    if (cursoCiclo && String(cursoCiclo) !== "0") {
+      const conflictoCiclo = await HorarioModel.existeConflictoCiclo({
+        ciclo: cursoCiclo,
+        semestre: horario.semestre,
+        dia: data.dia,
+        hora_inicio: data.hora_inicio,
+        hora_fin: data.hora_fin,
+        excludeId: horario.id,
+        curso_codigo: cursoCodigo, 
+        tipo: asigTipo             
+      });
+
+      if (conflictoCiclo) {
+        return {
+          ok: false,
+          status: 409,
+          message: `Conflicto de Ciclo: Ya existe una clase programada (o el límite de 2 laboratorios/electivos cruzados se ha superado) en el ciclo ${cursoCiclo}.`
+        };
+      }
+    }
+
     if (data.aula_id) {
       const aula = await AulaModel.getById(Number(data.aula_id));
       if (!aula || aula.activa === false) {
@@ -525,7 +553,7 @@ const SchedulerService = {
 
       const conflictoLaboratorio = await HorarioModel.existeConflictoLaboratorio({
         laboratorio_id: Number(data.laboratorio_id),
-        semestre: horario.semestre, //  Corregido
+        semestre: horario.semestre,
         dia: data.dia,
         hora_inicio: data.hora_inicio,
         hora_fin: data.hora_fin,

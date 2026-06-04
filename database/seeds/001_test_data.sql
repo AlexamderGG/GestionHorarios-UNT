@@ -4,7 +4,7 @@
 -- Incluye docentes nombrados (mayoria Ing Sistemas) y contratados
 -- de diversas escuelas segun especialidad requerida.
 -- ============================================================
-
+TRUNCATE TABLE docentes, cursos, aulas, laboratorios, configuracion RESTART IDENTITY CASCADE;
 SET client_encoding = 'UTF8';
 
 -- -------------------------------------------------------------
@@ -34,14 +34,14 @@ INSERT INTO docentes (id, nombres, apellidos, email, telefono, categoria, tipo_n
 -- Matematicas (cursos: Desarrollo Pensamiento Logico, Analisis Matematico, Estadistica, Analisis Matematico II, Estadistica Aplicada, Matematica Aplicada)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
 ('Jose Luis', 'Ponte Bejarano', 'j.ponte@unt.edu.pe', '991231011', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '56345678'),
-('Segundo', 'Guibar Obeso', 's.guibar@unt.edu.pe', '991295611', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '577654321'),
+('Segundo', 'Guibar Obeso', 's.guibar@unt.edu.pe', '991295611', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '57765321'),
 ('Marcos', 'Ferrer Reyna', 'm.ferrer@unt.edu.pe', '998823888', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '58345678'),
-('Miguel', 'Ipanaque Zapata', 'm.ipaque@unt.edu.pe', '995588888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '597654321'),
-('Martha', ' Cardoso', 'm.cardoso@unt.edu.pe', '998888826', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '607654321'),
-('Teresita', 'Rojas Garcia', 't.rojas@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '61345678'),
+('Miguel', 'Ipanaque Zapata', 'm.ipaque@unt.edu.pe', '995588888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '59765421'),
+('Martha', ' Cardoso', 'm.cardoso@unt.edu.pe', '998888826', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '60765421'),
+('Teresita', 'Rojas Garcia', 't.rojas@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '61345678');
 -- Fisica (cursos: Fisica General, Fisica Electronica)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Vilma', 'Mendez Gil', 'v.mendez@unt.edu.pe', '998333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial', '627654321'),
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Vilma', 'Mendez Gil', 'v.mendez@unt.edu.pe', '998333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial', '62765432'),
 ('Pedro Antonio', 'Sanchez Ruiz', 'p.sanchez@unt.edu.pe', '993333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial', '63345678');
 
 -- Comunicacion (cursos: Lectura Critica, Tecnicas de Comunicacion)

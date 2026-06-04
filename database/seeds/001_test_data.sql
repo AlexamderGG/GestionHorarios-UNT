@@ -4,27 +4,28 @@
 -- Incluye docentes nombrados (mayoria Ing Sistemas) y contratados
 -- de diversas escuelas segun especialidad requerida.
 -- ============================================================
+
 SET client_encoding = 'UTF8';
 
 -- -------------------------------------------------------------
 -- 1. Docentes NOMBRADOS de Ingenieria de Sistemas (mayoria)
 -- -------------------------------------------------------------
-INSERT INTO docentes (id, nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, antiguedad_anios, modalidad) VALUES
-(40, 'Cesar', 'Arellano Salazar', 'c.arellano@unt.edu.pe', '999111222', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo'),
-(41, 'Marcelino', 'Torres Villanueva', 'm.torres@unt.edu.pe', '999222333', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11, 'Tiempo Completo'),    
-(43, 'Alberto', 'Mendoza de los Santos', 'a.mendoza@unt.edu.pe', '999444555', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo'),
-(44, 'Luis Enrique', 'Boy Chavil', 'l.boy@unt.edu.pe', '999555666', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 15, 'Tiempo Completo'),
-(45, 'Robert Jerry', 'Sanchez Ticona', 'r.sanchez@unt.edu.pe', '999666777', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11, 'Tiempo Completo'),
-(46, 'Ricardo Dario', 'Mendoza Rivera', 'r.mendoza@unt.edu.pe', '999777888', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8, 'Tiempo Completo'),
-(47, 'Juan Carlos', 'Obando Roldan', 'j.obando@unt.edu.pe', '999888999', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo'),
-(48, 'Paula', 'Cotrina Castellanos', 'p.cotrina@unt.edu.pe', '985623156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo'),
-(49, 'Oscar Romel', 'Alcántara Moreno', 'o.alcantara@unt.edu.pe', '963223156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo'),
-(50, 'Juan Pedro', 'Santos Fernández', 'j.santos@unt.edu.pe', '963223446', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 18, 'Tiempo Completo'),
-(51, 'Everson David', 'Agreda Gamboa', 'e.agreda@unt.edu.pe', '963223452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo'),
-(52, 'Hugo', 'Romero Ruíz', 'h.romero@unt.edu.pe', '906013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo'),
-(53, 'Zoraida', 'Vidal Melgarejo', 'z.vidal@unt.edu.pe', '968957452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo'),
-(76, 'Camilo', 'Suarez Rebaza', 'c.suarez@unt.edu.pe', '942013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 6, 'Tiempo Completo'),
-(54, 'José', 'Gómez Ávila', 'j.gomez@unt.edu.pe', '963013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo');
+INSERT INTO docentes (id, nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, antiguedad_anios, modalidad, dni) VALUES
+(40, 'Cesar', 'Arellano Salazar', 'c.arellano@unt.edu.pe', '999111222', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '85345678'),
+(41, 'Marcelino', 'Torres Villanueva', 'm.torres@unt.edu.pe', '999222333', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11, 'Tiempo Completo', '86765432'),    
+(43, 'Alberto', 'Mendoza de los Santos', 'a.mendoza@unt.edu.pe', '999444555', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '87345678'),
+(44, 'Luis Enrique', 'Boy Chavil', 'l.boy@unt.edu.pe', '999555666', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 15, 'Tiempo Completo', '88765432'),
+(45, 'Robert Jerry', 'Sanchez Ticona', 'r.sanchez@unt.edu.pe', '999666777', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11, 'Tiempo Completo', '89345678'),
+(46, 'Ricardo Dario', 'Mendoza Rivera', 'r.mendoza@unt.edu.pe', '999777888', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8, 'Tiempo Completo', '91345678'),
+(47, 'Juan Carlos', 'Obando Roldan', 'j.obando@unt.edu.pe', '999888999', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '82765432'),
+(48, 'Paula', 'Cotrina Castellanos', 'p.cotrina@unt.edu.pe', '985623156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '93345678'),
+(49, 'Oscar Romel', 'Alcántara Moreno', 'o.alcantara@unt.edu.pe', '963223156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '94765432'),
+(50, 'Juan Pedro', 'Santos Fernández', 'j.santos@unt.edu.pe', '963223446', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 18, 'Tiempo Completo', '96345678'),
+(51, 'Everson David', 'Agreda Gamboa', 'e.agreda@unt.edu.pe', '963223452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '98765232'),
+(52, 'Hugo', 'Romero Ruíz', 'h.romero@unt.edu.pe', '906013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '12005678'),
+(53, 'Zoraida', 'Vidal Melgarejo', 'z.vidal@unt.edu.pe', '968957452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '12445678'),
+(76, 'Camilo', 'Suarez Rebaza', 'c.suarez@unt.edu.pe', '942013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 6, 'Tiempo Completo', '98765332'),
+(54, 'José', 'Gómez Ávila', 'j.gomez@unt.edu.pe', '963013452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '12399678');
 
 -- -------------------------------------------------------------
 -- 2. Docentes CONTRATADOS de diversas escuelas (especialidades)
@@ -50,7 +51,7 @@ INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombr
 -- Psicologia (cursos: Desarrollo Personal, Sicologia Organizacional)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
 ('Sheyla Laura', 'Escobedo Rodriguez', 's.escobedo@unt.edu.pe', '995523555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial', '65345678'),
-('Bertha', 'Urtecho Zavaleta', 'b.urtecho@unt.edu.pe', '995555555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial');
+('Bertha', 'Urtecho Zavaleta', 'b.urtecho@unt.edu.pe', '995555555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial', '66905678');
 
 -- Filosofia/Etica (cursos: Etica, Cultura Investigativa)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES

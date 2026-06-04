@@ -55,7 +55,7 @@ COMMENT ON COLUMN docentes.semestre_contrato IS 'Semestre especifico de contrato
 
 ALTER TABLE docentes 
 ADD COLUMN estado_turno VARCHAR(20) DEFAULT 'Pendiente'
-CHECK (estado_turno IN ('Pendiente', 'Notificado', 'Completado', 'Automatico'));
+CHECK (estado_turno IN ('Pendiente', 'Notificado', 'Completado'));
 
 ALTER TABLE docentes ADD COLUMN reset_token_at INT DEFAULT 0;
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS cursos (
     codigo VARCHAR(20) UNIQUE NOT NULL,
     nombre VARCHAR(150) NOT NULL,
     creditos INTEGER NOT NULL DEFAULT 3,
-    ciclo INTEGER NOT NULL CHECK (ciclo BETWEEN 1 AND 10),
+    ciclo  INTEGER NOT NULL CHECK (ciclo BETWEEN 1 AND 10),
     semestre VARCHAR(20) NOT NULL DEFAULT '2026-1',
     especialidad VARCHAR(100) NOT NULL DEFAULT 'Ingenieria de Sistemas',
     activo BOOLEAN NOT NULL DEFAULT TRUE,
@@ -85,21 +85,6 @@ CREATE TABLE IF NOT EXISTS cursos (
 );
 
 COMMENT ON COLUMN cursos.especialidad IS 'Especialidad del curso. Se usa para validar asignacion a docentes con la misma especialidad';
-
--- Eliminamos las columnas antiguas
-ALTER TABLE cursos 
-DROP COLUMN horas_aula, 
-DROP COLUMN horas_lab;
-
--- Agregamos las nuevas columnas con mayor granularidad
-ALTER TABLE cursos 
-ADD COLUMN horas_t INTEGER DEFAULT 0,
-ADD COLUMN horas_p INTEGER DEFAULT 0,
-ADD COLUMN horas_l INTEGER DEFAULT 0;
-
-COMMENT ON COLUMN cursos.horas_t IS 'Horas de teoria';
-COMMENT ON COLUMN cursos.horas_p IS 'Horas de practica';
-COMMENT ON COLUMN cursos.horas_l IS 'Horas de laboratorio';
 
 -- --------------------------------------------------------------
 -- 3. Tabla: aulas
@@ -175,6 +160,10 @@ CREATE TABLE IF NOT EXISTS asignacion_docente_curso (
     ambiente_preferido_id INTEGER,
     
     semestre_asignacion VARCHAR(20) DEFAULT '2026-1',
+    
+    -- Columna agregada para evitar el error del backend
+    ciclo INTEGER, 
+    
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     

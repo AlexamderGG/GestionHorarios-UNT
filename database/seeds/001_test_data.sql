@@ -4,7 +4,7 @@
 -- Incluye docentes nombrados (mayoria Ing Sistemas) y contratados
 -- de diversas escuelas segun especialidad requerida.
 -- ============================================================
-TRUNCATE TABLE docentes, cursos, aulas, laboratorios, configuracion RESTART IDENTITY CASCADE;
+-- TRUNCATE TABLE docentes, cursos, aulas, laboratorios, configuracion RESTART IDENTITY CASCADE;
 SET client_encoding = 'UTF8';
 
 -- -------------------------------------------------------------

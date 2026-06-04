@@ -7,24 +7,16 @@
 --   3. Agregar comentarios explicativos.
 -- ============================================================
 
--- --------------------------------------------------------------
--- 1. Agregar horas de aula y laboratorio a cursos
--- --------------------------------------------------------------
-ALTER TABLE cursos
-    ADD COLUMN IF NOT EXISTS horas_aula INTEGER NOT NULL DEFAULT 0 CHECK (horas_aula >= 0),
-    ADD COLUMN IF NOT EXISTS horas_lab  INTEGER NOT NULL DEFAULT 0 CHECK (horas_lab >= 0);
+-- Agregamos las nuevas columnas con mayor granularidad
+ALTER TABLE cursos 
+ADD COLUMN horas_t INTEGER DEFAULT 0,
+ADD COLUMN horas_p INTEGER DEFAULT 0,
+ADD COLUMN horas_l INTEGER DEFAULT 0;
 
-COMMENT ON COLUMN cursos.horas_aula IS 'Horas semanales de teoria/practica en aula (HT + HP)';
-COMMENT ON COLUMN cursos.horas_lab IS 'Horas semanales de laboratorio (HL)';
-
--- --------------------------------------------------------------
--- 2. Eliminar especialidad de laboratorios (genericidad)
--- --------------------------------------------------------------
-ALTER TABLE laboratorios DROP COLUMN IF EXISTS especialidad;
+COMMENT ON COLUMN cursos.horas_t IS 'Horas de teoria';
+COMMENT ON COLUMN cursos.horas_p IS 'Horas de practica';
+COMMENT ON COLUMN cursos.horas_l IS 'Horas de laboratorio';
 
 COMMENT ON TABLE laboratorios IS 'Laboratorios de uso general. Cualquier curso puede reservarlos segun sus horas_lab';
 
--- --------------------------------------------------------------
--- 3. Indices adicionales
--- --------------------------------------------------------------
-CREATE INDEX IF NOT EXISTS idx_cursos_horas ON cursos(horas_aula, horas_lab);
+

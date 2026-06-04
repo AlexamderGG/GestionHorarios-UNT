@@ -6,9 +6,6 @@
 --       Esta migracion solo agrega la columna ciclo a asignaciones.
 -- ============================================================
 
--- Agregar columna ciclo a asignacion_docente_curso
-ALTER TABLE asignacion_docente_curso ADD COLUMN IF NOT EXISTS ciclo INTEGER;
-
 -- Actualizar registros existentes con el ciclo del curso correspondiente
 UPDATE asignacion_docente_curso adc
 SET ciclo = c.ciclo

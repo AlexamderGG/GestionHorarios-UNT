@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { Save, CheckCircle, AlertCircle, Clock, BookOpen, Download, Activity, FileClock } from 'lucide-react';
+import { Save, CheckCircle, AlertCircle, Clock, BookOpen, Download, Activity, FileClock, ShieldAlert } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -68,9 +68,7 @@ const CargaHoraria = () => {
     } catch (error) {
       console.error(error);
       setMensaje({ tipo: 'error', texto: 'Error al cargar los datos de tu carga horaria.' });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { cargarDatos(); }, []);
@@ -108,122 +106,288 @@ const CargaHoraria = () => {
       setMensaje({ tipo: 'error', texto: `El total debe estar entre ${minHoras} y ${maxHoras} horas.` });
       return;
     }
-
-    setSaving(true);
-    setMensaje(null);
+    setSaving(true); setMensaje(null);
     try {
       await api.post('/carga/mi-carga', { semestre, carga: form });
       setMensaje({ tipo: 'exito', texto: 'Declaración de carga horaria guardada correctamente.' });
       await cargarDatos();
     } catch (error) {
       setMensaje({ tipo: 'error', texto: error.response?.data?.message || 'Error al guardar.' });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
-  const generarPDF = () => {
+  // DOCUMENTO 1: REPORTE OFICIAL DE CARGA HORARIA ASIGNADA
+  const generarPDFCarga = () => {
     const doc = new jsPDF();
     
+    // ---------------------------------------------------------
+    // ENCABEZADO OFICIAL
+    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("UNIVERSIDAD NACIONAL DE TRUJILLO", 105, 20, { align: "center" });
     doc.setFontSize(12);
     doc.text("FACULTAD DE INGENIERÍA", 105, 27, { align: "center" });
-    doc.text("ESCUELA DE INGENIERÍA DE SISTEMAS", 105, 34, { align: "center" });
+    doc.text("ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS", 105, 34, { align: "center" });
     
-    doc.setFontSize(13);
-    doc.text("DECLARACIÓN JURADA DE CARGA HORARIA", 105, 45, { align: "center" });
-    doc.setFontSize(10);
-    doc.text(`SEMESTRE ACADÉMICO: ${semestre}`, 105, 52, { align: "center" });
+    doc.setFontSize(12);
+    doc.text("DECLARACIÓN JURADA DE CARGA HORARIA ASIGNADA", 105, 45, { align: "center" });
+    doc.setFontSize(11);
+    doc.text(`SEMESTRE ACADÉMICO ${semestre}`, 105, 52, { align: "center" });
 
+    // ---------------------------------------------------------
+    // PÁRRAFO DE DECLARACIÓN
+    // ---------------------------------------------------------
     doc.setFont("helvetica", "normal");
-    doc.text(`DOCENTE: ${user.nombres} ${user.apellidos}`, 15, 65);
-    doc.text(`MODALIDAD: ${resumen.modalidad}`, 15, 72);
+    doc.setFontSize(10);
+    const textoDeclaracion = `Yo, ${resumen.docenteNombre}, docente adscrito al Departamento Académico de Ingeniería de Sistemas con la categoría y régimen de dedicación de ${resumen.modalidad}, declaro bajo juramento que para el semestre académico ${semestre}, tengo la siguiente carga horaria:`;
     
-    // 1. Carga Lectiva
+    // Auto-ajustar texto para que no se salga de los márgenes
+    const lineasTexto = doc.splitTextToSize(textoDeclaracion, 170);
+    doc.text(lineasTexto, 20, 65);
+    
+    let finalY = 65 + (lineasTexto.length * 5) + 5;
+
+    // ---------------------------------------------------------
+    // TABLA I: CARGA LECTIVA
+    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
-    doc.text("1. CARGA LECTIVA ASIGNADA", 15, 85);
+    doc.text("I. CARGA LECTIVA (según consolidado de carga lectiva)", 20, finalY);
     
-    const cursosBody = misCursos.map(c => [
-      c.curso_codigo || c.codigo,
+    const cursosBody = misCursos.map((c, i) => [
+      i + 1,
       c.curso_nombre || c.nombre,
-      c.tipo,
-      c.horas_asignadas + "h"
+      "Ing. de Sistemas", // Escuela / Departamento por defecto
+      c.ciclo || c.curso_ciclo || "-",
+      (c.tipo === 'Teoria' || c.tipo === 'Teoría') ? c.horas_asignadas : "-",
+      (c.tipo === 'Practica' || c.tipo === 'Práctica') ? c.horas_asignadas : "-",
+      c.tipo === 'Laboratorio' ? c.horas_asignadas : "-",
+      c.grupo && c.grupo !== 'Único' ? c.grupo : "-",
+      "-", // N° Est.
+      c.horas_asignadas
     ]);
 
-    autoTable(doc, {
-      startY: 90,
-      head: [['CÓDIGO', 'ASIGNATURA', 'TIPO', 'HORAS']],
-      body: cursosBody.length > 0 ? cursosBody : [['-', 'Sin asignaciones', '-', '0h']],
-      theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185], halign: 'center' },
-      styles: { fontSize: 9 },
-      columnStyles: { 3: { halign: 'center' } }
-    });
-
-    let finalY = doc.lastAutoTable.finalY + 5;
-    doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL HORAS LECTIVAS: ${horasLectivas} horas`, 195, finalY, { align: "right" });
-
-    // 2. Carga No Lectiva Oficial Completa
-    finalY += 15;
-    doc.setFont("helvetica", "bold");
-    doc.text("2. CARGA NO LECTIVA DECLARADA", 15, finalY);
-
-    const noLectivaBody = [
-      ['1. Preparación de clases y evaluación', form.preparacion_clases_detalle || '-', form.preparacion_clases + 'h'],
-      ['2. Tutoría y Consejería a estudiantes', form.tutoria_consejeria_detalle || '-', form.tutoria_consejeria + 'h'],
-      ['3. Dirección / Asesoría de Tesis', form.asesoria_tesis_detalle || '-', form.asesoria_tesis + 'h'],
-      ['4. Investigación', form.investigacion_detalle || '-', form.investigacion + 'h'],
-      ['5. Responsabilidad Social', form.responsabilidad_social_detalle || '-', form.responsabilidad_social + 'h'],
-      ['6. Producción Intelectual', form.produccion_intelectual_detalle || '-', form.produccion_intelectual + 'h'],
-      ['7. Gestión Administrativa', form.gestion_admin_detalle || '-', form.gestion_admin + 'h'],
-      ['8. Capacitación', form.capacitacion_detalle || '-', form.capacitacion + 'h'],
-      ['9. Otras actividades', form.otras_actividades_detalle || '-', form.otras_actividades + 'h']
-    ].filter(item => parseInt(item[2]) > 0); // Opcional: Filtra para no mostrar los que tienen 0h
-
-    if (noLectivaBody.length === 0) noLectivaBody.push(['-', 'Sin actividades registradas', '0h']);
+    // Fila de Total de la Tabla I
+    cursosBody.push(["", "TOTAL", "", "", "", "", "", "", "", horasLectivas]);
 
     autoTable(doc, {
       startY: finalY + 5,
-      head: [['ACTIVIDAD NO LECTIVA', 'DETALLE / DESCRIPCIÓN', 'HORAS']],
-      body: noLectivaBody,
+      head: [['N°', 'Asignatura', 'Escuela / Departamento', 'Ciclo', 'Teoría', 'Práctica', 'Lab.', 'N° Grupo', 'N° Est.', 'Total']],
+      body: cursosBody,
       theme: 'grid',
-      headStyles: { fillColor: [46, 204, 113], halign: 'center' },
-      styles: { fontSize: 8.5 },
+      headStyles: { fillColor: [230, 230, 230], textColor: [0,0,0], halign: 'center', fontSize: 8, fontStyle: 'bold' },
+      styles: { fontSize: 8, halign: 'center', cellPadding: 1.5, textColor: [0,0,0] },
       columnStyles: { 
-        0: { cellWidth: 60 },
-        1: { cellWidth: 'auto' }, 
-        2: { cellWidth: 20, halign: 'center' } 
+        1: { halign: 'left', cellWidth: 45 },
+        2: { halign: 'center', cellWidth: 25 }
+      },
+      willDrawCell: function(data) {
+        // Pintar la última fila de "TOTAL" en negrita y gris
+        if (data.row.index === cursosBody.length - 1 && data.section === 'body') {
+          doc.setFont("helvetica", "bold");
+          doc.setFillColor(240, 240, 240);
+        }
       }
     });
 
-    finalY = doc.lastAutoTable.finalY + 5;
+    finalY = doc.lastAutoTable.finalY + 10;
+
+    // ---------------------------------------------------------
+    // TABLA II: CARGA NO LECTIVA
+    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL HORAS NO LECTIVAS: ${totalNoLectivo} horas`, 195, finalY, { align: "right" });
+    doc.text("II. CARGA NO LECTIVA (Según cronograma de trabajo en portafolio de docente)", 20, finalY);
 
-    // 3. Resumen Final
-    finalY += 15;
-    if (finalY > 260) { doc.addPage(); finalY = 20; }
+    const noLectivaBody = [];
+    let idx = 1;
+    
+    // Función auxiliar para agregar solo actividades con horas > 0
+    const addActividad = (actividad, detalle, horas) => {
+      if (horas > 0) noLectivaBody.push([idx++, actividad, detalle || '-', horas]);
+    };
 
-    doc.setFillColor(240, 240, 240);
-    doc.rect(15, finalY, 180, 15, "F");
-    doc.setFontSize(12);
-    doc.text(`TOTAL CARGA HORARIA GENERAL: ${totalGeneral} HORAS`, 105, finalY + 10, { align: "center" });
+    addActividad('Preparación de clases y evaluación', form.preparacion_clases_detalle, form.preparacion_clases);
+    addActividad('Tutoría y Consejería a estudiantes', form.tutoria_consejeria_detalle, form.tutoria_consejeria);
+    addActividad('Dirección / Asesoría de Tesis', form.asesoria_tesis_detalle, form.asesoria_tesis);
+    addActividad('Investigación', form.investigacion_detalle, form.investigacion);
+    addActividad('Responsabilidad Social', form.responsabilidad_social_detalle, form.responsabilidad_social);
+    addActividad('Producción Intelectual', form.produccion_intelectual_detalle, form.produccion_intelectual);
+    addActividad('Gestión Administrativa', form.gestion_admin_detalle, form.gestion_admin);
+    addActividad('Capacitación', form.capacitacion_detalle, form.capacitacion);
+    addActividad('Otras actividades', form.otras_actividades_detalle, form.otras_actividades);
 
-    // Firmas
-    finalY += 50;
-    if (finalY > 280) { doc.addPage(); finalY = 40; }
+    if (noLectivaBody.length === 0) noLectivaBody.push(['-', 'Sin actividades registradas', '-', '0']);
 
-    doc.line(40, finalY, 90, finalY);
-    doc.line(120, finalY, 170, finalY);
-    doc.setFontSize(9);
+    // Fila de Total de la Tabla II
+    noLectivaBody.push(['', 'TOTAL', '', totalNoLectivo]);
+
+    autoTable(doc, {
+      startY: finalY + 5,
+      head: [['N°', 'Actividad', 'Descripción de la Actividad (Indicar Proyecto / Resolución)', 'Horas']],
+      body: noLectivaBody,
+      theme: 'grid',
+      headStyles: { fillColor: [230, 230, 230], textColor: [0,0,0], halign: 'center', fontSize: 8, fontStyle: 'bold' },
+      styles: { fontSize: 8, halign: 'center', cellPadding: 1.5, textColor: [0,0,0] },
+      columnStyles: { 
+        1: { halign: 'left', cellWidth: 50 },
+        2: { halign: 'left', cellWidth: 'auto' }, 
+        3: { cellWidth: 20, halign: 'center' } 
+      },
+      willDrawCell: function(data) {
+        if (data.row.index === noLectivaBody.length - 1 && data.section === 'body') {
+          doc.setFont("helvetica", "bold");
+          doc.setFillColor(240, 240, 240);
+        }
+      }
+    });
+
+    finalY = doc.lastAutoTable.finalY + 10;
+    
+    // Evitar que el resumen y firmas se partan en la página
+    if (finalY > 220) { doc.addPage(); finalY = 20; }
+
+    // ---------------------------------------------------------
+    // TABLA III: RESUMEN
+    // ---------------------------------------------------------
+    doc.setFont("helvetica", "bold");
+    doc.text("III. RESUMEN DE CARGA HORARIA", 20, finalY);
+
+    autoTable(doc, {
+      startY: finalY + 5,
+      body: [
+        ['Carga Lectiva', horasLectivas],
+        ['Carga No Lectiva', totalNoLectivo],
+        ['TOTAL', totalGeneral]
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9, halign: 'left', cellPadding: 2, textColor: [0,0,0] },
+      columnStyles: { 
+        0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 60 },
+        1: { halign: 'center', cellWidth: 30 }
+      },
+      willDrawCell: function(data) {
+        // Poner la fila TOTAL en negrita
+        if (data.row.index === 2) doc.setFont("helvetica", "bold");
+      }
+    });
+
+    finalY = doc.lastAutoTable.finalY + 15;
+    if (finalY > 260) { doc.addPage(); finalY = 30; }
+
+    // ---------------------------------------------------------
+    // FECHA Y FIRMAS
+    // ---------------------------------------------------------
+    const hoy = new Date();
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
     doc.setFont("helvetica", "normal");
-    doc.text("Firma del Docente", 65, finalY + 5, { align: "center" });
-    doc.text("Firma del Director de Escuela", 145, finalY + 5, { align: "center" });
+    doc.setFontSize(10);
+    doc.text(`Trujillo, ${hoy.getDate()} de ${meses[hoy.getMonth()]} del ${hoy.getFullYear()}`, 190, finalY, { align: "right" });
 
-    doc.save(`Declaracion_Carga_Horaria_${user.apellidos}_${semestre}.pdf`);
+    finalY += 40; // Espacio para la firma
+    
+    doc.line(30, finalY, 80, finalY);
+    doc.line(130, finalY, 180, finalY);
+    
+    doc.text("Firma del Docente", 55, finalY + 5, { align: "center" });
+    doc.text("Firma del Director(a) de\nDepartamento Académico", 155, finalY + 5, { align: "center" });
+
+    doc.save(`Declaracion_Carga_Horaria_${resumen.docenteNombre}_${semestre}.pdf`);
+  };
+
+  // DOCUMENTO 2: DECLARACIÓN JURADA DE NO INCOMPATIBILIDAD NI IMPEDIMENTO LABORAL
+  const generarPDFIncompatibilidad = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Encabezado Institucional
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.text("UNIVERSIDAD NACIONAL DE TRUJILLO", 105, 20, { align: "center" });
+      doc.setFontSize(12); doc.text("FACULTAD DE INGENIERÍA", 105, 27, { align: "center" });
+      doc.text("ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS", 105, 34, { align: "center" });
+      
+      // Título
+      doc.setFontSize(11);
+      doc.text("DECLARACIÓN JURADA DE NO ESTAR INCURSO EN CAUSALES DE INCOMPATIBILIDAD", 105, 48, { align: "center" });
+      doc.text("O IMPEDIMENTO LABORAL O LEGAL", 105, 54, { align: "center" });
+
+      // Datos personales formateados continuamente con líneas continuas oficiales
+      doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+      let textY = 70;
+      let startX = 20; // Punto de inicio X secuencial
+
+      // Trozo 1: "Yo, " (normal)
+      const prefixText = `Yo, `;
+      doc.text(prefixText, startX, textY);
+      startX += doc.getTextWidth(prefixText); // Actualizamos startX
+
+      // Trozo 2: Nombre del Docente (bold)
+      doc.setFont("helvetica", "bold");
+      const nameText = resumen.docenteNombre;
+      doc.text(nameText, startX, textY);
+      startX += doc.getTextWidth(nameText); // Actualizamos startX usando fuente bold activa
+
+      // Trozo 3: ", identificado con..." (normal)
+      doc.setFont("helvetica", "normal");
+      const midText = `, identificado con Documento Nacional de Identidad N° `;
+      doc.text(midText, startX, textY);
+      startX += doc.getTextWidth(midText); // Actualizamos startX
+
+      // Salto de línea para el DNI y el domicilio
+      textY += 6;
+      startX = 20; // Reiniciamos startX para la nueva línea
+
+      // DNI part (bold)
+      doc.setFont("helvetica", "bold");
+      const dniText = resumen.docenteDni || '........................';
+      doc.text(dniText, startX, textY);
+      startX += doc.getTextWidth(dniText); // Actualizamos startX usando fuente bold
+
+      // "with address" part (normal)
+      doc.setFont("helvetica", "normal");
+      const addressPrefix = `, con domicilio real en ...................................................................................................................`;
+      doc.text(addressPrefix, startX, textY);
+      // El total de esta línea es largo, así que no necesitamos calcular startX para la siguiente, solo bajar Y.
+
+      textY += 6;
+      // ... (continúa el resto del código del domicilio y la declaración jurada)
+      
+      // Cuerpo legal formal
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+      textY += 8;
+      
+      const clausulas = [
+        `1. Que, a la fecha no me encuentro incurso en causales de Incompatibilidad horaria, ni impedimento laboral o legal para ejercer la docencia universitaria en la Universidad Nacional de Trujillo durante el Semestre Académico ${semestre}.`,
+        `2. Que, no ejerzo cargo ni función pública o privada de manera coincidente o superpuesta con las horas consignadas en mi Malla Horaria Oficial y Declaración de Carga Horaria Asignada de este periodo académico, garantizando estricta exclusividad.`,
+        `3. Que, no percibo doble remuneración del Estado, salvo por función docente o de acuerdo a las excepciones de Ley vigentes, cumpliendo a cabalidad con la Ley Universitaria N° 30220 y el Estatuto de la UNT.`,
+        `4. Que, asumo total responsabilidad sobre la veracidad de la información y horas declaradas. En caso de comprobarse fraude o falsedad, me someto voluntariamente a los procesos administrativos disciplinarios y acciones penales tipificadas en la Ley N° 27444 (Ley del Procedimiento Administrativo General) y el Código Penal.`
+      ];
+
+      clausulas.forEach(clausula => {
+        const lines = doc.splitTextToSize(clausula, 170);
+        doc.text(lines, 20, textY);
+        textY += (lines.length * 5.5) + 3;
+      });
+
+      // Fecha
+      textY += 10;
+      const hoy = new Date(); const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      doc.text(`Trujillo, ${hoy.getDate()} de ${meses[hoy.getMonth()]} del ${hoy.getFullYear()}`, 190, textY, { align: "right" });
+
+      // Sección de Firmas y Huella Digital Oficial
+      textY += 45;
+      doc.line(30, textY, 100, textY); // Línea firma
+      doc.text("Firma del Docente", 65, textY + 5, { align: "center" });
+      doc.text(`D.N.I. N°: ${resumen.docenteDni || '........................'}`, 65, textY + 10, { align: "center" });
+
+      // Recuadro oficial para Huella Digital a la derecha
+      doc.rect(140, textY - 30, 32, 40); 
+      doc.setFontSize(8);
+      doc.text("HUELLA DIGITAL", 156, textY + 14, { align: "center" });
+
+      const nArch = resumen.docenteNombre ? resumen.docenteNombre.replace(/\s+/g, '_') : 'Docente';
+      doc.save(`DJ_No_Incompatibilidad_${nArch}_${semestre}.pdf`);
+    } catch (err) { alert("Error al generar la Declaración Jurada."); console.error(err); }
   };
 
   if (loading) return <div className="p-10 text-center text-neutral-500 animate-pulse">Cargando tu información de carga horaria...</div>;
@@ -252,10 +416,17 @@ const CargaHoraria = () => {
             Semestre {semestre} · Declara tus horas y actividades de carga no lectiva
           </p>
         </div>
+        
+        {/* BOTONES DE DESCARGA PARALELOS */}
         {resumen?.cargaNoLectiva && (
-          <button onClick={generarPDF} className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600">
-            <Download className="w-4 h-4 text-primary-600 dark:text-primary-400" /> Descargar PDF Oficial
-          </button>
+          <div className="flex gap-2">
+            <button onClick={generarPDFCarga} className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3">
+              <Download className="w-4 h-4 text-primary-600 dark:text-primary-400" /> Carga Horaria PDF
+            </button>
+            <button onClick={generarPDFIncompatibilidad} className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3">
+              <Download className="w-4 h-4 text-red-600 dark:text-red-400" /> DJ Incompatibilidad
+            </button>
+          </div>
         )}
       </div>
 
@@ -298,7 +469,7 @@ const CargaHoraria = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna Izquierda: Detalle Lectivo (Solo Lectura) */}
+        {/* Detalle Lectivo */}
         <div className="lg:col-span-1 space-y-4">
           <div className="card p-5 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 h-full">
             <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
@@ -329,7 +500,7 @@ const CargaHoraria = () => {
           </div>
         </div>
 
-        {/* Columna Derecha: Formulario No Lectivo con Detalles Completos */}
+        {/* Formulario desglosado */}
         <div className="lg:col-span-2">
           <div className="card p-5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
             <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
@@ -376,11 +547,7 @@ const CargaHoraria = () => {
                 disabled={saving || !isValido} 
                 className="btn-primary flex items-center gap-2 py-2.5 px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {saving ? (
-                  <>Guardando...</>
-                ) : (
-                  <><Save className="w-5 h-5" /> Guardar Declaración</>
-                )}
+                {saving ? <>Guardando...</> : <><Save className="w-5 h-5" /> Guardar Declaración</>}
               </button>
             </div>
           </div>

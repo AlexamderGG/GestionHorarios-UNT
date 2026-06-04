@@ -1,14 +1,15 @@
 const pool = require('../config/db');
 
 const CargaNoLectiva = {
-  // Obtener datos del docente (modalidad) y sus horas lectivas asignadas
   getResumenDocente: async (docenteId, semestre) => {
-    // 1. Obtener modalidad
-    const docQuery = await pool.query('SELECT modalidad FROM docentes WHERE id = $1', [docenteId]);
-    const modalidad = docQuery.rows[0]?.modalidad || 'Tiempo Completo';
+    // 1. Obtener modalidad, nombres y DNI del docente
+    const docQuery = await pool.query('SELECT dni, nombres, apellidos, modalidad FROM docentes WHERE id = $1', [docenteId]);
+    const docenteData = docQuery.rows[0] || {};
+    const modalidad = docenteData.modalidad || 'Tiempo Completo';
+    const docenteNombre = `${docenteData.nombres || ''} ${docenteData.apellidos || ''}`.trim();
+    const docenteDni = docenteData.dni || ''; // <-- AÑADIDO
 
     // 2. Sumar horas lectivas de sus asignaciones en este semestre
-    // CORRECCIÓN: La tabla correcta es asignacion_docente_curso
     const lectQuery = await pool.query(`
       SELECT COALESCE(SUM(horas_asignadas), 0) AS total_lectivas 
       FROM asignacion_docente_curso 
@@ -24,6 +25,8 @@ const CargaNoLectiva = {
     `, [docenteId, semestre]);
 
     return {
+      docenteNombre,
+      docenteDni, // <-- Enviamos el DNI al Frontend
       modalidad,
       horasLectivas,
       cargaNoLectiva: noLectQuery.rows[0] || null

@@ -66,6 +66,9 @@ ALTER TABLE docentes
 ADD COLUMN modalidad VARCHAR(20) DEFAULT 'Tiempo Completo' 
 CHECK (modalidad IN ('Tiempo Completo', 'Tiempo Parcial'));
 
+ALTER TABLE docentes 
+ADD COLUMN dni VARCHAR(8) UNIQUE;
+
 -- --------------------------------------------------------------
 -- 2. Tabla: cursos
 -- --------------------------------------------------------------

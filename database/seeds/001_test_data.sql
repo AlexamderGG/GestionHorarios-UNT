@@ -31,64 +31,64 @@ INSERT INTO docentes (id, nombres, apellidos, email, telefono, categoria, tipo_n
 -- -------------------------------------------------------------
 
 -- Matematicas (cursos: Desarrollo Pensamiento Logico, Analisis Matematico, Estadistica, Analisis Matematico II, Estadistica Aplicada, Matematica Aplicada)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Jose Luis', 'Ponte Bejarano', 'j.ponte@unt.edu.pe', '991231011', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial'),
-('Segundo', 'Guibar Obeso', 's.guibar@unt.edu.pe', '991295611', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial'),
-('Marcos', 'Ferrer Reyna', 'm.ferrer@unt.edu.pe', '998823888', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial'),
-('Miguel', 'Ipanaque Zapata', 'm.ipaque@unt.edu.pe', '995588888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial'),
-('Martha', ' Cardoso', 'm.cardoso@unt.edu.pe', '998888826', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial'),
-('Teresita', 'Rojas Garcia', 't.rojas@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Jose Luis', 'Ponte Bejarano', 'j.ponte@unt.edu.pe', '991231011', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '56345678'),
+('Segundo', 'Guibar Obeso', 's.guibar@unt.edu.pe', '991295611', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '577654321'),
+('Marcos', 'Ferrer Reyna', 'm.ferrer@unt.edu.pe', '998823888', 'Asociado', 'Contratado', 'Matemáticas', 'Escuela de Matemáticas', NULL, 5, 'Tiempo Parcial', '58345678'),
+('Miguel', 'Ipanaque Zapata', 'm.ipaque@unt.edu.pe', '995588888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '597654321'),
+('Martha', ' Cardoso', 'm.cardoso@unt.edu.pe', '998888826', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '607654321'),
+('Teresita', 'Rojas Garcia', 't.rojas@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Estadistica', 'Escuela de Estadistica', NULL, 5, 'Tiempo Parcial', '61345678'),
 -- Fisica (cursos: Fisica General, Fisica Electronica)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Vilma', 'Mendez Gil', 'v.mendez@unt.edu.pe', '998333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial'),
-('Pedro Antonio', 'Sanchez Ruiz', 'p.sanchez@unt.edu.pe', '993333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial');
+('Vilma', 'Mendez Gil', 'v.mendez@unt.edu.pe', '998333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial', '627654321'),
+('Pedro Antonio', 'Sanchez Ruiz', 'p.sanchez@unt.edu.pe', '993333333', 'Asociado', 'Contratado', 'Fisica', 'Escuela de Fisica', NULL, 4, 'Tiempo Parcial', '63345678');
 
 -- Comunicacion (cursos: Lectura Critica, Tecnicas de Comunicacion)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Jorge Luis', 'Rios Gonzales', 'j.rios@unt.edu.pe', '994444444', 'Auxiliar', 'Contratado', 'Lengua y Literatura', 'Escuela de Lengua y Literatura', NULL, 3, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Jorge Luis', 'Rios Gonzales', 'j.rios@unt.edu.pe', '994444444', 'Auxiliar', 'Contratado', 'Lengua y Literatura', 'Escuela de Lengua y Literatura', NULL, 3, 'Tiempo Parcial', '64345678');
 
 -- Psicologia (cursos: Desarrollo Personal, Sicologia Organizacional)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Sheyla Laura', 'Escobedo Rodriguez', 's.escobedo@unt.edu.pe', '995523555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial'),
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Sheyla Laura', 'Escobedo Rodriguez', 's.escobedo@unt.edu.pe', '995523555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial', '65345678'),
 ('Bertha', 'Urtecho Zavaleta', 'b.urtecho@unt.edu.pe', '995555555', 'Auxiliar', 'Contratado', 'CC. Psicologicas', 'Escuela de CC. Psicologicas', NULL, 2, 'Tiempo Parcial');
 
 -- Filosofia/Etica (cursos: Etica, Cultura Investigativa)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Mariella', 'Pollio Rojas', 'm.pollio@unt.edu.pe', '996666666', 'Auxiliar', 'Contratado', 'Filosofia', 'Escuela de Filosofia', NULL, 3, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Mariella', 'Pollio Rojas', 'm.pollio@unt.edu.pe', '996666666', 'Auxiliar', 'Contratado', 'Filosofia', 'Escuela de Filosofia', NULL, 3, 'Tiempo Parcial', '66345678');
 
 -- Ciencias Sociales (cursos: Sociedad Cultura Ecologia)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Evans', 'Chiquez Chàvez', 'e.chiquez@unt.edu.pe', '965231011', 'Asociado', 'Contratado', 'Ciencias Sociales', 'Escuela de Ciencias Sociales', NULL, 5, 'Tiempo Parcial'),
-('Miguel Angel', 'Herrera Paredes', 'm.herrera@unt.edu.pe', '997777777', 'Auxiliar', 'Contratado', 'Ciencias Sociales', 'Escuela de Ciencias Sociales', NULL, 2, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Evans', 'Chiquez Chàvez', 'e.chiquez@unt.edu.pe', '965231011', 'Asociado', 'Contratado', 'Ciencias Sociales', 'Escuela de Ciencias Sociales', NULL, 5, 'Tiempo Parcial', '67345678'),
+('Miguel Angel', 'Herrera Paredes', 'm.herrera@unt.edu.pe', '997777777', 'Auxiliar', 'Contratado', 'Ciencias Sociales', 'Escuela de Ciencias Sociales', NULL, 2, 'Tiempo Parcial', '68345678');
 
 -- Administracion (cursos: Administracion General, Economia General, Contabilidad Gerencial, Finanzas Corporativas)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Ana', 'Cuadra Midzuaray', 'a.cuadra@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Contabilidad y Finanzas', 'Contabilidad y Finanzas', NULL, 6, 'Tiempo Parcial'),
-('Juan', 'Carrascal Cabanillas', 'j.carrascal@unt.edu.pe', '998888268', 'Asociado', 'Contratado', 'Administracion', 'Escuela de Administracion', NULL, 5, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Ana', 'Cuadra Midzuaray', 'a.cuadra@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Contabilidad y Finanzas', 'Contabilidad y Finanzas', NULL, 6, 'Tiempo Parcial', '69345678'),
+('Juan', 'Carrascal Cabanillas', 'j.carrascal@unt.edu.pe', '998888268', 'Asociado', 'Contratado', 'Administracion', 'Escuela de Administracion', NULL, 5, 'Tiempo Parcial', '70345678');
 
 -- Musica (curso: Taller de Musica - electivo de un solo semestre)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Fernando Jose', 'Rojas Vega', 'f.rojas@unt.edu.pe', '999000001', 'Auxiliar', 'Contratado', 'Estudios Generales', 'Escuela de Estudios Generales', '2026-1', 1, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Fernando Jose', 'Rojas Vega', 'f.rojas@unt.edu.pe', '999000001', 'Auxiliar', 'Contratado', 'Estudios Generales', 'Escuela de Estudios Generales', '2026-1', 1, 'Tiempo Parcial', '71345678');
 
 -- Danza Folklorica (curso: Taller de Danzas Folkloricas - electivo de un solo semestre)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Isabel Cristina', 'Luna Castillo', 'i.luna@unt.edu.pe', '999000002', 'Auxiliar', 'Contratado', 'Filosofía y Arte', 'Escuela de Artes', '2026-1', 1, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Isabel Cristina', 'Luna Castillo', 'i.luna@unt.edu.pe', '999000002', 'Auxiliar', 'Contratado', 'Filosofía y Arte', 'Escuela de Artes', '2026-1', 1, 'Tiempo Parcial', '33345678');
 
 -- Educacion Fisica (curso: Taller de Deporte - electivo de un solo semestre)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Raul Enrique', 'Paredes Quispe', 'r.paredes@unt.edu.pe', '999000003', 'Auxiliar', 'Contratado', 'Ciencias de la Educación', 'Escuela de Ciencias de la Educación', '2026-1', 1, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Raul Enrique', 'Paredes Quispe', 'r.paredes@unt.edu.pe', '999000003', 'Auxiliar', 'Contratado', 'Ciencias de la Educación', 'Escuela de Ciencias de la Educación', '2026-1', 1, 'Tiempo Parcial', '32345678');
 
 -- Derecho (curso: Deontologia y Derecho Informatico)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Diana Carolina', 'Flores Ruiz', 'd.flores@unt.edu.pe', '999000004', 'Asociado', 'Contratado', 'Derecho', 'Escuela de Derecho', NULL, 4, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Diana Carolina', 'Flores Ruiz', 'd.flores@unt.edu.pe', '999000004', 'Asociado', 'Contratado', 'Derecho', 'Escuela de Derecho', NULL, 4, 'Tiempo Parcial', '12340678');
 
 -- Ingenieria Ambiental (curso: Ingenieria Ambiental)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Andres Felipe', 'Gomez Torres', 'a.gomez@unt.edu.pe', '999000005', 'Auxiliar', 'Contratado', 'Ingenieria Ambiental', 'Escuela de Ingenieria Ambiental', NULL, 2, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Andres Felipe', 'Gomez Torres', 'a.gomez@unt.edu.pe', '999000005', 'Auxiliar', 'Contratado', 'Ingenieria Ambiental', 'Escuela de Ingenieria Ambiental', NULL, 2, 'Tiempo Parcial', '12345670');
 
 -- Ingenieria Industrial (curso: Cadena de Suministros)
-INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad) VALUES
-('Joe', ' Gonzalez Vasquez', 'j.gonzales@unt.edu.pe', '995608905', 'Auxiliar', 'Contratado', 'Ingeniería Industrial', 'Escuela de Ingeniería Industrial', NULL, 3, 'Tiempo Parcial');
+INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Joe', ' Gonzalez Vasquez', 'j.gonzales@unt.edu.pe', '995608905', 'Auxiliar', 'Contratado', 'Ingeniería Industrial', 'Escuela de Ingeniería Industrial', NULL, 3, 'Tiempo Parcial', '10345678');
 
 -- -------------------------------------------------------------
 -- 3. Aulas de prueba

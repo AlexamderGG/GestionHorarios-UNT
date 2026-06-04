@@ -14,23 +14,36 @@ const DocenteModel = {
   },
 
   create: async (data) => {
-    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios } = data;
+    // CORRECCIÓN: Se agregaron 'modalidad' y 'dni' a la desestructuración
+    const { 
+      nombres, apellidos, email, telefono, categoria, 
+      tipo_nombramiento, especialidad, escuela, 
+      semestre_contrato, antiguedad_anios, modalidad, dni 
+    } = data;
+    
     const result = await pool.query(
-      `INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad || null, escuela || 'Ingenieria de Sistemas', semestre_contrato || null, antiguedad_anios]
+      `INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad || null, escuela || 'Ingenieria de Sistemas', semestre_contrato || null, antiguedad_anios, modalidad || 'Tiempo Completo', dni || null]
     );
     return result.rows[0];
   },
 
   update: async (id, data) => {
-    const { nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, activo } = data;
+    // CORRECCIÓN: Se agregaron 'modalidad' y 'dni' a la desestructuración de data
+    const { 
+      nombres, apellidos, email, telefono, categoria, 
+      tipo_nombramiento, especialidad, escuela, 
+      semestre_contrato, antiguedad_anios, modalidad, dni, activo 
+    } = data;
+    
     const result = await pool.query(
       `UPDATE docentes 
        SET nombres = $1, apellidos = $2, email = $3, telefono = $4, 
-           categoria = $5, tipo_nombramiento = $6, especialidad = $7, escuela = $8, semestre_contrato = $9, antiguedad_anios = $10, activo = $11, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $12 RETURNING *`,
-      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, activo, id]
+           categoria = $5, tipo_nombramiento = $6, especialidad = $7, escuela = $8, semestre_contrato = $9, antiguedad_anios = $10, modalidad = $11, dni = $12, 
+           activo = $13, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $14 RETURNING *`,
+      [nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad || 'Tiempo Completo', dni || null, activo, id]
     );
     return result.rows[0] || null;
   },

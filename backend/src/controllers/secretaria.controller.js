@@ -33,12 +33,21 @@ const SecretariaController = {
     try {
       await client.query('BEGIN');
 
-      // a. Actualizar el estado del docente a "Notificado" en la BD
+      // a. Actualizar el estado del docente a "Notificado" (¡Mantenemos tu estado original!)
       const docente = await DocenteModel.updateEstadoTurno(id, 'Notificado', client);
 
       if (!docente) {
         await client.query('ROLLBACK');
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
+      }
+
+      // ¡EL VERDADERO SALVAVIDAS! Verificar que el docente tenga correo antes de usar Nodemailer
+      if (!docente.email || docente.email.trim() === '') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          success: false, 
+          message: `No se puede habilitar: El docente ${docente.nombres} no tiene un correo registrado.` 
+        });
       }
 
       // b. Generar una credencial temporal (Ej: UNT-8F3A2)

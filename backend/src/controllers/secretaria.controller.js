@@ -33,6 +33,7 @@ const SecretariaController = {
     try {
       await client.query('BEGIN');
 
+      // a. Actualizar el estado del docente a "Notificado"
       const docente = await DocenteModel.updateEstadoTurno(id, 'Notificado', client);
 
       if (!docente) {
@@ -40,7 +41,7 @@ const SecretariaController = {
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
       }
 
-      // Validación de correo
+      // Validar que tenga correo
       if (!docente.email || docente.email.trim() === '') {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
@@ -49,12 +50,15 @@ const SecretariaController = {
         });
       }
 
+      // b. Generar una credencial temporal
       const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(passwordTemporal, saltRounds);
       
+      // Guardar clave temporal en la base de datos
       await DocenteModel.updatePassword(id, hashedPassword, client);
 
+      // c. Configurar el correo electrónico
       const mailOptions = {
         from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
         to: docente.email,
@@ -68,36 +72,55 @@ const SecretariaController = {
               <p><strong>Usuario (Email):</strong> ${docente.email}</p>
               <p><strong>Contraseña Temporal:</strong> ${passwordTemporal}</p>
             </div>
+            <p style="color: #b91c1c; font-size: 14px;">
+              <strong>Importante:</strong> Le recordamos que una vez finalizada su selección, debe pulsar el botón "Confirmar y Finalizar" en el sistema para ceder el turno al siguiente docente.
+            </p>
+            <br>
+            <p>Atentamente,<br><strong>Secretaría Académica UNT</strong></p>
           </div>
         `
       };
 
+      // ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
+      // 1. Guardamos la transacción en la base de datos PRIMERO
       await client.query('COMMIT');
       
-      // Respondemos INMEDIATAMENTE al frontend (Evita el error de Vercel)
+      // 2. Liberamos la conexión de la BD inmediatamente (ya no la necesitamos)
+      client.release();
+
+      // 3. Respondemos a Vercel/Frontend SIN esperar a Google (Adiós Timeouts)
       res.json({ 
           success: true, 
           message: 'Turno habilitado. El correo se enviará en breve.', 
           data: docente 
       });
 
-      // Enviamos el correo EN SEGUNDO PLANO (Fire and forget)
+      // 4. Nodemailer envía el correo en SEGUNDO PLANO (Fire and Forget)
       transporter.sendMail(mailOptions)
-        .then(info => console.log(`✅ ¡ÉXITO! Correo enviado a ${docente.email}`))
-        .catch(err => console.error(`❌ FALLO CRÍTICO DE CORREO para ${docente.email}:`, err.message));
+        .then(info => {
+            console.log(`✅ ¡ÉXITO! Correo enviado a ${docente.email}. ID: ${info.messageId}`);
+        })
+        .catch(err => {
+            console.error(`❌ FALLO CRÍTICO DE CORREO para ${docente.email}:`);
+            console.error(err.message);
+        });
 
     } catch (error) {
-      await client.query('ROLLBACK');
+      // Si hay un error ANTES de enviar la respuesta al cliente
+      if (client) {
+          await client.query('ROLLBACK');
+          client.release();
+      }
       console.error('Error al habilitar turno:', error);
+      
+      // Solo enviamos esta respuesta si los headers no han sido enviados aún
       if (!res.headersSent) {
           res.status(500).json({ success: false, message: 'Error interno al procesar el turno' });
       }
-    } finally {
-      // ¡EL VERDADERO SALVAVIDAS REGRESA! 
-      // Se ejecuta siempre, sin importar si hubo éxito, error, o si faltó el correo.
-      // Así tu servidor NUNCA volverá a quedarse congelado.
-      client.release();
-    }
+    } 
+    // NOTA: Quitamos el bloque 'finally { client.release(); }' de aquí 
+    // porque ya lo estamos manejando dentro del try (éxito) y del catch (error) 
+    // de forma manual para evitar conflictos con la respuesta asíncrona.
   },
 
   // 3. Cambiar el estado del docente de forma manual

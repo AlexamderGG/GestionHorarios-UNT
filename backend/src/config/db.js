@@ -7,8 +7,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
-
-  max: 5, // Reduce el pool a máximo 5 conexiones activas para no saturar Render
+  
   idleTimeoutMillis: 10000, // Cierra conexiones inactivas después de 10 segundos
   connectionTimeoutMillis: 5000, // Si tarda más de 5s en conectar, lanza error en vez de colgarse
 });

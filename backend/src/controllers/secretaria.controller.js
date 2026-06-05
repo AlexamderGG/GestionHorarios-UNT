@@ -25,7 +25,7 @@ const SecretariaController = {
     }
   },
 
-  // 2. Habilitar el turno y enviar credenciales (Individual)
+  // 2. Habilitar el turno y enviar credenciales (Individual) - OPTIMIZADO PARA VERCEL
   habilitarTurno: async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect(); 
@@ -33,7 +33,7 @@ const SecretariaController = {
     try {
       await client.query('BEGIN');
 
-      // a. Actualizar el estado del docente a "Notificado" (¡Mantenemos tu estado original!)
+      // a. Actualizar el estado del docente a "Notificado"
       const docente = await DocenteModel.updateEstadoTurno(id, 'Notificado', client);
 
       if (!docente) {
@@ -41,7 +41,7 @@ const SecretariaController = {
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
       }
 
-      // ¡EL VERDADERO SALVAVIDAS! Verificar que el docente tenga correo antes de usar Nodemailer
+      // Validar que tenga correo
       if (!docente.email || docente.email.trim() === '') {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
@@ -50,7 +50,7 @@ const SecretariaController = {
         });
       }
 
-      // b. Generar una credencial temporal (Ej: UNT-8F3A2)
+      // b. Generar una credencial temporal
       const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(passwordTemporal, saltRounds);
@@ -81,19 +81,46 @@ const SecretariaController = {
         `
       };
 
-      // d. Enviar el correo
-      await transporter.sendMail(mailOptions);
-      
+      // ¡AQUÍ ESTÁ EL CAMBIO CLAVE!
+      // 1. Guardamos la transacción en la base de datos PRIMERO
       await client.query('COMMIT');
-      res.json({ success: true, message: 'Turno habilitado y credenciales enviadas', data: docente });
+      
+      // 2. Liberamos la conexión de la BD inmediatamente (ya no la necesitamos)
+      client.release();
+
+      // 3. Respondemos a Vercel/Frontend SIN esperar a Google (Adiós Timeouts)
+      res.json({ 
+          success: true, 
+          message: 'Turno habilitado. El correo se enviará en breve.', 
+          data: docente 
+      });
+
+      // 4. Nodemailer envía el correo en SEGUNDO PLANO (Fire and Forget)
+      transporter.sendMail(mailOptions)
+        .then(info => {
+            console.log(`✅ ¡ÉXITO! Correo enviado a ${docente.email}. ID: ${info.messageId}`);
+        })
+        .catch(err => {
+            console.error(`❌ FALLO CRÍTICO DE CORREO para ${docente.email}:`);
+            console.error(err.message);
+        });
 
     } catch (error) {
-      await client.query('ROLLBACK');
+      // Si hay un error ANTES de enviar la respuesta al cliente
+      if (client) {
+          await client.query('ROLLBACK');
+          client.release();
+      }
       console.error('Error al habilitar turno:', error);
-      res.status(500).json({ success: false, message: 'Error al procesar el turno y enviar el correo' });
-    } finally {
-      client.release();
-    }
+      
+      // Solo enviamos esta respuesta si los headers no han sido enviados aún
+      if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Error interno al procesar el turno' });
+      }
+    } 
+    // NOTA: Quitamos el bloque 'finally { client.release(); }' de aquí 
+    // porque ya lo estamos manejando dentro del try (éxito) y del catch (error) 
+    // de forma manual para evitar conflictos con la respuesta asíncrona.
   },
 
   // 3. Cambiar el estado del docente de forma manual

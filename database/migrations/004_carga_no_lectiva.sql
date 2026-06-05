@@ -7,9 +7,13 @@ CREATE TABLE carga_no_lectiva (
     investigacion INTEGER DEFAULT 0,
     gestion_admin INTEGER DEFAULT 0,
     capacitacion INTEGER DEFAULT 0,
+    asesoria_tesis INTEGER DEFAULT 0,
+    responsabilidad_social INTEGER DEFAULT 0,
+    produccion_intelectual INTEGER DEFAULT 0,
     otras_actividades INTEGER DEFAULT 0,
     total_horas INTEGER GENERATED ALWAYS AS (
-        preparacion_clases + tutoria_consejeria + investigacion + 
+        preparacion_clases + tutoria_consejeria + investigacion + asesoria_tesis + 
+        responsabilidad_social + produccion_intelectual +
         gestion_admin + capacitacion + otras_actividades
     ) STORED,
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -26,18 +30,7 @@ ADD COLUMN otras_actividades_detalle TEXT DEFAULT '';
 
 
 ALTER TABLE carga_no_lectiva
-ADD COLUMN asesoria_tesis INTEGER DEFAULT 0,
 ADD COLUMN asesoria_tesis_detalle TEXT DEFAULT '',
-ADD COLUMN responsabilidad_social INTEGER DEFAULT 0,
 ADD COLUMN responsabilidad_social_detalle TEXT DEFAULT '',
-ADD COLUMN produccion_intelectual INTEGER DEFAULT 0,
 ADD COLUMN produccion_intelectual_detalle TEXT DEFAULT '';
 
---  Actualizamos la columna del total generado para que incluya los nuevos campos
-ALTER TABLE carga_no_lectiva DROP COLUMN total_horas;
-
-ALTER TABLE carga_no_lectiva ADD COLUMN total_horas INTEGER GENERATED ALWAYS AS (
-    preparacion_clases + tutoria_consejeria + asesoria_tesis + 
-    investigacion + responsabilidad_social + gestion_admin + 
-    produccion_intelectual + capacitacion + otras_actividades
-) STORED;

@@ -6,11 +6,15 @@ const pool = require('../config/db');
 
 // Configuración del transporte de correo
 const transporter = nodemailer.createTransport({
-  service: 'gmail', 
+  host: 'smtp.gmail.com', // Servidor de salida de Google
+  port: 465,              // Puerto seguro SMTPS
+  secure: true,           // Usa conexión SSL/TLS
   auth: {
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS  
-  }
+  },
+  // 🚀 LA MAGIA: Obliga a Node.js a usar IPv4 e ignorar IPv6
+  family: 4 
 });
 
 const SecretariaController = {

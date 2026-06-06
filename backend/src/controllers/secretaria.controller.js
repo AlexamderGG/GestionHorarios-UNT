@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
+const axios = require('axios');
 
 const SecretariaController = {
   // 1. Obtener la lista de docentes ordenada por escalafón

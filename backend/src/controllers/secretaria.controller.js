@@ -4,19 +4,6 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 
-// Configuración del transporte de correo
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com', // Servidor de salida de Google
-  port: 465,              // Puerto seguro SMTPS
-  secure: true,           // Usa conexión SSL/TLS
-  auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS  
-  },
-  // 🚀 LA MAGIA: Obliga a Node.js a usar IPv4 e ignorar IPv6
-  family: 4 
-});
-
 const SecretariaController = {
   // 1. Obtener la lista de docentes ordenada por escalafón
   getEscalafon: async (req, res) => {
@@ -44,51 +31,56 @@ const SecretariaController = {
         return res.status(404).json({ success: false, message: 'Docente no encontrado' });
       }
 
-      // Validación de correo
       if (!docente.email || docente.email.trim() === '') {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
           success: false, 
-          message: `No se puede habilitar: El docente ${docente.nombres} no tiene un correo registrado.` 
+          message: `El docente ${docente.nombres} no tiene un correo registrado.` 
         });
       }
 
       const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(passwordTemporal, saltRounds);
+      const hashedPassword = await bcrypt.hash(passwordTemporal, 10);
       
       await DocenteModel.updatePassword(id, hashedPassword, client);
 
-      const mailOptions = {
-        from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
-        to: docente.email,
-        subject: 'Su turno para selección de horarios - UNT',
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
-            <h2 style="color: #1a56db;">Estimado/a ${docente.nombres} ${docente.apellidos},</h2>
-            <p>Le informamos que es su turno para realizar la selección de horarios por orden de escalafón.</p>
-            <p>Por favor, ingrese al sistema para armar su horario utilizando las siguientes credenciales temporales:</p>
-            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <p><strong>Usuario (Email):</strong> ${docente.email}</p>
-              <p><strong>Contraseña Temporal:</strong> ${passwordTemporal}</p>
-            </div>
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+          <h2 style="color: #1a56db;">Estimado/a ${docente.nombres} ${docente.apellidos},</h2>
+          <p>Le informamos que es su turno para realizar la selección de horarios por orden de escalafón.</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <p><strong>Usuario:</strong> ${docente.email}</p>
+            <p><strong>Contraseña Temporal:</strong> ${passwordTemporal}</p>
           </div>
-        `
+        </div>
+      `;
+
+      // Preparamos el paquete de datos para la API de Brevo
+      const mailData = {
+        sender: { name: "Secretaría Académica UNT", email: process.env.EMAIL_USER },
+        to: [{ email: docente.email }],
+        subject: 'Su turno para selección de horarios - UNT',
+        htmlContent: htmlContent
       };
 
       await client.query('COMMIT');
       
-      // Respondemos INMEDIATAMENTE al frontend (Evita el error de Vercel)
+      // Respondemos a Vercel rápido
       res.json({ 
           success: true, 
           message: 'Turno habilitado. El correo se enviará en breve.', 
           data: docente 
       });
 
-      // Enviamos el correo EN SEGUNDO PLANO (Fire and forget)
-      transporter.sendMail(mailOptions)
-        .then(info => console.log(`✅ ¡ÉXITO! Correo enviado a ${docente.email}`))
-        .catch(err => console.error(`❌ FALLO CRÍTICO DE CORREO para ${docente.email}:`, err.message));
+      // 🚀 BYPASS: Enviamos por API Web (Puerto 443), Render no puede bloquearlo
+      axios.post('https://api.brevo.com/v3/smtp/email', mailData, {
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => console.log(`✅ ¡ÉXITO API! Correo enviado a ${docente.email}`))
+      .catch(err => console.error(`❌ FALLO API BREVO:`, err.response?.data || err.message));
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -97,10 +89,7 @@ const SecretariaController = {
           res.status(500).json({ success: false, message: 'Error interno al procesar el turno' });
       }
     } finally {
-      // ¡EL VERDADERO SALVAVIDAS REGRESA! 
-      // Se ejecuta siempre, sin importar si hubo éxito, error, o si faltó el correo.
-      // Así tu servidor NUNCA volverá a quedarse congelado.
-      client.release();
+      client.release(); // Protegemos la base de datos
     }
   },
 
@@ -185,33 +174,44 @@ const SecretariaController = {
     }
   },
 
-  // 5. NUEVO MÉTODO: Enviar credenciales masivamente (Sin reiniciar a Pendiente)
+  // 5. NUEVO MÉTODO: Enviar credenciales masivamente (Brevo API + Validación Regex)
   notificarTodos: async (req, res) => {
     const client = await pool.connect();
     try {
+      // 1. Obtenemos todos los que tengan "algo" en el campo email
       const query = `SELECT id, nombres, apellidos, email FROM docentes WHERE email IS NOT NULL AND email != ''`;
       const result = await client.query(query);
       const docentes = result.rows;
 
-      if (docentes.length === 0) {
+      // 2. EL FILTRO INTELIGENTE: Expresión regular para correos válidos
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      
+      // Filtramos la lista quedándonos solo con los correos que pasen la prueba
+      const docentesValidos = docentes.filter(docente => emailRegex.test(docente.email.trim()));
+
+      if (docentesValidos.length === 0) {
         client.release();
-        return res.status(404).json({ success: false, message: 'No hay docentes con correo registrado.' });
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No hay docentes con correos válidos para notificar (revise si están mal escritos).' 
+        });
       }
 
-      // Respondemos de inmediato
+      // 3. Respondemos de inmediato a Vercel
       res.json({ 
         success: true, 
-        message: `El proceso se ha iniciado con éxito. Se están generando y enviando nuevas credenciales a ${docentes.length} docentes en segundo plano.` 
+        message: `El proceso inició con éxito. Se enviarán credenciales a ${docentesValidos.length} docentes válidos (se omitieron los correos mal formateados).` 
       });
 
-      // Ejecutamos en segundo plano
+      // 4. Ejecutamos en segundo plano (Fire and Forget masivo)
       (async () => {
         try {
           await client.query('BEGIN');
 
-          for (const docente of docentes) {
+          // Iteramos SOLO sobre los docentes con correos verificados
+          for (const docente of docentesValidos) {
             try {
-              // Generar credencial temporal
+              const emailDestino = docente.email.trim();
               const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
               const hashedPassword = await bcrypt.hash(passwordTemporal, 10);
               
@@ -219,46 +219,64 @@ const SecretariaController = {
               await DocenteModel.updateEstadoTurno(docente.id, 'Completado', client);
               await DocenteModel.updatePassword(docente.id, hashedPassword, client);
 
-              const mailOptions = {
-                from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
-                to: docente.email,
-                subject: '🔑 Accesos para Registro de Disponibilidad - UNT',
-                html: `
-                  <div style="font-family: Arial, sans-serif; color: #333; padding: 20px; max-w-md; margin: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
-                    <h2 style="color: #1a56db; margin-bottom: 20px;">Credenciales de Acceso</h2>
-                    <p>Estimado/a <strong>${docente.nombres} ${docente.apellidos}</strong>,</p>
-                    <p>El sistema se encuentra habilitado para que registre sus <strong>preferencias y restricciones horarias</strong>.</p>
-                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
-                      <p style="margin: 5px 0;"><strong>Usuario (Email):</strong> ${docente.email}</p>
-                      <p style="margin: 5px 0;"><strong>Contraseña Temporal:</strong> <span style="font-family: monospace; font-size: 16px; color: #1a56db; font-weight: bold;">${passwordTemporal}</span></p>
-                    </div>
-                    <p style="font-size: 12px; color: #718096;">Atentamente,<br><strong>Secretaría Académica UNT</strong></p>
+              const htmlContent = `
+                <div style="font-family: Arial, sans-serif; color: #333; padding: 20px; max-w-md; margin: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+                  <h2 style="color: #1a56db; margin-bottom: 20px;">Credenciales de Acceso</h2>
+                  <p>Estimado/a <strong>${docente.nombres} ${docente.apellidos}</strong>,</p>
+                  <p>El sistema se encuentra habilitado para que registre sus <strong>preferencias y restricciones horarias</strong>.</p>
+                  <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
+                    <p style="margin: 5px 0;"><strong>Usuario (Email):</strong> ${emailDestino}</p>
+                    <p style="margin: 5px 0;"><strong>Contraseña Temporal:</strong> <span style="font-family: monospace; font-size: 16px; color: #1a56db; font-weight: bold;">${passwordTemporal}</span></p>
                   </div>
-                `
+                  <p style="font-size: 12px; color: #718096;">Atentamente,<br><strong>Secretaría Académica UNT</strong></p>
+                </div>
+              `;
+
+              const mailData = {
+                sender: { name: "Secretaría Académica UNT", email: process.env.EMAIL_USER },
+                to: [{ email: emailDestino }],
+                subject: '🔑 Accesos para Registro de Disponibilidad - UNT',
+                htmlContent: htmlContent
               };
 
-              await transporter.sendMail(mailOptions);
+              // BYPASS: Enviar por API usando Axios
+              await axios.post('https://api.brevo.com/v3/smtp/email', mailData, {
+                headers: {
+                  'api-key': process.env.BREVO_API_KEY,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              console.log(`✅ Masivo: Correo enviado a ${emailDestino}`);
             } catch (error) {
-              console.error(`Error enviando a ${docente.email}:`, error);
+              // Si un correo falla (ej. rebotado), atrapamos el error aquí 
+              // para que el bucle "for" no se rompa y siga con el siguiente docente.
+              console.error(`❌ Masivo: Error enviando a ${docente.email}:`, error.response?.data || error.message);
             }
           }
 
+          // Si el bucle termina, hacemos el Commit de toda la transacción
           await client.query('COMMIT');
+          console.log('✅ Proceso masivo de correos finalizado con éxito.');
+
         } catch (bgError) {
           await client.query('ROLLBACK');
-          console.error('[Sistema] Error en envío masivo de segundo plano:', bgError);
+          console.error('[Sistema] Error crítico en envío masivo de segundo plano:', bgError);
         } finally {
+          // Protegemos la base de datos devolviendo la conexión
           client.release();
         }
       })();
 
     } catch (error) {
+      // Si ocurre un error ANTES de iniciar el proceso de fondo
       client.release();
       console.error('Error al preparar el envío masivo:', error);
-      return res.status(500).json({ success: false, message: 'Error interno al procesar el envío masivo.' });
+      if (!res.headersSent) {
+         res.status(500).json({ success: false, message: 'Error interno al procesar el envío masivo.' });
+      }
     }
   },
-
   // Marcar a todos como Completados (Candado global)
   completarTodos: async (req, res) => {
     const client = await pool.connect();

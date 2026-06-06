@@ -4,20 +4,12 @@ const AulaModel = require("../models/aula.model");
 const LaboratorioModel = require("../models/laboratorio.model");
 const ConfiguracionModel = require("../models/configuracion.model");
 const DocenteModel = require('../models/docente.model');
-const CursoModel = require("../models/curso.model"); // 👇 IMPORTACIÓN INYECTADA CORRECTAMENTE
-const nodemailer = require('nodemailer');
+const CursoModel = require("../models/curso.model"); // IMPORTACIÓN INYECTADA CORRECTAMENTE
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const { success, error } = require("../utils/responseHelper");
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const axios = require('axios');
 
 const DIAS_VALIDOS = [
   "Lunes",
@@ -460,8 +452,9 @@ const DocenteAuthController = {
       await DocenteModel.updateEstadoTurno(docenteId, 'Completado', client);
 
       const escalafon = await DocenteModel.getDocentesPorEscalafon(client);
-
       const yaHayDocenteActivo = escalafon.some(d => d.estado_turno === 'Notificado');
+
+      let mailData = null; // Variable para almacenar el correo si hay un siguiente docente
 
       if (!yaHayDocenteActivo) {
         const siguienteDocente = escalafon.find(d => d.estado_turno === 'Pendiente');
@@ -477,11 +470,9 @@ const DocenteAuthController = {
               await DocenteModel.updatePassword(siguienteDocente.id, hashedPassword, client);
           }
 
-          const mailOptions = {
-            from: `"Secretaría Académica UNT" <${process.env.EMAIL_USER}>`,
-            to: siguienteDocente.email,
-            subject: 'Su turno para selección de horarios - UNT',
-            html: `
+          // Validamos que el siguiente docente tenga correo antes de armar el paquete de Brevo
+          if (siguienteDocente.email && siguienteDocente.email.trim() !== '') {
+            const htmlContent = `
               <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
                 <h2 style="color: #1a56db;">Estimado/a ${siguienteDocente.nombres} ${siguienteDocente.apellidos},</h2>
                 <p>El docente anterior ha finalizado. <strong>¡Ya es su turno!</strong></p>
@@ -490,20 +481,45 @@ const DocenteAuthController = {
                   <p><strong>Contraseña Temporal:</strong> ${passwordTemporal}</p>
                 </div>
               </div>
-            `
-          };
-          await transporter.sendMail(mailOptions);
+            `;
+
+            mailData = {
+              sender: { name: "Secretaría Académica UNT", email: process.env.EMAIL_USER },
+              to: [{ email: siguienteDocente.email }],
+              subject: 'Su turno para selección de horarios - UNT',
+              htmlContent: htmlContent
+            };
+          }
         }
       } else {
         console.log(`[finalizarTurno] Omitiendo avance automático: ya existe un docente activo subsiguiente armando su horario.`);
       }
 
+      // 1. GUARDAMOS LOS CAMBIOS EN LA BASE DE DATOS
       await client.query('COMMIT');
-      return res.status(200).json({ success: true, message: 'Turno finalizado con éxito.' });
+      
+      // 2. LE RESPONDEMOS AL FRONTEND RÁPIDO PARA QUE VERCEL NO FALLE
+      res.status(200).json({ success: true, message: 'Turno finalizado con éxito.' });
+
+      // 3. BYPASS BREVO: ENVIAMOS EL CORREO EN SEGUNDO PLANO
+      if (mailData) {
+        axios.post('https://api.brevo.com/v3/smtp/email', mailData, {
+          headers: {
+            'api-key': process.env.BREVO_API_KEY,
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(() => console.log(`✅ Transición automática: Correo enviado a ${mailData.to[0].email}`))
+        .catch(err => console.error(`❌ FALLO API BREVO EN TRANSICIÓN:`, err.response?.data || err.message));
+      }
+
     } catch (err) {
       await client.query('ROLLBACK');
       console.error('Error en transición automática de turno:', err);
-      return res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+      // Validamos que los headers no se hayan enviado aún por si el error ocurre después del res.status
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+      }
     } finally {
       client.release();
     }

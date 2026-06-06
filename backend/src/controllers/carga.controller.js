@@ -36,6 +36,9 @@ exports.guardarMiCarga = async (req, res) => {
     const totalNoLectivo = 
       Number(carga.preparacion_clases || 0) + 
       Number(carga.tutoria_consejeria || 0) + 
+      Number(carga.asesoria_tesis || 0) + 
+      Number(carga.responsabilidad_social || 0) + 
+      Number(carga.produccion_intelectual || 0) + 
       Number(carga.investigacion || 0) + 
       Number(carga.gestion_admin || 0) + 
       Number(carga.capacitacion || 0) + 

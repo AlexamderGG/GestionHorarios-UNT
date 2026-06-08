@@ -19,15 +19,15 @@ const CATEGORIAS = ["Principal", "Asociado", "Auxiliar", "Jefe de practica"];
 const TIPOS_NOMBRAMIENTO = ["Nombrado", "Contratado"];
 const MODALIDADES = ["Tiempo Completo", "Tiempo Parcial"]; // <-- NUEVO
 const ESPECIALIDADES = [
-  "Ingenieria de Sistemas", "Matematicas", "Fisica", "Comunicacion",
-  "Psicologia", "Filosofia", "Ciencias Sociales", "Administracion",
-  "Musica", "Danza Folklorica", "Educacion Fisica", "Derecho", "Ingenieria Ambiental"
+  "Ingenieria de Sistemas", "Matemáticas", "Fisica", "Lengua y Literatura",
+  "CC. Psicologicas", "Filosofia", "Ciencias de la Educación", "Administracion",
+  "Estadistica", "Estudios Generales", "Filosofía y Arte", "Derecho", "Ingenieria Ambiental", "Ingeniería Industrial", "Contabilidad y Finanzas", "Ciencias Sociales"
 ];
 const ESCUELAS = [
   "Ingenieria de Sistemas", "Escuela de Matematicas", "Escuela de Fisica",
-  "Escuela de Comunicacion", "Escuela de Psicologia", "Escuela de Filosofia",
-  "Escuela de Ciencias Sociales", "Escuela de Administracion", "Escuela de Artes",
-  "Escuela de Educacion Fisica", "Escuela de Derecho", "Escuela de Ingenieria Ambiental"
+  "Escuela de Lengua y Literatura", "Escuela de CC. Psicologicas", "Escuela de Filosofia",
+  "Escuela de Ciencias de la Educación", "Escuela de Administracion", "Escuela de Artes",
+  "Escuela de Estudios Generales", "Escuela de Derecho", "Escuela de Ingenieria Ambiental", "Escuela de Ingeniería Industrial", "Contabilidad y Finanzas", "Escuela de Ciencias Sociales"
 ];
 
 const AdminDocentes = () => {

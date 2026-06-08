@@ -282,15 +282,43 @@ const SecretariaController = {
   completarTodos: async (req, res) => {
     const client = await pool.connect();
     try {
-      // Actualizamos a todos los que no estén ya en Completado
-      const query = `UPDATE docentes SET estado_turno = 'Completado' WHERE estado_turno != 'Completado'`;
-      await client.query(query);
+      // Iniciamos una transacción para que la lectura y escritura sean seguras
+      await client.query('BEGIN');
+
+      // 1. Evaluamos si existen docentes sin credenciales (sin contraseña o sin email)
+      // ⚠️ NOTA: Si tu columna de contraseña se llama distinto (ej. 'password_hash' o 'clave'), 
+      // cámbialo en la consulta de abajo.
+      const checkQuery = `
+        SELECT id 
+        FROM docentes 
+        WHERE password IS NULL OR password = '' 
+           OR email IS NULL OR email = ''
+      `;
+      const checkResult = await client.query(checkQuery);
+
+      // 2. Si encontramos al menos uno, cancelamos todo el proceso
+      if (checkResult.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          success: false, 
+          message: `Acción cancelada: Se encontraron ${checkResult.rows.length} docente(s) sin credenciales o correo registrado. Genere los accesos masivos primero.` 
+        });
+      }
+
+      // 3. Si pasó la validación (todos tienen credenciales), actualizamos a Completado
+      const updateQuery = `UPDATE docentes SET estado_turno = 'Completado' WHERE estado_turno != 'Completado'`;
+      await client.query(updateQuery);
+      
+      // Guardamos los cambios
+      await client.query('COMMIT');
       
       return res.json({ 
         success: true, 
         message: 'Todos los turnos han sido bloqueados (marcados como Completados).' 
       });
     } catch (error) {
+      // Si el servidor falla, deshacemos cualquier cambio a medias
+      await client.query('ROLLBACK'); 
       console.error('Error al completar todos los turnos:', error);
       return res.status(500).json({ success: false, message: 'Error interno al actualizar los turnos.' });
     } finally {

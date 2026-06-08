@@ -3,7 +3,7 @@
 -- ============================================================
 
 SET client_encoding = 'UTF8';
-
+-- ============================================================
 -- Plan de estudios vigente, 10 ciclos.
 -- Semestre academico: 2026-1
 --
@@ -15,7 +15,7 @@ SET client_encoding = 'UTF8';
 
 INSERT INTO cursos (codigo, nombre, creditos, ciclo, semestre, activo, especialidad, horas_t, horas_p, horas_l) VALUES
 -- I Ciclo (ciclo 1)
-('EG-101', 'Desarrollo del Pensamiento Logico Matemático', 3, 1, '2026-1', TRUE, 'Matemáticas', 1, 4, 0),
+('EG-101', 'Desarrollo del Pensamiento Logico Matemático', 3, 1, '2026-1', TRUE, 'Matemáticas', 2, 3, 0),
 ('EG-102', 'Lectura Critica y Redaccion de Textos Academicos', 3, 1, '2026-1', TRUE, 'Lengua y Literatura', 2, 2, 0),
 ('EG-103', 'Desarrollo Personal', 3, 1, '2026-1', TRUE, 'CC. Psicologicas', 2, 2, 0),
 ('EG-104', 'Introduccion al Analisis Matematico', 4, 1, '2026-1', TRUE, 'Matemáticas', 2, 4, 0),
@@ -60,7 +60,7 @@ INSERT INTO cursos (codigo, nombre, creditos, ciclo, semestre, activo, especiali
 -- V Ciclo (ciclo 5)
 ('EP-501', 'Contabilidad Gerencial', 3, 5, '2026-1', TRUE, 'Contabilidad y Finanzas', 1, 2, 2),
 ('EE-501', 'Tecnologias Web', 3, 5, '2026-1', TRUE, 'Ingenieria de Sistemas', 1, 1, 9),
-('EP-502', 'Investigacion de Operaciones', 3, 5, '2026-1', TRUE, 'Ingeniería Industrial', 1, 2, 2),
+('EP-502', 'Investigacion de Operaciones', 3, 5, '2026-1', TRUE, 'Ingeniería Industrial', 1, 2, 4),
 ('EE-502', 'Ingenieria de Datos I', 4, 5, '2026-1', TRUE, 'Ingenieria de Sistemas', 2, 1, 9),
 ('EE-503', 'Arquitectura y Organizacion de Computadoras', 3, 5, '2026-1', TRUE, 'Ingenieria de Sistemas', 1, 2, 6),
 ('EE-504', 'Sistemas de Informacion', 4, 5, '2026-1', TRUE, 'Ingenieria de Sistemas', 2, 2, 6),

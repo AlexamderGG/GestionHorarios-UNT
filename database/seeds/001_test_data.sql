@@ -89,7 +89,8 @@ INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombr
 
 -- Ingenieria Industrial (curso: Cadena de Suministros)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
-('Joe', ' Gonzalez Vasquez', 'j.gonzales@unt.edu.pe', '995608905', 'Auxiliar', 'Contratado', 'Ingeniería Industrial', 'Escuela de Ingeniería Industrial', NULL, 3, 'Tiempo Parcial', '10345678');
+('Marcos', 'Baca Lopez', 'm.baca@unt.edu.pe', '995608905', 'Auxiliar', 'Contratado', 'Ingeniería Industrial', 'Escuela de Ingeniería Industrial', NULL, 3, 'Tiempo Parcial', '10898778'),
+('Joe', 'Gonzalez Vasquez', 'j.gonzales@unt.edu.pe', '995608905', 'Auxiliar', 'Contratado', 'Ingeniería Industrial', 'Escuela de Ingeniería Industrial', NULL, 3, 'Tiempo Parcial', '10345678');
 
 -- -------------------------------------------------------------
 -- 3. Aulas de prueba

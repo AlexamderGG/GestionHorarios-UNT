@@ -18,7 +18,7 @@ INSERT INTO docentes (id, nombres, apellidos, email, telefono, categoria, tipo_n
 (45, 'Robert Jerry', 'Sanchez Ticona', 'r.sanchez@unt.edu.pe', '999666777', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 11, 'Tiempo Completo', '89345678'),
 (46, 'Ricardo Dario', 'Mendoza Rivera', 'r.mendoza@unt.edu.pe', '999777888', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 8, 'Tiempo Completo', '91345678'),
 (47, 'Juan Carlos', 'Obando Roldan', 'j.obando@unt.edu.pe', '999888999', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '82765432'),
-(48, 'Paula', 'Cotrina Castellanos', 'p.cotrina@unt.edu.pe', '985623156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '93345678'),
+(48, 'Paul', 'Cotrina Castellanos', 'p.cotrina@unt.edu.pe', '985623156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '93345678'),
 (49, 'Oscar Romel', 'Alcántara Moreno', 'o.alcantara@unt.edu.pe', '963223156', 'Asociado', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 10, 'Tiempo Completo', '94765432'),
 (50, 'Juan Pedro', 'Santos Fernández', 'j.santos@unt.edu.pe', '963223446', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 18, 'Tiempo Completo', '96345678'),
 (51, 'Everson David', 'Agreda Gamboa', 'e.agreda@unt.edu.pe', '963223452', 'Principal', 'Nombrado', 'Ingenieria de Sistemas', 'Ingenieria de Sistemas', 9, 'Tiempo Completo', '98765232'),
@@ -95,12 +95,10 @@ INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombr
 -- 3. Aulas de prueba
 -- -------------------------------------------------------------
 INSERT INTO aulas (codigo, nombre, capacidad, ubicacion, tipo) VALUES
-('A201', 'Aula 201 - Postgrado', 50, 'Postgrado - Segundo Piso', 'Teoria'),
-('A202', 'Aula 202 - Postgrado', 50, 'Postgrado - Segundo Piso', 'Teoria'),
-('A301', 'Aula 301 - Postgrado', 45, 'Postgrado - Tercer Piso', 'Teoria'),
 ('A303', 'Aula 303 - Postgrado', 45, 'Postgrado - Tercer Piso', 'Teoria'),
-('A306', 'Aula 306 - Postgrado', 50, 'Postgrado - Tercer Piso', 'Teoria'),
-('A307', 'Aula 307 - Postgrado', 40, 'Postgrado - Tercer Piso', 'Teoria');
+('A311', 'Aula 311 - Postgrado', 50, 'Postgrado - Tercer Piso', 'Teoria'),
+('A307', 'Aula 307 - Postgrado', 40, 'Postgrado - Tercer Piso', 'Teoria'),
+('T.Confecciones', 'Taller 102 - Industrial', 45, 'Ing. Industrial - Tercer Piso', 'Teoria');
 
 -- -------------------------------------------------------------
 -- 4. Laboratorios de prueba
@@ -109,7 +107,9 @@ INSERT INTO laboratorios (codigo, nombre, capacidad, ubicacion) VALUES
 ('LAB01', 'Laboratorio 01', 25, 'Registro Técnico - Segundo Piso'),
 ('LAB02', 'Laboratorio 02', 25, 'Registro Técnico - Segundo Piso'),
 ('LAB03', 'Laboratorio 03', 20, 'Registro Técnico - Segundo Piso'),
-('LAB04', 'Laboratorio 04', 20, 'Registro Técnico - Segundo Piso');
+('LAB04', 'Laboratorio 04', 20, 'Registro Técnico - Segundo Piso'),
+('Audiovisuales', 'Laboratorio Audiovisuales', 25, 'Registro Técnico - Segundo Piso'),
+('LAB.Fisica', 'Laboratorio. Fisica', 20, 'Fisica - Segundo Piso');
 
 -- -------------------------------------------------------------
 -- 5. habilitar_edicion_Docente

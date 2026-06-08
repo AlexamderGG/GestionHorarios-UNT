@@ -392,7 +392,12 @@ const AdminHorarios = () => {
       });
       
       if (startIdx !== -1) {
-        events.push({ h, asig, groupKey, startIdx, endIdx, span: endIdx - startIdx + 1, dia: diaNorm });
+        // ✅ CORRECCIÓN: Agregamos el "tipo" al evento para detectarlo luego
+        events.push({ 
+            h, asig, groupKey, startIdx, endIdx, 
+            span: endIdx - startIdx + 1, dia: diaNorm, 
+            tipo: asig?.tipo || '' 
+        });
       }
     });
 
@@ -408,7 +413,10 @@ const AdminHorarios = () => {
     events.forEach(ev => {
       if (!curr) curr = { ...ev };
       else {
-        if (curr.groupKey === ev.groupKey && curr.endIdx >= ev.startIdx - 1) {
+        // ✅ CORRECCIÓN: Evitamos la fusión si el bloque actual o el nuevo son "Laboratorio"
+        const esLaboratorio = curr.tipo === 'Laboratorio' || ev.tipo === 'Laboratorio';
+
+        if (curr.groupKey === ev.groupKey && curr.endIdx >= ev.startIdx - 1 && !esLaboratorio) {
           curr.endIdx = Math.max(curr.endIdx, ev.endIdx);
           curr.span = curr.endIdx - curr.startIdx + 1;
         } else {

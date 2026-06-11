@@ -43,7 +43,7 @@ const Dashboard = () => {
     total_aulas: 0,
     total_laboratorios: 0,
     ocupacion_aulas: 0,
-    distribucion_teoria_lab: { teoria: 0, laboratorio: 0 },
+    distribucion_teoria_lab: { teoria: 0, practica: 0, laboratorio: 0 },
     carga_por_docente: [],
     uso_por_ambiente: [],
   });
@@ -88,6 +88,10 @@ const Dashboard = () => {
     {
       name: "Teoría",
       value: Number(stats.distribucion_teoria_lab?.teoria || 0),
+    },
+    {
+      name:"Práctica",
+      value: Number(stats.distribucion_teoria_lab?.practica || 0),
     },
     {
       name: "Laboratorio",
@@ -217,11 +221,11 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Distribución Teoría vs Laboratorio */}
+        {/* Distribución Teoría vs Práctica vs Laboratorio */}
         <div className="card p-5 dark:bg-neutral-800 dark:border-neutral-700">
           <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
             <FlaskConical className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
-            Distribución Teoría vs Laboratorio
+            Distribución Teoría vs Práctica vs Laboratorio
           </h2>
           {dataDistribucion.some((d) => d.value > 0) ? (
             <ResponsiveContainer width="100%" height={300}>

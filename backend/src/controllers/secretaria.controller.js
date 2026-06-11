@@ -285,9 +285,6 @@ const SecretariaController = {
       // Iniciamos una transacción para que la lectura y escritura sean seguras
       await client.query('BEGIN');
 
-      // 1. Evaluamos si existen docentes sin credenciales (sin contraseña o sin email)
-      // ⚠️ NOTA: Si tu columna de contraseña se llama distinto (ej. 'password_hash' o 'clave'), 
-      // cámbialo en la consulta de abajo.
       const checkQuery = `
         SELECT id 
         FROM docentes 

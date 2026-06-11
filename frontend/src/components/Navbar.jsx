@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-// 🌟 SE IMPORTÓ EL BOTÓN DEL TEMA (Asegúrate de que la ruta sea correcta según donde guardaste ThemeToggle.jsx)
 import ThemeToggle from './ThemeToggle'; 
+import AsistenteVoz from './AsistenteVoz';
 import {
   Calendar,
   LayoutDashboard,
@@ -99,14 +99,14 @@ const Navbar = () => {
   return (
     <>
       {/* Desktop Sidebar */}
-      {/* 🌟 MODO OSCURO: bg-white -> dark:bg-neutral-900, border-neutral-200 -> dark:border-neutral-800 */}
+      {/*  MODO OSCURO: bg-white -> dark:bg-neutral-900, border-neutral-200 -> dark:border-neutral-800 */}
       <aside
         className={`hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transition-[width,background-color] duration-300 ease-in-out ${
           sidebarCollapsed ? 'w-[68px]' : 'w-60'
         }`}
       >
         {/* Logo */}
-        {/* 🌟 MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
+        {/*  MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
         <div className="flex items-center h-16 px-4 border-b border-neutral-100 dark:border-neutral-800 transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex-shrink-0 w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -114,7 +114,7 @@ const Navbar = () => {
             </div>
             {!sidebarCollapsed && (
               <div className="min-w-0">
-                {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+                {/*  MODO OSCURO: text-neutral-900 -> dark:text-white */}
                 <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate transition-colors">Scheduling</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate transition-colors">UNT</p>
               </div>
@@ -132,7 +132,7 @@ const Navbar = () => {
                 key={link.to}
                 to={link.to}
                 title={sidebarCollapsed ? link.label : undefined}
-                // 🌟 MODO OSCURO: Se ajustaron los colores del hover y del botón activo
+                //  MODO OSCURO: Se ajustaron los colores del hover y del botón activo
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group ${
                   active
                     ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400'
@@ -151,7 +151,7 @@ const Navbar = () => {
         </nav>
 
         {/* User + Collapse */}
-        {/* 🌟 MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
+        {/*  MODO OSCURO: border-neutral-100 -> dark:border-neutral-800 */}
         <div className="border-t border-neutral-100 dark:border-neutral-800 p-3 space-y-2 transition-colors">
           {!sidebarCollapsed && user && (
             <div className="flex items-center gap-3 px-3 py-2">
@@ -159,7 +159,7 @@ const Navbar = () => {
                 <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
               </div>
               <div className="min-w-0">
-                {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+                {/*  MODO OSCURO: text-neutral-900 -> dark:text-white */}
                 <p className="text-sm font-medium text-neutral-900 dark:text-white truncate transition-colors">
                   {user.role === 'admin' ? 'Administrador' : user.nombre}
                 </p>
@@ -169,7 +169,7 @@ const Navbar = () => {
           )}
           <div className="flex items-center gap-2">
             
-            {/* 🌟 AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (ESCRITORIO) */}
+            {/*  AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (ESCRITORIO) */}
             <ThemeToggle />
 
             {user && (
@@ -200,7 +200,7 @@ const Navbar = () => {
       </aside>
 
       {/* Mobile Top Bar */}
-      {/* 🌟 MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95 */}
+      {/*  MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95 */}
       <nav className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
         <div className="flex items-center justify-between h-14 px-4">
           <Link
@@ -210,7 +210,7 @@ const Navbar = () => {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            {/* 🌟 MODO OSCURO: text-neutral-900 -> dark:text-white */}
+            {/*  MODO OSCURO: text-neutral-900 -> dark:text-white */}
             <span className="font-semibold text-neutral-900 dark:text-white text-sm transition-colors">Scheduling UNT</span>
           </Link>
 
@@ -221,7 +221,7 @@ const Navbar = () => {
               </span>
             )}
             
-            {/* 🌟 AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (MÓVIL) */}
+            {/*  AQUÍ SE AGREGÓ EL BOTÓN DEL MODO OSCURO (MÓVIL) */}
             <ThemeToggle />
 
             <button
@@ -236,7 +236,7 @@ const Navbar = () => {
 
         {/* Mobile Dropdown */}
         {mobileOpen && (
-          // 🌟 MODO OSCURO: bg-white -> dark:bg-neutral-900
+          //  MODO OSCURO: bg-white -> dark:bg-neutral-900
           <div className="border-t border-neutral-100 dark:border-neutral-800 py-2 px-3 animate-slide-down bg-white dark:bg-neutral-900 transition-colors duration-300">
             {links.map((link) => {
               const Icon = link.icon;
@@ -272,7 +272,7 @@ const Navbar = () => {
 
       {/* Mobile Bottom Navigation (max 5 items) */}
       {user && (
-        // 🌟 MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95
+        //  MODO OSCURO: bg-white/95 -> dark:bg-neutral-900/95
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
           <div className="flex items-center justify-around h-16 px-2">
             {links.slice(0, 5).map((link) => {
@@ -297,6 +297,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
+      {/* <AsistenteVoz /> */}
     </>
   );
 };

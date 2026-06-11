@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const routes = require('./routes');
+const chatbotRoutes = require('./routes/chatbot.routes');
 
 const app = express();
 
@@ -13,7 +14,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rutas API
+app.use('/api/chatbot', chatbotRoutes); 
 app.use('/api', routes);
 
 // Ruta de salud
@@ -21,7 +22,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Manejo de errores 404
+// Manejo de errores 404 (Si la ruta no existe arriba, cae aquí)
 app.use((req, res, next) => {
   res.status(404).json({ message: 'Recurso no encontrado', path: req.path });
 });

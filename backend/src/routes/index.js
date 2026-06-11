@@ -19,6 +19,7 @@ const excepcionRoutes = require('./excepcion.routes');
 const disponibilidadRoutes = require('./disponibilidad.routes');
 const cargaRoutes = require('./carga.routes');
 
+
 // Rutas públicas
 router.use('/auth', authRoutes);
 
@@ -50,5 +51,6 @@ router.use('/carga', cargaRoutes);
 
 // Rutas protegidas - secretaría
 router.use('/secretaria', secretariaRoutes);
+
 
 module.exports = router;

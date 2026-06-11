@@ -7,15 +7,15 @@ exports.getMiCarga = async (req, res) => {
 
     const resumen = await CargaNoLectiva.getResumenDocente(docenteId, semestre);
 
-    // Definir rangos según modalidad
-    const maxHoras = resumen.modalidad === 'Tiempo Parcial' ? 20 : 40;
-    const minHoras = resumen.modalidad === 'Tiempo Parcial' ? 10 : 30;
+    // Definir la cantidad EXACTA requerida según modalidad
+    const horasRequeridas = resumen.modalidad === 'Tiempo Parcial' ? 20 : 40;
 
     res.json({
       success: true,
       data: {
         ...resumen,
-        limites: { max: maxHoras, min: minHoras }
+        // Enviamos el mismo valor como max, min y requerido para no romper tu frontend
+        limites: { max: horasRequeridas, min: horasRequeridas, requerido: horasRequeridas }
       }
     });
   } catch (error) {
@@ -46,25 +46,18 @@ exports.guardarMiCarga = async (req, res) => {
 
     const totalGeneral = resumen.horasLectivas + totalNoLectivo;
 
-    // 3. Validar con los rangos (Mínimos y Máximos)
-    const maxHoras = resumen.modalidad === 'Tiempo Parcial' ? 20 : 40;
-    const minHoras = resumen.modalidad === 'Tiempo Parcial' ? 10 : 30;
+    // 3. Validar con la hora EXACTA (20 o 40)
+    const horasRequeridas = resumen.modalidad === 'Tiempo Parcial' ? 20 : 40;
 
-    if (totalGeneral > maxHoras) {
+    // Si el total no es estrictamente igual al requerido, lo bloqueamos
+    if (totalGeneral !== horasRequeridas) {
       return res.status(400).json({ 
         success: false, 
-        message: `Excedes el límite. Tu máximo es ${maxHoras}h y estás intentando registrar ${totalGeneral}h (Lectivas + No Lectivas).` 
+        message: `Acción rechazada: Debes justificar exactamente ${horasRequeridas}h según tu modalidad. Actualmente estás sumando ${totalGeneral}h (Lectivas + No Lectivas).` 
       });
     }
 
-    if (totalGeneral < minHoras) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `No alcanzas el mínimo requerido. Tu mínimo es ${minHoras}h y estás registrando solo ${totalGeneral}h.` 
-      });
-    }
-
-    // 4. Si pasa las validaciones, guardar en BD
+    // 4. Si pasa la validación exacta, guardar en BD
     const guardado = await CargaNoLectiva.upsertCarga(docenteId, semestre, carga);
 
     res.json({

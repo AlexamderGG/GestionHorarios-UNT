@@ -91,19 +91,20 @@ const CargaHoraria = () => {
     form.gestion_admin + form.capacitacion + form.otras_actividades;
     
   const totalGeneral = horasLectivas + totalNoLectivo;
-  const maxHoras = resumen?.limites?.max || 40;
-  const minHoras = resumen?.limites?.min || 30;
-  const isValido = totalGeneral >= minHoras && totalGeneral <= maxHoras;
-  const porcentaje = Math.min((totalGeneral / maxHoras) * 100, 100);
+  
+  // NUENA LÓGICA DE HORAS EXACTAS
+  // Usamos requerido, o si por alguna razón no viene, hacemos un fallback seguro.
+  const horasRequeridas = resumen?.limites?.requerido || resumen?.limites?.max || 40; 
+  const isValido = totalGeneral === horasRequeridas; // Validación estricta
+  const porcentaje = Math.min((totalGeneral / horasRequeridas) * 100, 100);
 
-  let statusColor = "bg-primary-500";
-  if (totalGeneral > maxHoras) statusColor = "bg-danger-500";
-  else if (totalGeneral < minHoras) statusColor = "bg-warning-500";
-  else statusColor = "bg-success-500";
+  let statusColor = "bg-warning-500"; // Por defecto (si faltan horas)
+  if (totalGeneral > horasRequeridas) statusColor = "bg-danger-500";
+  else if (totalGeneral === horasRequeridas) statusColor = "bg-success-500";
 
   const handleGuardar = async () => {
     if (!isValido) {
-      setMensaje({ tipo: 'error', texto: `El total debe estar entre ${minHoras} y ${maxHoras} horas.` });
+      setMensaje({ tipo: 'error', texto: `Tu carga debe sumar exactamente ${horasRequeridas} horas (actualmente suma ${totalGeneral}h).` });
       return;
     }
     setSaving(true); setMensaje(null);
@@ -120,9 +121,7 @@ const CargaHoraria = () => {
   const generarPDFCarga = () => {
     const doc = new jsPDF();
     
-    // ---------------------------------------------------------
     // ENCABEZADO OFICIAL
-    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("UNIVERSIDAD NACIONAL DE TRUJILLO", 105, 20, { align: "center" });
@@ -135,39 +134,33 @@ const CargaHoraria = () => {
     doc.setFontSize(11);
     doc.text(`SEMESTRE ACADÉMICO ${semestre}`, 105, 52, { align: "center" });
 
-    // ---------------------------------------------------------
     // PÁRRAFO DE DECLARACIÓN
-    // ---------------------------------------------------------
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     const textoDeclaracion = `Yo, ${resumen.docenteNombre}, docente adscrito al Departamento Académico de Ingeniería de Sistemas con la categoría y régimen de dedicación de ${resumen.modalidad}, declaro bajo juramento que para el semestre académico ${semestre}, tengo la siguiente carga horaria:`;
     
-    // Auto-ajustar texto para que no se salga de los márgenes
     const lineasTexto = doc.splitTextToSize(textoDeclaracion, 170);
     doc.text(lineasTexto, 20, 65);
     
     let finalY = 65 + (lineasTexto.length * 5) + 5;
 
-    // ---------------------------------------------------------
     // TABLA I: CARGA LECTIVA
-    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
     doc.text("I. CARGA LECTIVA (según consolidado de carga lectiva)", 20, finalY);
     
     const cursosBody = misCursos.map((c, i) => [
       i + 1,
       c.curso_nombre || c.nombre,
-      "Ing. de Sistemas", // Escuela / Departamento por defecto
+      "Ing. de Sistemas", 
       c.ciclo || c.curso_ciclo || "-",
       (c.tipo === 'Teoria' || c.tipo === 'Teoría') ? c.horas_asignadas : "-",
       (c.tipo === 'Practica' || c.tipo === 'Práctica') ? c.horas_asignadas : "-",
       c.tipo === 'Laboratorio' ? c.horas_asignadas : "-",
       c.grupo && c.grupo !== 'Único' ? c.grupo : "-",
-      "-", // N° Est.
+      "-", 
       c.horas_asignadas
     ]);
 
-    // Fila de Total de la Tabla I
     cursosBody.push(["", "TOTAL", "", "", "", "", "", "", "", horasLectivas]);
 
     autoTable(doc, {
@@ -182,7 +175,6 @@ const CargaHoraria = () => {
         2: { halign: 'center', cellWidth: 25 }
       },
       willDrawCell: function(data) {
-        // Pintar la última fila de "TOTAL" en negrita y gris
         if (data.row.index === cursosBody.length - 1 && data.section === 'body') {
           doc.setFont("helvetica", "bold");
           doc.setFillColor(240, 240, 240);
@@ -192,16 +184,13 @@ const CargaHoraria = () => {
 
     finalY = doc.lastAutoTable.finalY + 10;
 
-    // ---------------------------------------------------------
     // TABLA II: CARGA NO LECTIVA
-    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
     doc.text("II. CARGA NO LECTIVA (Según cronograma de trabajo en portafolio de docente)", 20, finalY);
 
     const noLectivaBody = [];
     let idx = 1;
     
-    // Función auxiliar para agregar solo actividades con horas > 0
     const addActividad = (actividad, detalle, horas) => {
       if (horas > 0) noLectivaBody.push([idx++, actividad, detalle || '-', horas]);
     };
@@ -218,7 +207,6 @@ const CargaHoraria = () => {
 
     if (noLectivaBody.length === 0) noLectivaBody.push(['-', 'Sin actividades registradas', '-', '0']);
 
-    // Fila de Total de la Tabla II
     noLectivaBody.push(['', 'TOTAL', '', totalNoLectivo]);
 
     autoTable(doc, {
@@ -243,12 +231,9 @@ const CargaHoraria = () => {
 
     finalY = doc.lastAutoTable.finalY + 10;
     
-    // Evitar que el resumen y firmas se partan en la página
     if (finalY > 220) { doc.addPage(); finalY = 20; }
 
-    // ---------------------------------------------------------
     // TABLA III: RESUMEN
-    // ---------------------------------------------------------
     doc.setFont("helvetica", "bold");
     doc.text("III. RESUMEN DE CARGA HORARIA", 20, finalY);
 
@@ -266,7 +251,6 @@ const CargaHoraria = () => {
         1: { halign: 'center', cellWidth: 30 }
       },
       willDrawCell: function(data) {
-        // Poner la fila TOTAL en negrita
         if (data.row.index === 2) doc.setFont("helvetica", "bold");
       }
     });
@@ -274,9 +258,7 @@ const CargaHoraria = () => {
     finalY = doc.lastAutoTable.finalY + 15;
     if (finalY > 260) { doc.addPage(); finalY = 30; }
 
-    // ---------------------------------------------------------
     // FECHA Y FIRMAS
-    // ---------------------------------------------------------
     const hoy = new Date();
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
@@ -284,7 +266,7 @@ const CargaHoraria = () => {
     doc.setFontSize(10);
     doc.text(`Trujillo, ${hoy.getDate()} de ${meses[hoy.getMonth()]} del ${hoy.getFullYear()}`, 190, finalY, { align: "right" });
 
-    finalY += 40; // Espacio para la firma
+    finalY += 40; 
     
     doc.line(30, finalY, 80, finalY);
     doc.line(130, finalY, 180, finalY);
@@ -300,59 +282,47 @@ const CargaHoraria = () => {
     try {
       const doc = new jsPDF();
       
-      // Encabezado Institucional
       doc.setFont("helvetica", "bold"); doc.setFontSize(14);
       doc.text("UNIVERSIDAD NACIONAL DE TRUJILLO", 105, 20, { align: "center" });
       doc.setFontSize(12); doc.text("FACULTAD DE INGENIERÍA", 105, 27, { align: "center" });
       doc.text("ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS", 105, 34, { align: "center" });
       
-      // Título
       doc.setFontSize(11);
       doc.text("DECLARACIÓN JURADA DE NO ESTAR INCURSO EN CAUSALES DE INCOMPATIBILIDAD", 105, 48, { align: "center" });
       doc.text("O IMPEDIMENTO LABORAL O LEGAL", 105, 54, { align: "center" });
 
-      // Datos personales formateados continuamente con líneas continuas oficiales
       doc.setFont("helvetica", "normal"); doc.setFontSize(11);
       let textY = 70;
-      let startX = 20; // Punto de inicio X secuencial
+      let startX = 20; 
 
-      // Trozo 1: "Yo, " (normal)
       const prefixText = `Yo, `;
       doc.text(prefixText, startX, textY);
-      startX += doc.getTextWidth(prefixText); // Actualizamos startX
+      startX += doc.getTextWidth(prefixText); 
 
-      // Trozo 2: Nombre del Docente (bold)
       doc.setFont("helvetica", "bold");
       const nameText = resumen.docenteNombre;
       doc.text(nameText, startX, textY);
-      startX += doc.getTextWidth(nameText); // Actualizamos startX usando fuente bold activa
+      startX += doc.getTextWidth(nameText); 
 
-      // Trozo 3: ", identificado con..." (normal)
       doc.setFont("helvetica", "normal");
       const midText = `, identificado con Documento Nacional de Identidad N° `;
       doc.text(midText, startX, textY);
-      startX += doc.getTextWidth(midText); // Actualizamos startX
+      startX += doc.getTextWidth(midText); 
 
-      // Salto de línea para el DNI y el domicilio
       textY += 6;
-      startX = 20; // Reiniciamos startX para la nueva línea
+      startX = 20; 
 
-      // DNI part (bold)
       doc.setFont("helvetica", "bold");
       const dniText = resumen.docenteDni || '........................';
       doc.text(dniText, startX, textY);
-      startX += doc.getTextWidth(dniText); // Actualizamos startX usando fuente bold
+      startX += doc.getTextWidth(dniText); 
 
-      // "with address" part (normal)
       doc.setFont("helvetica", "normal");
       const addressPrefix = `, con domicilio real en ...................................................................................................................`;
       doc.text(addressPrefix, startX, textY);
-      // El total de esta línea es largo, así que no necesitamos calcular startX para la siguiente, solo bajar Y.
 
       textY += 6;
-      // ... (continúa el resto del código del domicilio y la declaración jurada)
       
-      // Cuerpo legal formal
       doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
       textY += 8;
       
@@ -369,18 +339,15 @@ const CargaHoraria = () => {
         textY += (lines.length * 5.5) + 3;
       });
 
-      // Fecha
       textY += 10;
       const hoy = new Date(); const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       doc.text(`Trujillo, ${hoy.getDate()} de ${meses[hoy.getMonth()]} del ${hoy.getFullYear()}`, 190, textY, { align: "right" });
 
-      // Sección de Firmas y Huella Digital Oficial
       textY += 45;
-      doc.line(30, textY, 100, textY); // Línea firma
+      doc.line(30, textY, 100, textY); 
       doc.text("Firma del Docente", 65, textY + 5, { align: "center" });
       doc.text(`D.N.I. N°: ${resumen.docenteDni || '........................'}`, 65, textY + 10, { align: "center" });
 
-      // Recuadro oficial para Huella Digital a la derecha
       doc.rect(140, textY - 30, 32, 40); 
       doc.setFontSize(8);
       doc.text("HUELLA DIGITAL", 156, textY + 14, { align: "center" });
@@ -417,7 +384,6 @@ const CargaHoraria = () => {
           </p>
         </div>
         
-        {/* BOTONES DE DESCARGA PARALELOS */}
         {resumen?.cargaNoLectiva && (
           <div className="flex gap-2">
             <button onClick={generarPDFCarga} className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3">
@@ -446,13 +412,13 @@ const CargaHoraria = () => {
               Modalidad: {resumen?.modalidad}
             </h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Límite requerido: Mínimo <strong className="text-neutral-700 dark:text-neutral-300">{minHoras}h</strong> — Máximo <strong className="text-neutral-700 dark:text-neutral-300">{maxHoras}h</strong>
+              Total exigido por modalidad: <strong className="text-neutral-700 dark:text-neutral-300">{horasRequeridas}h exactas</strong>
             </p>
           </div>
           <div className="text-right">
             <p className="text-3xl font-black text-neutral-900 dark:text-white leading-none">
               <span className={!isValido ? 'text-danger-500 dark:text-danger-400' : ''}>{totalGeneral}</span> 
-              <span className="text-lg text-neutral-400 font-medium"> / {maxHoras}h</span>
+              <span className="text-lg text-neutral-400 font-medium"> / {horasRequeridas}h</span>
             </p>
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mt-1">Total Horas</p>
           </div>
@@ -463,7 +429,9 @@ const CargaHoraria = () => {
         </div>
         {!isValido && (
           <p className="text-xs text-danger-500 dark:text-danger-400 mt-2 font-medium">
-            {totalGeneral < minHoras ? `Te faltan ${minHoras - totalGeneral}h para alcanzar el mínimo.` : `Has excedido el límite por ${totalGeneral - maxHoras}h.`}
+            {totalGeneral < horasRequeridas 
+              ? `Te faltan ${horasRequeridas - totalGeneral}h para completar tu requerimiento.` 
+              : `Has excedido tu requerimiento por ${totalGeneral - horasRequeridas}h.`}
           </p>
         )}
       </div>

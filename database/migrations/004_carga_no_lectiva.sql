@@ -1,4 +1,3 @@
-drop table if exists carga_no_lectiva cascade;
 CREATE TABLE carga_no_lectiva (
     id SERIAL PRIMARY KEY,
     docente_id INTEGER REFERENCES docentes(id) ON DELETE CASCADE,

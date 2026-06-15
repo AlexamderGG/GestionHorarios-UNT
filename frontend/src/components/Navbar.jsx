@@ -298,7 +298,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
-      {/* <AsistenteVoz /> */}
+      <AsistenteVoz />
     </>
   );
 };

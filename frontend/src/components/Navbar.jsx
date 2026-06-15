@@ -85,6 +85,7 @@ const Navbar = () => {
     { to: '/admin/asignaciones', label: 'Asignaciones', icon: Link2 },
     { to: '/admin/planificacion', label: 'Planificación Intel.', icon: BookOpen },
     { to: '/admin/docentes', label: 'Docentes', icon: Users },
+    { to: '/admin/plan-estudios', label: 'Plan de Estudios', icon: BookOpen },
     { to: '/admin/estado-docentes', label: 'Estado Doc.', icon: BarChart3 },
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/configuracion', label: 'Configuración', icon: Settings },

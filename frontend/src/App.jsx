@@ -22,6 +22,7 @@ import AdminExcepciones from "./pages/admin/AdminExcepciones";
 import MisDisponibilidades from './pages/docente/MisDisponibilidades';
 import PlanificacionSecretaria from './pages/admin/PlanificacionSecretaria';
 import CargaHoraria from './pages/docente/CargaHoraria';
+import PlanEstudios from './pages/admin/PlanEstudios';
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -51,6 +52,7 @@ function App() {
           <Route path="admin/horarios" element={<AdminHorarios />} />
           <Route path="admin/asignaciones" element={<AdminAsignaciones />} />
           <Route path="admin/docentes" element={<AdminDocentes />} />
+          <Route path="admin/plan-estudios" element={<PlanEstudios />} />
           <Route path="admin/estado-docentes" element={<EstadoDocentes />} />
           <Route path="admin/dashboard" element={<Dashboard />} />
           <Route path="admin/horarios-general" element={<Horarios />} />

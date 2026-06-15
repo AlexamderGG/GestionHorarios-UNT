@@ -21,12 +21,13 @@ const cargaRoutes = require('./carga.routes');
 const planEstudiosRoutes = require('./planEstudios.routes');
 
 
-
 // Rutas públicas
 router.use('/auth', authRoutes);
 
 // Rutas protegidas - admin (datos maestros)
 router.use('/docentes', authenticate, requireRole('admin'), docentesRoutes);
+router.use('/plan-estudios', authenticate, requireRole('admin'), planEstudiosRoutes);
+
 router.use('/cursos', authenticate, requireRole('admin'), cursosRoutes);
 router.use('/aulas', authenticate, requireRole('admin'), aulasRoutes);
 router.use('/laboratorios', authenticate, requireRole('admin'), laboratoriosRoutes);
@@ -40,7 +41,6 @@ router.use('/horarios', horariosRoutes);
 
 // Rutas protegidas - docente autenticado (Maneja mis-cursos, perfil, etc.)
 router.use('/docente', docenteAuthRoutes);
-router.use('/planEstudios', planEstudiosRoutes);
 
 // CORRECCIÓN: Separamos las excepciones a su propio prefijo limpio
 // Esto evitará conflictos con docenteAuthRoutes y se mapeará en el front como /api/excepciones

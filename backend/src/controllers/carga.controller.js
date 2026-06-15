@@ -1,4 +1,5 @@
 const CargaNoLectiva = require('../models/carga_no_lectiva.model');
+const AsignacionModel = require('../models/asignacion.model');
 
 exports.getMiCarga = async (req, res) => {
   try {
@@ -69,5 +70,31 @@ exports.guardarMiCarga = async (req, res) => {
   } catch (error) {
     console.error('Error al guardar carga horaria:', error);
     res.status(500).json({ success: false, message: 'Error al procesar la carga horaria' });
+  }
+};
+
+exports.getCargaDocente = async (req, res) => {
+  try {
+    const docenteId = parseInt(req.params.docente_id, 10);
+    const semestre = req.query.semestre || '2026-1';
+
+    const [resumen, cursos] = await Promise.all([
+      CargaNoLectiva.getResumenDocente(docenteId, semestre),
+      AsignacionModel.getByDocente(docenteId, semestre)
+    ]);
+
+    const horasRequeridas = resumen.modalidad === 'Tiempo Parcial' ? 20 : 40;
+
+    res.json({
+      success: true,
+      data: {
+        ...resumen,
+        cursos,
+        limites: { max: horasRequeridas, min: horasRequeridas, requerido: horasRequeridas }
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener carga del docente:', error);
+    res.status(500).json({ success: false, message: 'Error del servidor' });
   }
 };

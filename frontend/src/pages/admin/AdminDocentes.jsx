@@ -13,7 +13,10 @@ import {
   Save,
   GraduationCap,
   AlertCircle,
+  FileDown,
+  Loader2,
 } from "lucide-react";
+import { generarFormatoN1, generarFormatoN2Central, generarFormatoN2Valles } from "../../utils/formatosPDF";
 
 const CATEGORIAS = ["Principal", "Asociado", "Auxiliar", "Jefe de practica"];
 const TIPOS_NOMBRAMIENTO = ["Nombrado", "Contratado"];
@@ -38,6 +41,9 @@ const AdminDocentes = () => {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroEspecialidad, setFiltroEspecialidad] = useState("");
+  const [semestreActivo, setSemestreActivo] = useState("2026-1");
+  const [descargandoId, setDescargandoId] = useState(null);
+  const [dropdownAbierto, setDropdownAbierto] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -60,8 +66,13 @@ const AdminDocentes = () => {
   const cargarDocentes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/docentes");
-      setDocentes(res.data?.data || []);
+      const [resDocentes, resConfig] = await Promise.all([
+        api.get("/docentes"),
+        api.get("/configuracion")
+      ]);
+      setDocentes(resDocentes.data?.data || []);
+      const sem = resConfig.data?.data?.semestre_activo;
+      if (sem) setSemestreActivo(sem);
     } catch (err) {
       console.error("Error cargando docentes:", err);
       setMensaje({ tipo: "error", texto: "Error al cargar docentes" });
@@ -73,6 +84,63 @@ const AdminDocentes = () => {
   useEffect(() => {
     cargarDocentes();
   }, [cargarDocentes]);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    if (dropdownAbierto === null) return;
+    const handler = () => setDropdownAbierto(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [dropdownAbierto]);
+
+  const descargarFormato = async (docente, tipo) => {
+    setDescargandoId(docente.id);
+    setDropdownAbierto(null);
+    try {
+      const res = await api.get(`/carga/docente/${docente.id}`, { params: { semestre: semestreActivo } });
+      const data = res.data?.data || {};
+      const cargaNoLectiva = data.cargaNoLectiva || {};
+      const datos = {
+        docenteNombre: data.docenteNombre || `${docente.nombres} ${docente.apellidos}`,
+        docenteDni: data.docenteDni || docente.dni || '',
+        modalidad: data.modalidad || docente.modalidad || 'Tiempo Completo',
+        tipo_nombramiento: data.tipo_nombramiento || docente.tipo_nombramiento || '',
+        categoria: data.categoria || docente.categoria || '',
+        escuela: data.escuela || docente.escuela || '',
+        semestre: semestreActivo,
+        horasLectivas: data.horasLectivas || 0,
+        cursos: data.cursos || [],
+        form: {
+          preparacion_clases: cargaNoLectiva.preparacion_clases || 0,
+          preparacion_clases_detalle: cargaNoLectiva.preparacion_clases_detalle || '',
+          tutoria_consejeria: cargaNoLectiva.tutoria_consejeria || 0,
+          tutoria_consejeria_detalle: cargaNoLectiva.tutoria_consejeria_detalle || '',
+          asesoria_tesis: cargaNoLectiva.asesoria_tesis || 0,
+          asesoria_tesis_detalle: cargaNoLectiva.asesoria_tesis_detalle || '',
+          investigacion: cargaNoLectiva.investigacion || 0,
+          investigacion_detalle: cargaNoLectiva.investigacion_detalle || '',
+          responsabilidad_social: cargaNoLectiva.responsabilidad_social || 0,
+          responsabilidad_social_detalle: cargaNoLectiva.responsabilidad_social_detalle || '',
+          produccion_intelectual: cargaNoLectiva.produccion_intelectual || 0,
+          produccion_intelectual_detalle: cargaNoLectiva.produccion_intelectual_detalle || '',
+          gestion_admin: cargaNoLectiva.gestion_admin || 0,
+          gestion_admin_detalle: cargaNoLectiva.gestion_admin_detalle || '',
+          capacitacion: cargaNoLectiva.capacitacion || 0,
+          capacitacion_detalle: cargaNoLectiva.capacitacion_detalle || '',
+          otras_actividades: cargaNoLectiva.otras_actividades || 0,
+          otras_actividades_detalle: cargaNoLectiva.otras_actividades_detalle || '',
+        }
+      };
+      if (tipo === 'n1') generarFormatoN1(datos);
+      else if (tipo === 'n2central') generarFormatoN2Central(datos);
+      else if (tipo === 'n2valles') generarFormatoN2Valles(datos);
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: "Error al obtener datos del docente para generar el formato." });
+      console.error(err);
+    } finally {
+      setDescargandoId(null);
+    }
+  };
 
   const especialidades = [...new Set(docentes.map((d) => d.especialidad).filter(Boolean))].sort();
 
@@ -318,7 +386,7 @@ const AdminDocentes = () => {
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Especialidad</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Escuela</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-20">Antig.</th>
-                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Acciones</th>
+                <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-36">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -373,6 +441,45 @@ const AdminDocentes = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      {/* Dropdown de formatos */}
+                      <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setDropdownAbierto(dropdownAbierto === d.id ? null : d.id)}
+                          disabled={descargandoId === d.id}
+                          className="p-1.5 rounded-lg text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors disabled:opacity-50"
+                          title="Descargar formatos"
+                        >
+                          {descargandoId === d.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <FileDown className="w-4 h-4" />}
+                        </button>
+                        {dropdownAbierto === d.id && (
+                          <div className="absolute right-0 top-8 z-50 w-52 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 animate-fade-in">
+                            <p className="px-3 py-1.5 text-2xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Formatos Oficiales</p>
+                            <button
+                              onClick={() => descargarFormato(d, 'n1')}
+                              className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                            >
+                              <FileDown className="w-3.5 h-3.5 text-primary-500" />
+                              Formato N°1 — Carga Horaria
+                            </button>
+                            <button
+                              onClick={() => descargarFormato(d, 'n2central')}
+                              className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                            >
+                              <FileDown className="w-3.5 h-3.5 text-amber-500" />
+                              Formato N°2 — Sede Central
+                            </button>
+                            <button
+                              onClick={() => descargarFormato(d, 'n2valles')}
+                              className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                            >
+                              <FileDown className="w-3.5 h-3.5 text-green-500" />
+                              Formato N°2 — Sedes Valles
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>

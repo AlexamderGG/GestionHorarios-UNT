@@ -127,9 +127,14 @@ exports.preguntarBot = async (req, res) => {
 
     const toolResults = await Promise.all(
       msg.tool_calls.map(async (tc) => {
-        const args = JSON.parse(tc.function.arguments);
-        const contenido = await ejecutarHerramienta(tc.function.name, args, semestre, client);
-        return { tool_call_id: tc.id, contenido };
+        try {
+          const args = JSON.parse(tc.function.arguments);
+          const contenido = await ejecutarHerramienta(tc.function.name, args, semestre, client);
+          return { tool_call_id: tc.id, contenido };
+        } catch (err) {
+          console.error("Error parseando argumentos de OpenAI:", err);
+          return { tool_call_id: tc.id, contenido: "Error interno al ejecutar la herramienta." };
+        }
       })
     );
 
@@ -253,7 +258,7 @@ async function buscarHorarioDocente(nombreDocente, semestre, client) {
           OR LOWER(d.apellidos || ' ' || d.nombres) ILIKE '%' || LOWER($1) || '%'
         )
       ORDER BY
-        CASE h.dia WHEN 'Lunes' THEN 1 WHEN 'Martes' THEN 2 WHEN 'Miércoles' THEN 3
+        CASE h.dia WHEN 'Lunes' THEN 1 WHEN 'Martes' THEN 2 WHEN 'Miercoles' THEN 3
           WHEN 'Jueves' THEN 4 WHEN 'Viernes' THEN 5 ELSE 6 END,
         h.hora_inicio
     `, [nombreDocente, semestre]);
@@ -290,7 +295,7 @@ async function buscarHorarioCurso(nombreCurso, semestre, client) {
           OR LOWER(c.codigo) ILIKE '%' || LOWER($1) || '%'
         )
       ORDER BY adc.grupo, adc.tipo,
-        CASE h.dia WHEN 'Lunes' THEN 1 WHEN 'Martes' THEN 2 WHEN 'Miércoles' THEN 3
+        CASE h.dia WHEN 'Lunes' THEN 1 WHEN 'Martes' THEN 2 WHEN 'Miercoles' THEN 3
           WHEN 'Jueves' THEN 4 WHEN 'Viernes' THEN 5 ELSE 6 END,
         h.hora_inicio
     `, [nombreCurso, semestre]);

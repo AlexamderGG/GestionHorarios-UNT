@@ -15,7 +15,7 @@ const PlanEstudios = () => {
     codigo: '', 
     nombre: '', 
     ciclo: '1', 
-    creditos: '4', 
+    creditos: '3', 
     horas_t: '2', 
     horas_p: '2', 
     horas_l: '0',
@@ -92,7 +92,7 @@ const PlanEstudios = () => {
   const abrirModalCrear = () => {
     setIsEditing(false);
     setSelectedId(null);
-    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '4', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '2026-1', malla: '2018' });
+    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '3', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '2026-1', malla: '2018' });
     setModalOpen(true);
   };
 
@@ -126,7 +126,8 @@ const PlanEstudios = () => {
         horas_p: parseInt(form.horas_p) || 0,
         horas_l: parseInt(form.horas_l) || 0,
         especialidad: form.especialidad,
-        semestre: form.semestre
+        semestre: form.semestre,
+        malla: form.malla
       };
 
       if (isEditing) {

@@ -187,7 +187,7 @@ const AdminHorarios = () => {
     
     const cursoSel = cursos.find(c => c.id === asigSeleccionada.curso_id);
     const cicloModal = cursoSel?.ciclo || asigSeleccionada.ciclo;
-    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL-') || asigSeleccionada.tipo === 'Laboratorio';
+    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL') || asigSeleccionada.tipo === 'Laboratorio';
 
     for (const h of horarios) {
       if (normalizarDia(h.dia) === targetDia) {
@@ -200,7 +200,7 @@ const AdminHorarios = () => {
           }
           const cicloH = h.curso?.ciclo || h.ciclo;
           if (cicloModal && String(cicloModal) !== "0" && String(cicloH) === String(cicloModal)) {
-            const isExistingException = (h.curso?.codigo || '').startsWith('EL-') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
+            const isExistingException = (h.curso?.codigo || '').startsWith('EL') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
             
             if (!isIncomingException || !isExistingException) {
                return `Cruce regular Ciclo ${cicloModal}`;
@@ -230,7 +230,7 @@ const AdminHorarios = () => {
 
     const cursoSel = cursos.find(c => c.id === asig?.curso_id) || editando.curso;
     const cicloModal = cursoSel?.ciclo || editando.ciclo;
-    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL-') || asig?.tipo === 'Laboratorio' || editando.tipo === 'Laboratorio';
+    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL') || asig?.tipo === 'Laboratorio' || editando.tipo === 'Laboratorio';
 
     for (const h of horarios) {
       if (Number(h.id) !== Number(editando.id) && normalizarDia(h.dia) === targetDia) {
@@ -243,7 +243,7 @@ const AdminHorarios = () => {
           }
           const cicloH = h.curso?.ciclo || h.ciclo;
           if (cicloModal && String(cicloModal) !== "0" && String(cicloH) === String(cicloModal)) {
-            const isExistingException = (h.curso?.codigo || '').startsWith('EL-') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
+            const isExistingException = (h.curso?.codigo || '').startsWith('EL') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
             
             if (!isIncomingException || !isExistingException) {
                return `Cruce regular Ciclo ${cicloModal}`;

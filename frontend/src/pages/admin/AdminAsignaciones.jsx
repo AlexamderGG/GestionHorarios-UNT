@@ -24,6 +24,7 @@ const AdminAsignaciones = () => {
 
   const [filtroEspecialidad, setFiltroEspecialidad] = useState("");
   const [filtroCiclo, setFiltroCiclo] = useState("");
+  const [filtroMalla, setFiltroMalla] = useState(""); 
   const [searchCurso, setSearchCurso] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -75,14 +76,17 @@ const AdminAsignaciones = () => {
     return num === 1 ? [1, 3, 5, 7, 9] : [2, 4, 6, 8, 10];
   }, [semestre]);
 
+  const especialidades = [...new Set(cursos.map((c) => c.especialidad).filter(Boolean))].sort();
+  const mallasDisponibles = [...new Set(cursos.map((c) => c.malla || "2018"))].sort();
+
   const cursosFiltrados = cursos.filter((c) => {
+    const mallaCurso = c.malla || "2018";
     return (!filtroEspecialidad || c.especialidad?.toLowerCase() === filtroEspecialidad.toLowerCase()) &&
            (!filtroCiclo || c.ciclo === Number(filtroCiclo)) &&
+           (!filtroMalla || mallaCurso.toString() === filtroMalla.toString()) &&
            (!searchCurso || c.codigo?.toLowerCase().includes(searchCurso.toLowerCase()) || c.nombre?.toLowerCase().includes(searchCurso.toLowerCase())) &&
            (ciclosActivos.length === 0 || ciclosActivos.includes(Number(c.ciclo))) && !c.deleted_at;
   });
-
-  const especialidades = [...new Set(cursos.map((c) => c.especialidad).filter(Boolean))].sort();
 
   const getHorasCurso = (curso, tipo) => {
     if (!curso) return 0;
@@ -105,14 +109,12 @@ const AdminAsignaciones = () => {
     
     const asigs = getAsignacionesDeCurso(curso.id);
     
+    // 🚀 AHORA TODAS LAS PARTES SE CALCULAN CONTANDO LOS GRUPOS REALES (NO CON DIVISIÓN MATEMÁTICA)
     const calcularGruposFijos = (tipo) => {
       const asigsTipo = asigs.filter(a => a.tipo === tipo);
       if (asigsTipo.length > 0) {
-        const horasTotales = getHorasCurso(curso, tipo);
-        const horasAsignadas = Number(asigsTipo[0].horas_asignadas);
-        if (horasAsignadas > 0 && horasTotales > 0) {
-          return Math.round(horasTotales / horasAsignadas);
-        }
+        const gruposUnicos = new Set(asigsTipo.map(a => a.grupo || 'Único')).size;
+        return Math.max(gruposUnicos, 1);
       }
       return 1;
     };
@@ -142,22 +144,14 @@ const AdminAsignaciones = () => {
 
   const toggleParte = (idParte) => setCheckedPartes(prev => prev.includes(idParte) ? prev.filter(p => p !== idParte) : [...prev, idParte]);
 
-  // 🌟 FUNCIÓN INTERCEPTORA PARA EVITAR EL "ESTADO FANTASMA"
   const handleCambioGrupos = (tipo, nuevoValor) => {
     const valorNum = Math.max(1, Number(nuevoValor));
-    
-    // Cambiamos el divisor
     setNumGrupos(prev => ({ ...prev, [tipo]: valorNum }));
 
-    // Limpiamos la memoria de checkboxes para este tipo de clase
     setCheckedPartes(prev => {
-      // 1. ¿El usuario tenía algo marcado en este tipo? (ej. "Teoria-Único")
       const teniaSeleccion = prev.some(item => item.startsWith(`${tipo}-`));
-      
-      // 2. Borramos todo lo que empiece con este tipo para matar los fantasmas
       let nuevasSelecciones = prev.filter(item => !item.startsWith(`${tipo}-`));
 
-      // 3. Si tenía algo marcado, le marcamos el "Grupo A" (o "Único") por defecto
       if (teniaSeleccion) {
         const grupoPorDefecto = valorNum === 1 ? 'Único' : 'A';
         nuevasSelecciones.push(`${tipo}-${grupoPorDefecto}`);
@@ -167,12 +161,14 @@ const AdminAsignaciones = () => {
     });
   };
 
+  // 🚀 NINGUNA HORA SE DIVIDE MATEMÁTICAMENTE AHORA
   const totalHorasSeleccionadas = useMemo(() => {
     return checkedPartes.reduce((sum, item) => {
       const [tipo] = item.split('-');
-      return sum + (getHorasCurso(cursoSeleccionado, tipo) / (numGrupos[tipo] || 1));
+      const horas = getHorasCurso(cursoSeleccionado, tipo); // Siempre obtiene las horas completas
+      return sum + horas;
     }, 0);
-  }, [checkedPartes, cursoSeleccionado, numGrupos]);
+  }, [checkedPartes, cursoSeleccionado]);
 
   const horasProyectadas = useMemo(() => {
     if (!docenteSeleccionado) return 0;
@@ -229,9 +225,13 @@ const AdminAsignaciones = () => {
       } else {
         const promises = checkedPartes.map(item => {
           const [tipo, grupo] = item.split('-');
+          
+          // 🚀 SE GUARDAN LAS HORAS ÍNTEGRAS PARA CUALQUIER TIPO DE CLASE
+          const horasParaGuardar = getHorasCurso(cursoSeleccionado, tipo);
+
           return api.post('/asignaciones', {
             docente_id: Number(docenteSeleccionado), curso_id: cursoSeleccionado.id, tipo, grupo,
-            horas_asignadas: getHorasCurso(cursoSeleccionado, tipo) / (numGrupos[tipo] || 1),
+            horas_asignadas: horasParaGuardar,
             semestre_asignacion: semestre, ambiente_preferido_id: (tipo === 'Laboratorio' ? labPref : aulaPref) || null
           });
         });
@@ -339,6 +339,18 @@ const AdminAsignaciones = () => {
             </label>
             <input type="text" value={searchCurso} onChange={(e) => setSearchCurso(e.target.value)} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors" placeholder="Código o nombre..." />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
+              <Layers className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
+              Malla
+            </label>
+            <select value={filtroMalla} onChange={(e) => setFiltroMalla(e.target.value)} className="input w-36 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors">
+              <option value="">Todas</option>
+              {mallasDisponibles.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
               <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
@@ -368,7 +380,7 @@ const AdminAsignaciones = () => {
             <thead>
               <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-700 transition-colors">
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-24">Código</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Curso</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Curso y Malla</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-16">Ciclo</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-40">Especialidad</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Horas</th>
@@ -382,7 +394,18 @@ const AdminAsignaciones = () => {
                 return (
                   <tr key={curso.id} className="border-b border-neutral-100 dark:border-neutral-700 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/50 transition-colors">
                     <td className="p-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">{curso.codigo}</td>
-                    <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">{curso.nombre}</td>
+                    
+                    <td className="p-3 font-medium text-neutral-800 dark:text-neutral-200">
+                      {curso.nombre}
+                      <span className={`ml-2 inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md align-middle ${
+                        curso.malla === '2018' || !curso.malla
+                          ? 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-400'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      }`}>
+                        Malla {curso.malla || '2018'}
+                      </span>
+                    </td>
+
                     <td className="p-3 text-center text-neutral-700 dark:text-neutral-300">{curso.ciclo}</td>
                     <td className="p-3 text-neutral-600 dark:text-neutral-400 text-xs">{curso.especialidad || "—"}</td>
                     
@@ -458,7 +481,16 @@ const AdminAsignaciones = () => {
             </div>
 
             <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900/50 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-colors">
-              <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 transition-colors">{cursoSeleccionado.codigo} — {cursoSeleccionado.nombre}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 transition-colors">{cursoSeleccionado.codigo} — {cursoSeleccionado.nombre}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                  cursoSeleccionado.malla === '2018' || !cursoSeleccionado.malla
+                    ? 'bg-slate-200 text-slate-700 dark:bg-neutral-700 dark:text-neutral-300'
+                    : 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
+                }`}>
+                  Malla {cursoSeleccionado.malla || '2018'}
+                </span>
+              </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 transition-colors">
                 Ciclo {cursoSeleccionado.ciclo} · {cursoSeleccionado.especialidad || "Sin especialidad"}
               </p>
@@ -553,16 +585,23 @@ const AdminAsignaciones = () => {
                       const asigsGuardadas = getAsignacionesDeCurso(cursoSeleccionado.id).filter(a => a.tipo === tipo);
                       
                       const estaBloqueado = asigsGuardadas.length > 0;
-                      const horasPorGrupo = horasTotal / (numGrupos[tipo] || 1);
+                      
+                      // 🚀 AHORA TODAS LAS HORAS SE ASIGNAN COMPLETAS POR GRUPO
+                      const horasPorGrupo = horasTotal; 
+                        
                       const nombresGrupos = numGrupos[tipo] === 1 ? ['Único'] : Array.from({length: numGrupos[tipo]}, (_, i) => String.fromCharCode(65 + i));
 
                       return (
                         <div key={tipo} className={`p-4 rounded-xl border border-${themeColors}-200 dark:border-${themeColors}-800/50 bg-${themeColors}-50/30 dark:bg-${themeColors}-900/10`}>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                            <span className={`font-bold text-${themeColors}-700 dark:text-${themeColors}-400`}>{tipo} ({horasPorGrupo}h por grupo)</span>
+                            <div className="flex flex-col">
+                              <span className={`font-bold text-${themeColors}-700 dark:text-${themeColors}-400`}>{tipo}</span>
+                              <span className={`text-xs text-${themeColors}-600 dark:text-${themeColors}-500`}>
+                                Se asignan horas completas ({horasPorGrupo}h por grupo)
+                              </span>
+                            </div>
                             <div className={`flex items-center gap-2 text-sm bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm ${estaBloqueado ? 'opacity-70 cursor-not-allowed' : ''}`}>
                               <span className="text-neutral-600 dark:text-neutral-400 font-medium">Dividir curso en:</span>
-                              {/* 🌟 AQUÍ LLAMAMOS A LA FUNCIÓN QUE CORRIGE EL BUG */}
                               <input 
                                 type="number" min="1" max="10" 
                                 disabled={estaBloqueado}

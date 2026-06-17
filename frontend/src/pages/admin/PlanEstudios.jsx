@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { BookOpen, Plus, Trash2, Edit2, Layers, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit2, Layers, ShieldAlert, CheckCircle2, Search, X } from 'lucide-react';
 
 const PlanEstudios = () => {
   const [cursos, setCursos] = useState([]);
@@ -20,8 +20,49 @@ const PlanEstudios = () => {
     horas_p: '2', 
     horas_l: '0',
     especialidad: '', // Se usa para Departamento
-    semestre: '2026-1'
+    semestre: '2026-1',
+    malla: '2018'
   });
+
+  // Estado para la barra de búsqueda
+  const [filtros, setFiltros] = useState({
+    asignatura: '',
+    malla: '',
+    departamento: '',
+    ciclo: ''
+  });
+
+  const handleFiltroChange = (e) => {
+    setFiltros({ ...filtros, [e.target.name]: e.target.value });
+  };
+
+  const limpiarFiltros = () => {
+    setFiltros({ asignatura: '', malla: '', departamento: '', ciclo: '' });
+  };
+
+  // 🚀 Lógica de filtrado en tiempo real
+  const cursosFiltrados = cursos.filter(curso => {
+    // Busca por código O nombre de asignatura
+    const matchAsignatura = curso.nombre.toLowerCase().includes(filtros.asignatura.toLowerCase()) || 
+                            curso.codigo.toLowerCase().includes(filtros.asignatura.toLowerCase());
+    
+    // Busca por año de malla (recuerda que si no tiene, asume 2018)
+    const mallaActual = (curso.malla || '2018').toString().toLowerCase();
+    const matchMalla = filtros.malla === '' || mallaActual.includes(filtros.malla.toLowerCase());
+    
+    // Busca por especialidad/departamento
+    const departamentoActual = (curso.especialidad || '').toLowerCase();
+    const matchDepartamento = filtros.departamento === '' || departamentoActual.includes(filtros.departamento.toLowerCase());
+    
+    // Busca por ciclo exacto
+    const matchCiclo = filtros.ciclo === '' || curso.ciclo.toString() === filtros.ciclo;
+
+    return matchAsignatura && matchMalla && matchDepartamento && matchCiclo;
+  });
+
+  // Verifica si hay algún filtro activo para mostrar el botón de "Limpiar"
+  const hayFiltrosActivos = filtros.asignatura || filtros.malla || filtros.departamento || filtros.ciclo;
+
 
   const fetchCursos = async () => {
     try {
@@ -51,7 +92,7 @@ const PlanEstudios = () => {
   const abrirModalCrear = () => {
     setIsEditing(false);
     setSelectedId(null);
-    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '4', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '2026-1' });
+    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '4', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '2026-1', malla: '2018' });
     setModalOpen(true);
   };
 
@@ -67,7 +108,8 @@ const PlanEstudios = () => {
       horas_p: String(curso.horas_p || 0),
       horas_l: String(curso.horas_l || 0),
       especialidad: curso.especialidad || '',
-      semestre: curso.semestre || ''
+      semestre: curso.semestre || '',
+      malla: curso.malla || '2018'
     });
     setModalOpen(true);
   };
@@ -113,7 +155,7 @@ const PlanEstudios = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 md:p-8 lg:p-10 w-full mx-auto space-y-6 flex flex-col h-full">
       {/* Alertas */}
       {notificacion.mensaje && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 p-4 rounded-xl shadow-xl text-white ${notificacion.tipo === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
@@ -135,12 +177,74 @@ const PlanEstudios = () => {
         </button>
       </div>
 
+      {/* BARRA DE FILTROS */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+        
+        <div className="relative flex-1 w-full">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-neutral-400" />
+          </div>
+          <input 
+            type="text" 
+            name="asignatura" 
+            value={filtros.asignatura} 
+            onChange={handleFiltroChange} 
+            placeholder="Buscar por código o nombre de asignatura..." 
+            className="w-full text-sm pl-10 p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
+          />
+        </div>
+
+        <div className="w-full md:w-32">
+          <input 
+            type="text" 
+            name="malla" 
+            value={filtros.malla} 
+            onChange={handleFiltroChange} 
+            placeholder="Malla (Ej: 2018)" 
+            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
+          />
+        </div>
+
+        <div className="w-full md:w-48">
+          <input 
+            type="text" 
+            name="departamento" 
+            value={filtros.departamento} 
+            onChange={handleFiltroChange} 
+            placeholder="Departamento..." 
+            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
+          />
+        </div>
+
+        <div className="w-full md:w-40 flex gap-2">
+          <select 
+            name="ciclo" 
+            value={filtros.ciclo} 
+            onChange={handleFiltroChange} 
+            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
+          >
+            <option value="">Todos los ciclos</option>
+            {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>Ciclo {i+1}</option>)}
+          </select>
+
+          {hayFiltrosActivos && (
+            <button 
+              onClick={limpiarFiltros} 
+              className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors border border-red-100 dark:border-red-900/30"
+              title="Limpiar filtros"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tabla */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-12 text-center text-neutral-500">Cargando malla curricular...</div>
-        ) : cursos.length === 0 ? (
-          <div className="p-12 text-center text-neutral-500">No hay cursos registrados.</div>
+        ) : cursosFiltrados.length === 0 ? (
+          <div className="p-12 text-center text-neutral-500">No se encontraron cursos que coincidan con los filtros.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -148,6 +252,8 @@ const PlanEstudios = () => {
                 <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800 text-xs font-semibold text-neutral-500 uppercase">
                   <th className="py-3 px-4">Código</th>
                   <th className="py-3 px-4">Asignatura</th>
+                  {/* Nueva Columna Malla Curricular */}
+                  <th className="py-3 px-4">Malla C.</th>
                   {/* Nueva Columna Departamento */}
                   <th className="py-3 px-4">Departamento</th>
                   <th className="py-3 px-4 text-center">Semestre</th>
@@ -160,11 +266,19 @@ const PlanEstudios = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-sm">
-                {cursos.map((curso) => (
+                {cursosFiltrados.map((curso) => (
                   <tr key={curso.id || curso.codigo} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                     <td className="py-4 px-4 font-mono text-xs text-primary-600 font-bold">{curso.codigo}</td>
                     <td className="py-4 px-4 font-medium dark:text-white">{curso.nombre}</td>
-                    {/* Renderizamos la especialidad como Departamento */}
+                    <td className="py-4 px-4 text-center">
+                      <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                        curso.malla === '2018' || !curso.malla
+                          ? 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300' // Color estándar para la malla común
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' // Cualquier malla nueva destacará en verde automáticamente
+                      }`}>
+                        Malla {curso.malla || '2018'}
+                      </span>
+                    </td>
                     <td className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{curso.especialidad || '-'}</td>
                     <td className="py-4 px-4 text-center text-neutral-500">{curso.semestre || '-'}</td>
                     <td className="py-4 px-4 text-center">
@@ -227,6 +341,18 @@ const PlanEstudios = () => {
                   <select name="ciclo" value={form.ciclo} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none">
                     {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>Ciclo {i+1}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1 dark:text-neutral-300">Año de Malla Curricular</label>
+                  <input 
+                    type="text" 
+                    name="malla" 
+                    required
+                    value={form.malla} 
+                    onChange={handleInputChange} 
+                    placeholder="Ej: 2018, 2027" 
+                    className="w-full text-sm p-2 bg-slate-50 dark:bg-neutral-800 dark:text-white border border-slate-200 dark:border-neutral-700 rounded-lg outline-none focus:border-primary-500 font-medium"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1">Créditos Totales</label>

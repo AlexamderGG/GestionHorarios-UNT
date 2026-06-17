@@ -10,11 +10,13 @@ exports.obtenerCursos = async (req, res) => {
 };
 
 exports.crearCurso = async (req, res) => {
-  const { codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre } = req.body;
+  // 1. Recibimos la malla
+  const { codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre, malla } = req.body;
   try {
     const resultado = await pool.query(
-      'INSERT INTO cursos (codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [codigo, nombre, ciclo || 1, creditos || 0, horas_t || 0, horas_p || 0, horas_l || 0, especialidad || '', semestre || '']
+      // 2. Insertamos la malla en la Base de Datos
+      'INSERT INTO cursos (codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre, malla) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [codigo, nombre, ciclo || 1, creditos || 0, horas_t || 0, horas_p || 0, horas_l || 0, especialidad || '', semestre || '', malla || '2018']
     );
     res.status(201).json({ status: 'success', data: resultado.rows[0] });
   } catch (error) {
@@ -24,11 +26,12 @@ exports.crearCurso = async (req, res) => {
 
 exports.actualizarCurso = async (req, res) => {
   const { id } = req.params;
-  const { codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre } = req.body;
+  const { codigo, nombre, ciclo, creditos, horas_t, horas_p, horas_l, especialidad, semestre, malla } = req.body;
   try {
     const resultado = await pool.query(
-      'UPDATE cursos SET codigo = $1, nombre = $2, ciclo = $3, creditos = $4, horas_t = $5, horas_p = $6, horas_l = $7, especialidad = $8, semestre = $9 WHERE id = $10 RETURNING *',
-      [codigo, nombre, ciclo || 1, creditos || 0, horas_t || 0, horas_p || 0, horas_l || 0, especialidad || '', semestre || '', id]
+      // 3. Actualizamos la malla
+      'UPDATE cursos SET codigo = $1, nombre = $2, ciclo = $3, creditos = $4, horas_t = $5, horas_p = $6, horas_l = $7, especialidad = $8, semestre = $9, malla = $10 WHERE id = $11 RETURNING *',
+      [codigo, nombre, ciclo || 1, creditos || 0, horas_t || 0, horas_p || 0, horas_l || 0, especialidad || '', semestre || '', malla || '2018', id]
     );
     if (resultado.rows.length === 0) return res.status(404).json({ message: 'Curso no encontrado' });
     res.json({ status: 'success', data: resultado.rows[0] });

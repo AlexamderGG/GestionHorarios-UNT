@@ -127,13 +127,13 @@ const AsistenteVoz = () => {
                 <div className="relative">
                   <img 
                     src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces" 
-                    alt="Andrea" 
+                    alt="Asistente" 
                     className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-neutral-700"
                   />
                   <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-neutral-900 rounded-full"></div>
                 </div>
                 <div>
-                  <h1 className="text-sm font-bold text-slate-800 dark:text-white">Andrea (Secretaria Virtual)</h1>
+                  <h1 className="text-sm font-bold text-slate-800 dark:text-white">Asistente Virtual Sistemas</h1>
                   <p className="text-xs text-slate-500 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Online
                   </p>
@@ -155,7 +155,7 @@ const AsistenteVoz = () => {
                 <div className="h-full flex flex-col justify-center animate-fade-in text-slate-900 dark:text-white">
                   <h2 className="text-xl font-extrabold mb-1">Bienvenido al Asistente Virtual UNT.</h2>
                   <p className="text-sm text-slate-600 dark:text-neutral-400 mb-6 leading-relaxed">
-                    Hola, soy Andrea. Soy tu asistente virtual para horarios y laboratorios de Ingeniería de Sistemas. ¿En qué te puedo ayudar hoy?
+                    Hola, soy tu asistente virtual para horarios y laboratorios de Ingeniería de Sistemas. ¿En qué te puedo ayudar hoy?
                   </p>
                   
                   <div className="space-y-3">
@@ -180,7 +180,7 @@ const AsistenteVoz = () => {
                     <div key={index} className={`flex gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className="flex-shrink-0">
                         {msg.sender === 'bot' ? (
-                          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces" alt="Andrea" className="w-8 h-8 rounded-full object-cover shadow-sm" />
+                          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces" alt="Asistente" className="w-8 h-8 rounded-full object-cover shadow-sm" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 flex items-center justify-center text-xs font-bold">U</div>
                         )}
@@ -202,7 +202,7 @@ const AsistenteVoz = () => {
                   
                   {loading && (
                     <div className="flex gap-2.5 flex-row">
-                      <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces" alt="Andrea" className="w-8 h-8 rounded-full object-cover" />
+                      <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces" alt="Asistente" className="w-8 h-8 rounded-full object-cover" />
                       <div className="p-3 bg-blue-100/50 dark:bg-blue-950/20 border border-blue-200 dark:border-transparent rounded-2xl rounded-tl-none flex items-center gap-1 shadow-sm">
                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>

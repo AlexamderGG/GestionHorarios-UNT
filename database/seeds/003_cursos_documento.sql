@@ -50,8 +50,8 @@ INSERT INTO cursos (codigo, nombre, creditos, ciclo, semestre, activo, especiali
 -- IV Ciclo (ciclo 4)
 ('EP-401', 'Economia General', 3, 4, '2026-2', TRUE, 'Economía', 2, 2, 0),
 ('EE-401', 'Diseno Web', 3, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 1, 1, 6),
-('EP-402', 'Pensamiento de Diseño', 3, 4, '2026-2', TRUE, 'Ingeniería de Sistemas', 1, 2, 6),
-('EP-403', 'Gestion de Procesos', 3, 4, '2026-2', TRUE, 'Ingeniería de Sistemas', 1, 2, 4),
+('EP-402', 'Pensamiento de Diseño', 3, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 1, 2, 6),
+('EP-403', 'Gestion de Procesos', 3, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 1, 2, 4),
 ('EE-402', 'Sistemas Digitales', 3, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 1, 2, 6),
 ('EE-403', 'Estructura de Datos Orientado a Objetos', 4, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 2, 1, 6),
 ('EL-401', 'Computacion Grafica y Visual (E)', 3, 4, '2026-2', TRUE, 'Ingenieria de Sistemas', 1, 1, 3),

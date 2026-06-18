@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import api from "../../services/api";
 import {
   Users,
@@ -15,83 +15,97 @@ import {
   AlertCircle,
   FileDown,
   Loader2,
+  Layers
 } from "lucide-react";
 import { generarFormatoN1, generarFormatoN2Central, generarFormatoN2Valles } from "../../utils/formatosPDF";
 
 const CATEGORIAS = ["Principal", "Asociado", "Auxiliar", "Jefe de practica"];
 const TIPOS_NOMBRAMIENTO = ["Nombrado", "Contratado"];
-const MODALIDADES = ["Tiempo Completo", "Tiempo Parcial"]; // <-- NUEVO
-const ESPECIALIDADES = [
-  "Ingenieria de Sistemas", "Matemáticas", "Fisica", "Lengua y Literatura",
-  "CC. Psicologicas", "Filosofia", "Ciencias de la Educación", "Administracion",
-  "Estadistica", "Estudios Generales", "Filosofía y Arte", "Derecho", "Ingenieria Ambiental", "Ingeniería Industrial", "Contabilidad y Finanzas", "Ciencias Sociales"
-];
-const ESCUELAS = [
+const MODALIDADES = ["Tiempo Completo", "Tiempo Parcial"];
+
+// 🚀 Dejamos la lista de escuelas como sugerencias base para el datalist
+const ESCUELAS_BASE = [
   "Ingenieria de Sistemas", "Escuela de Matemáticas", "Escuela de Fisica",
   "Escuela de Lengua y Literatura", "Escuela de CC. Psicologicas", "Escuela de Filosofia",
   "Escuela de Ciencias de la Educación", "Escuela de Administracion", "Escuela de Artes",
-  "Escuela de Estudios Generales", "Escuela de Derecho", "Escuela de Ingenieria Ambiental", "Escuela de Ingeniería Industrial", "Contabilidad y Finanzas", "Escuela de Ciencias Sociales"
+  "Escuela de Estudios Generales", "Escuela de Derecho", "Escuela de Ingenieria Ambiental", "Escuela de Ingeniería Industrial", 
+  "Contabilidad y Finanzas", "Escuela de Ciencias Sociales", "Escuela de Economía"
 ];
 
 const AdminDocentes = () => {
   const [docentes, setDocentes] = useState([]);
+  const [cursos, setCursos] = useState([]); // 🚀 NUEVO ESTADO PARA ALIMENTAR LOS DEPARTAMENTOS
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState(null);
   const [search, setSearch] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
-  const [filtroEspecialidad, setFiltroEspecialidad] = useState("");
+  const [filtroDepartamento, setFiltroDepartamento] = useState(""); // 🚀 RENOMBRADO
   const [semestreActivo, setSemestreActivo] = useState("2026-1");
   const [descargandoId, setDescargandoId] = useState(null);
   const [dropdownAbierto, setDropdownAbierto] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
+  
   const [form, setForm] = useState({
-    dni: "", // <-- NUEVO
+    dni: "", 
     nombres: "",
     apellidos: "",
     email: "",
     telefono: "",
     categoria: "Auxiliar",
     tipo_nombramiento: "Nombrado",
-    modalidad: "Tiempo Completo", // <-- NUEVO
-    especialidad: "",
+    modalidad: "Tiempo Completo", 
+    especialidad: "", // Mapea internamente a departamento
     escuela: "Ingenieria de Sistemas",
     semestre_contrato: "",
     antiguedad_anios: 0,
   });
   const [guardando, setGuardando] = useState(false);
 
-  const cargarDocentes = useCallback(async () => {
+  // 🚀 CARGAR DATOS ACTUALIZADO PARA TRAER TAMBIÉN LOS CURSOS
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [resDocentes, resConfig] = await Promise.all([
+      const [resDocentes, resConfig, resCursos] = await Promise.all([
         api.get("/docentes"),
-        api.get("/configuracion")
+        api.get("/configuracion"),
+        api.get("/cursos").catch(() => ({ data: { data: [] } })) // Evita crasheos si la ruta no responde
       ]);
       setDocentes(resDocentes.data?.data || []);
+      setCursos(resCursos.data?.data || []);
       const sem = resConfig.data?.data?.semestre_activo;
       if (sem) setSemestreActivo(sem);
     } catch (err) {
-      console.error("Error cargando docentes:", err);
-      setMensaje({ tipo: "error", texto: "Error al cargar docentes" });
+      console.error("Error cargando datos:", err);
+      setMensaje({ tipo: "error", texto: "Error al cargar los datos del servidor" });
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    cargarDocentes();
-  }, [cargarDocentes]);
+    cargarDatos();
+  }, [cargarDatos]);
 
-  // Cerrar dropdown al hacer click fuera
   useEffect(() => {
     if (dropdownAbierto === null) return;
     const handler = () => setDropdownAbierto(null);
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [dropdownAbierto]);
+
+  // 🚀 PROCESAMIENTO DINÁMICO DE DEPARTAMENTOS DESDE LOS CURSOS REGISTRADOS
+  const departamentosDisponibles = useMemo(() => {
+    return [...new Set(cursos.map((c) => c.especialidad).filter(Boolean))].sort();
+  }, [cursos]);
+
+  // Sugerencias de escuelas combinando la base y las ya guardadas en la BD
+  const escuelasSugeridas = useMemo(() => {
+    const escuelasDb = docentes.map(d => d.escuela).filter(Boolean);
+    return [...new Set([...ESCUELAS_BASE, ...escuelasDb])].sort();
+  }, [docentes]);
 
   const descargarFormato = async (docente, tipo) => {
     setDescargandoId(docente.id);
@@ -142,31 +156,30 @@ const AdminDocentes = () => {
     }
   };
 
-  const especialidades = [...new Set(docentes.map((d) => d.especialidad).filter(Boolean))].sort();
-
+  // LÓGICA DE FILTRADO DE DOCENTES ACTUALIZADA
   const docentesFiltrados = docentes.filter((d) => {
     const matchSearch =
       !search ||
       `${d.nombres} ${d.apellidos}`.toLowerCase().includes(search.toLowerCase()) ||
       (d.email && d.email.toLowerCase().includes(search.toLowerCase())) ||
-      (d.dni && d.dni.includes(search)); // También busca por DNI
+      (d.dni && d.dni.includes(search));
     const matchCat = !filtroCategoria || d.categoria === filtroCategoria;
     const matchTipo = !filtroTipo || d.tipo_nombramiento === filtroTipo;
-    const matchEsp = !filtroEspecialidad || d.especialidad === filtroEspecialidad;
-    return matchSearch && matchCat && matchTipo && matchEsp;
+    const matchDep = !filtroDepartamento || d.especialidad === filtroDepartamento; // 🚀 Filtrado por departamento
+    return matchSearch && matchCat && matchTipo && matchDep;
   });
 
   const abrirCrear = () => {
     setEditando(null);
     setForm({
-      dni: "", // <-- NUEVO
+      dni: "", 
       nombres: "",
       apellidos: "",
       email: "",
       telefono: "",
       categoria: "Auxiliar",
       tipo_nombramiento: "Nombrado",
-      modalidad: "Tiempo Completo", // <-- NUEVO
+      modalidad: "Tiempo Completo", 
       especialidad: "",
       escuela: "Ingenieria de Sistemas",
       semestre_contrato: "",
@@ -179,14 +192,14 @@ const AdminDocentes = () => {
   const abrirEditar = (docente) => {
     setEditando(docente);
     setForm({
-      dni: docente.dni || "", // <-- NUEVO
+      dni: docente.dni || "", 
       nombres: docente.nombres || "",
       apellidos: docente.apellidos || "",
       email: docente.email || "",
       telefono: docente.telefono || "",
       categoria: docente.categoria || "Auxiliar",
       tipo_nombramiento: docente.tipo_nombramiento || "Nombrado",
-      modalidad: docente.modalidad || "Tiempo Completo", // <-- NUEVO
+      modalidad: docente.modalidad || "Tiempo Completo", 
       especialidad: docente.especialidad || "",
       escuela: docente.escuela || "Ingenieria de Sistemas",
       semestre_contrato: docente.semestre_contrato || "",
@@ -228,11 +241,13 @@ const AdminDocentes = () => {
         }
       }
       setModalOpen(false);
-      cargarDocentes();
+      
+      cargarDatos(); 
+      
     } catch (err) {
       setMensaje({
         tipo: "error",
-        texto: err.response?.data?.message || "Error de conexión",
+        texto: err.response?.data?.message || "Error al guardar el docente",
       });
     } finally {
       setGuardando(false);
@@ -243,7 +258,9 @@ const AdminDocentes = () => {
     if (!confirm("¿Eliminar este docente? Se realizará una eliminación lógica.")) return;
     try {
       await api.delete(`/docentes/${id}`);
-      cargarDocentes();
+      
+      cargarDatos(); 
+      
     } catch (err) {
       setMensaje({
         tipo: "error",
@@ -358,16 +375,18 @@ const AdminDocentes = () => {
               ))}
             </select>
           </div>
+          
+          {/* 🚀 FILTRO DE DEPARTAMENTO (COMBOBOX ESTRICTO DESDE LOS CURSOS) */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Especialidad</label>
-            <select value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="input w-48 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
-              <option value="">Todas</option>
-              {especialidades.map((e) => (
-                <option key={e} value={e}>{e}</option>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Departamento</label>
+            <select value={filtroDepartamento} onChange={(e) => setFiltroDepartamento(e.target.value)} className="input w-52 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
+              <option value="">Todos los Departamentos</option>
+              {departamentosDisponibles.map((d) => (
+                <option key={d} value={d}>{d}</option>
               ))}
             </select>
           </div>
-          <button onClick={cargarDocentes} className="btn-secondary flex items-center gap-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700">
+          <button onClick={cargarDatos} className="btn-secondary flex items-center gap-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -383,7 +402,7 @@ const AdminDocentes = () => {
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Contacto</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Categoría</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Contrato / Modalidad</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Especialidad</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Departamento</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Escuela</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-20">Antig.</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-36">Acciones</th>
@@ -441,7 +460,6 @@ const AdminDocentes = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      {/* Dropdown de formatos */}
                       <div className="relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setDropdownAbierto(dropdownAbierto === d.id ? null : d.id)}
@@ -497,10 +515,16 @@ const AdminDocentes = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal CRUD */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalOpen(false)}>
           <div className="card p-6 w-full max-w-2xl shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto dark:bg-neutral-800 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
+            
+            {/* 🚀 DATALIST INVISIBLE PARA EL DESPLEGABLE HÍBRIDO DE ESCUELAS */}
+            <datalist id="escuelas-sugeridas-list">
+              {escuelasSugeridas.map((e) => <option key={e} value={e} />)}
+            </datalist>
+
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -572,24 +596,32 @@ const AdminDocentes = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                
+                {/* 🚀 COMBOBOX ESTRICTO DE DEPARTAMENTO (POBLADO DESDE LOS CURSOS REGISTRADOS) */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Especialidad *</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Departamento *</label>
                   <select name="especialidad" value={form.especialidad} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required>
-                    <option value="">Seleccionar...</option>
-                    {ESPECIALIDADES.map((e) => (
-                      <option key={e} value={e}>{e}</option>
+                    <option value="">Seleccionar departamento...</option>
+                    {departamentosDisponibles.map((d) => (
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
+
+                {/* 🚀 COMBOBOX HÍBRIDO DE ESCUELA (PERMITE SUGERIR O ESCRIBIR MANUALMENTE) */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Escuela *</label>
-                  <select name="escuela" value={form.escuela} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required>
-                    <option value="">Seleccionar...</option>
-                    {ESCUELAS.map((e) => (
-                      <option key={e} value={e}>{e}</option>
-                    ))}
-                  </select>
+                  <input 
+                    list="escuelas-sugeridas-list" 
+                    name="escuela" 
+                    value={form.escuela} 
+                    onChange={handleChange} 
+                    placeholder="Elegir o escribir escuela..." 
+                    className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" 
+                    required 
+                  />
                 </div>
+
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

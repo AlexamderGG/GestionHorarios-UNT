@@ -64,6 +64,7 @@ INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombr
 
 -- Administracion (cursos: Administracion General, Economia General, Contabilidad Gerencial, Finanzas Corporativas)
 INSERT INTO docentes (nombres, apellidos, email, telefono, categoria, tipo_nombramiento, especialidad, escuela, semestre_contrato, antiguedad_anios, modalidad, dni) VALUES
+('Eduardo', 'Cano', 'e.cano@unt.edu.pe', '956088888', 'Auxiliar', 'Contratado', 'Economía', 'Escuela de Economía', NULL, 6, 'Tiempo Parcial', '69345299'),
 ('Ana', 'Cuadra Midzuaray', 'a.cuadra@unt.edu.pe', '998888888', 'Asociado', 'Contratado', 'Contabilidad y Finanzas', 'Contabilidad y Finanzas', NULL, 6, 'Tiempo Parcial', '69345678'),
 ('Juan', 'Carrascal Cabanillas', 'j.carrascal@unt.edu.pe', '998888268', 'Asociado', 'Contratado', 'Administracion', 'Escuela de Administracion', NULL, 5, 'Tiempo Parcial', '70345678');
 

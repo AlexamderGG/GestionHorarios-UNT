@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import { BookOpen, Plus, Trash2, Edit2, Layers, ShieldAlert, CheckCircle2, Search, X } from 'lucide-react';
 
@@ -10,59 +10,27 @@ const PlanEstudios = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [notificacion, setNotificacion] = useState({ tipo: '', mensaje: '' });
 
-  // Estado con TODOS los campos
+  // Estado del Formulario
   const [form, setForm] = useState({
     codigo: '', 
     nombre: '', 
     ciclo: '1', 
-    creditos: '3', 
+    creditos: '4', 
     horas_t: '2', 
     horas_p: '2', 
     horas_l: '0',
-    especialidad: '', // Se usa para Departamento
-    semestre: '2026-1',
+    especialidad: '', 
+    semestre: '', 
     malla: '2018'
   });
 
-  // Estado para la barra de búsqueda
+  // Estado de los Filtros
   const [filtros, setFiltros] = useState({
     asignatura: '',
     malla: '',
     departamento: '',
     ciclo: ''
   });
-
-  const handleFiltroChange = (e) => {
-    setFiltros({ ...filtros, [e.target.name]: e.target.value });
-  };
-
-  const limpiarFiltros = () => {
-    setFiltros({ asignatura: '', malla: '', departamento: '', ciclo: '' });
-  };
-
-  // 🚀 Lógica de filtrado en tiempo real
-  const cursosFiltrados = cursos.filter(curso => {
-    // Busca por código O nombre de asignatura
-    const matchAsignatura = curso.nombre.toLowerCase().includes(filtros.asignatura.toLowerCase()) || 
-                            curso.codigo.toLowerCase().includes(filtros.asignatura.toLowerCase());
-    
-    // Busca por año de malla (recuerda que si no tiene, asume 2018)
-    const mallaActual = (curso.malla || '2018').toString().toLowerCase();
-    const matchMalla = filtros.malla === '' || mallaActual.includes(filtros.malla.toLowerCase());
-    
-    // Busca por especialidad/departamento
-    const departamentoActual = (curso.especialidad || '').toLowerCase();
-    const matchDepartamento = filtros.departamento === '' || departamentoActual.includes(filtros.departamento.toLowerCase());
-    
-    // Busca por ciclo exacto
-    const matchCiclo = filtros.ciclo === '' || curso.ciclo.toString() === filtros.ciclo;
-
-    return matchAsignatura && matchMalla && matchDepartamento && matchCiclo;
-  });
-
-  // Verifica si hay algún filtro activo para mostrar el botón de "Limpiar"
-  const hayFiltrosActivos = filtros.asignatura || filtros.malla || filtros.departamento || filtros.ciclo;
-
 
   const fetchCursos = async () => {
     try {
@@ -85,14 +53,39 @@ const PlanEstudios = () => {
     setTimeout(() => setNotificacion({ tipo: '', mensaje: '' }), 4000);
   };
 
-  const handleInputChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleInputChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleFiltroChange = (e) => setFiltros({ ...filtros, [e.target.name]: e.target.value });
+  const limpiarFiltros = () => setFiltros({ asignatura: '', malla: '', departamento: '', ciclo: '' });
+
+  // 🚀 1. EXTRAER LISTAS ÚNICAS PARA LOS DATALISTS Y FILTROS
+  const mallasDisponibles = useMemo(() => [...new Set(cursos.map(c => c.malla || '2018'))].sort(), [cursos]);
+  const departamentosDisponibles = useMemo(() => [...new Set(cursos.map(c => c.especialidad).filter(Boolean))].sort(), [cursos]);
+  const semestresDisponibles = useMemo(() => [...new Set(cursos.map(c => c.semestre).filter(Boolean))].sort(), [cursos]);
+
+  // 🚀 2. LÓGICA DE FILTRADO EN TIEMPO REAL
+  const cursosFiltrados = useMemo(() => {
+    return cursos.filter(curso => {
+      const matchAsignatura = curso.nombre.toLowerCase().includes(filtros.asignatura.toLowerCase()) || 
+                              curso.codigo.toLowerCase().includes(filtros.asignatura.toLowerCase());
+      
+      const mallaActual = (curso.malla || '2018').toString();
+      const matchMalla = filtros.malla === '' || mallaActual === filtros.malla;
+      
+      const departamentoActual = curso.especialidad || '';
+      const matchDepartamento = filtros.departamento === '' || departamentoActual === filtros.departamento;
+      
+      const matchCiclo = filtros.ciclo === '' || curso.ciclo.toString() === filtros.ciclo;
+
+      return matchAsignatura && matchMalla && matchDepartamento && matchCiclo;
+    });
+  }, [cursos, filtros]);
+
+  const hayFiltrosActivos = filtros.asignatura || filtros.malla || filtros.departamento || filtros.ciclo;
 
   const abrirModalCrear = () => {
     setIsEditing(false);
     setSelectedId(null);
-    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '3', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '2026-1', malla: '2018' });
+    setForm({ codigo: '', nombre: '', ciclo: '1', creditos: '4', horas_t: '2', horas_p: '2', horas_l: '0', especialidad: '', semestre: '', malla: '2018' });
     setModalOpen(true);
   };
 
@@ -127,7 +120,7 @@ const PlanEstudios = () => {
         horas_l: parseInt(form.horas_l) || 0,
         especialidad: form.especialidad,
         semestre: form.semestre,
-        malla: form.malla
+        malla: form.malla 
       };
 
       if (isEditing) {
@@ -178,62 +171,41 @@ const PlanEstudios = () => {
         </button>
       </div>
 
-      {/* BARRA DE FILTROS */}
+      {/* 🚀 BARRA DE FILTROS (Combobox cerrados) */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-        
         <div className="relative flex-1 w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-neutral-400" />
           </div>
           <input 
-            type="text" 
-            name="asignatura" 
-            value={filtros.asignatura} 
-            onChange={handleFiltroChange} 
+            type="text" name="asignatura" value={filtros.asignatura} onChange={handleFiltroChange} 
             placeholder="Buscar por código o nombre de asignatura..." 
             className="w-full text-sm pl-10 p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
           />
         </div>
 
         <div className="w-full md:w-32">
-          <input 
-            type="text" 
-            name="malla" 
-            value={filtros.malla} 
-            onChange={handleFiltroChange} 
-            placeholder="Malla (Ej: 2018)" 
-            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
-          />
+          <select name="malla" value={filtros.malla} onChange={handleFiltroChange} className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors">
+            <option value="">Todas las Mallas</option>
+            {mallasDisponibles.map(m => <option key={m} value={m}>Malla {m}</option>)}
+          </select>
         </div>
 
         <div className="w-full md:w-48">
-          <input 
-            type="text" 
-            name="departamento" 
-            value={filtros.departamento} 
-            onChange={handleFiltroChange} 
-            placeholder="Departamento..." 
-            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
-          />
+          <select name="departamento" value={filtros.departamento} onChange={handleFiltroChange} className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors">
+            <option value="">Todos los Departamentos</option>
+            {departamentosDisponibles.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
         </div>
 
         <div className="w-full md:w-40 flex gap-2">
-          <select 
-            name="ciclo" 
-            value={filtros.ciclo} 
-            onChange={handleFiltroChange} 
-            className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors"
-          >
+          <select name="ciclo" value={filtros.ciclo} onChange={handleFiltroChange} className="w-full text-sm p-2.5 bg-neutral-50 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:border-primary-500 transition-colors">
             <option value="">Todos los ciclos</option>
             {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>Ciclo {i+1}</option>)}
           </select>
 
           {hayFiltrosActivos && (
-            <button 
-              onClick={limpiarFiltros} 
-              className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors border border-red-100 dark:border-red-900/30"
-              title="Limpiar filtros"
-            >
+            <button onClick={limpiarFiltros} className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors border border-red-100 dark:border-red-900/30" title="Limpiar filtros">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -241,11 +213,14 @@ const PlanEstudios = () => {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm flex-1">
         {loading ? (
           <div className="p-12 text-center text-neutral-500">Cargando malla curricular...</div>
         ) : cursosFiltrados.length === 0 ? (
-          <div className="p-12 text-center text-neutral-500">No se encontraron cursos que coincidan con los filtros.</div>
+          <div className="p-12 text-center text-neutral-500 flex flex-col items-center justify-center">
+            <Search className="w-8 h-8 text-neutral-300 mb-3" />
+            <p>No se encontraron cursos que coincidan con los filtros.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -253,10 +228,8 @@ const PlanEstudios = () => {
                 <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800 text-xs font-semibold text-neutral-500 uppercase">
                   <th className="py-3 px-4">Código</th>
                   <th className="py-3 px-4">Asignatura</th>
-                  {/* Nueva Columna Malla Curricular */}
-                  <th className="py-3 px-4">Malla C.</th>
-                  {/* Nueva Columna Departamento */}
                   <th className="py-3 px-4">Departamento</th>
+                  <th className="py-3 px-4 text-center">Malla</th>
                   <th className="py-3 px-4 text-center">Semestre</th>
                   <th className="py-3 px-4 text-center">Ciclo</th>
                   <th className="py-3 px-4 text-center">Créditos</th>
@@ -270,17 +243,19 @@ const PlanEstudios = () => {
                 {cursosFiltrados.map((curso) => (
                   <tr key={curso.id || curso.codigo} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                     <td className="py-4 px-4 font-mono text-xs text-primary-600 font-bold">{curso.codigo}</td>
-                    <td className="py-4 px-4 font-medium dark:text-white">{curso.nombre}</td>
+                    <td className="py-4 px-4 font-medium dark:text-white whitespace-nowrap">{curso.nombre}</td>
+                    <td className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{curso.especialidad || '-'}</td>
+                    
                     <td className="py-4 px-4 text-center">
                       <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
                         curso.malla === '2018' || !curso.malla
-                          ? 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300' // Color estándar para la malla común
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' // Cualquier malla nueva destacará en verde automáticamente
+                          ? 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                       }`}>
                         Malla {curso.malla || '2018'}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{curso.especialidad || '-'}</td>
+
                     <td className="py-4 px-4 text-center text-neutral-500">{curso.semestre || '-'}</td>
                     <td className="py-4 px-4 text-center">
                     <span className="px-3 py-1.5 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 text-xs rounded-md font-bold shadow-sm">
@@ -305,16 +280,30 @@ const PlanEstudios = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal CRUD */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden text-neutral-900 dark:text-white">
-            <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center gap-2">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden text-neutral-900 dark:text-white">
+            
+            <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center gap-2 bg-neutral-50/50 dark:bg-neutral-800/20">
               <Layers className="w-5 h-5 text-primary-600" />
               <h2 className="text-lg font-bold">{isEditing ? 'Modificar Asignatura' : 'Nuevo Curso Curricular'}</h2>
             </div>
+            
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              
+              {/* 🚀 LISTAS DE SUGERENCIAS INVISIBLES (DATALISTS) */}
+              <datalist id="mallas-list">
+                {mallasDisponibles.map(m => <option key={m} value={m} />)}
+              </datalist>
+              <datalist id="departamentos-list">
+                {departamentosDisponibles.map(d => <option key={d} value={d} />)}
+              </datalist>
+              <datalist id="semestres-list">
+                {semestresDisponibles.map(s => <option key={s} value={s} />)}
+              </datalist>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-1">
                   <label className="block text-xs font-semibold mb-1">Código</label>
                   <input type="text" name="codigo" required value={form.codigo} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" />
@@ -325,54 +314,49 @@ const PlanEstudios = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 🚀 INPUTS CON DATALIST (Desplegable + Escritura) */}
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Departamento</label>
-                  <input type="text" name="especialidad" placeholder="Ej: Ciencias Básicas" value={form.especialidad} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" />
+                  <label className="block text-xs font-semibold mb-1">Malla Curricular</label>
+                  <input 
+                    list="mallas-list" name="malla" value={form.malla} onChange={handleInputChange} required placeholder="Ej: 2018, 2026"
+                    className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" 
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Semestre (Opcional)</label>
-                  <input type="text" name="semestre" placeholder="Ej: 2026-1" value={form.semestre} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" />
+                  <label className="block text-xs font-semibold mb-1">Departamento</label>
+                  <input 
+                    list="departamentos-list" name="especialidad" value={form.especialidad} onChange={handleInputChange} placeholder="Elegir o escribir..."
+                    className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Semestre de Origen</label>
+                  <input 
+                    list="semestres-list" name="semestre" value={form.semestre} onChange={handleInputChange} placeholder="Ej: 2026-1"
+                    className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none focus:border-primary-500" 
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="col-span-1 md:col-span-2">
                   <label className="block text-xs font-semibold mb-1">Ciclo Universitario</label>
                   <select name="ciclo" value={form.ciclo} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none">
                     {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>Ciclo {i+1}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 dark:text-neutral-300">Año de Malla Curricular</label>
-                  <input 
-                    type="text" 
-                    name="malla" 
-                    required
-                    value={form.malla} 
-                    onChange={handleInputChange} 
-                    placeholder="Ej: 2018, 2027" 
-                    className="w-full text-sm p-2 bg-slate-50 dark:bg-neutral-800 dark:text-white border border-slate-200 dark:border-neutral-700 rounded-lg outline-none focus:border-primary-500 font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Créditos Totales</label>
-                  <input type="number" name="creditos" min="0" max="10" value={form.creditos} onChange={handleInputChange} className="w-full text-sm p-2 bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold mb-1 text-center">H. Teóricas</label>
+                  <label className="block text-xs font-semibold mb-1 text-center">Teoría (h)</label>
                   <input type="number" name="horas_t" min="0" max="10" value={form.horas_t} onChange={handleInputChange} className="w-full text-sm p-2 text-center bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-center">H. Prácticas</label>
+                  <label className="block text-xs font-semibold mb-1 text-center">Práctica (h)</label>
                   <input type="number" name="horas_p" min="0" max="10" value={form.horas_p} onChange={handleInputChange} className="w-full text-sm p-2 text-center bg-neutral-50 dark:bg-neutral-800 border rounded-lg outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-center text-primary-600 font-bold">H. Lab</label>
-                  <input type="number" name="horas_l" min="0" max="10" value={form.horas_l} onChange={handleInputChange} className="w-full text-sm p-2 text-center bg-primary-50/50 border border-primary-300 dark:border-primary-700 rounded-lg font-bold outline-none" />
+                  <label className="block text-xs font-semibold mb-1 text-center text-primary-600 dark:text-primary-400 font-bold">Lab (h)</label>
+                  <input type="number" name="horas_l" min="0" max="10" value={form.horas_l} onChange={handleInputChange} className="w-full text-sm p-2 text-center bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg font-bold outline-none" />
                 </div>
               </div>
 

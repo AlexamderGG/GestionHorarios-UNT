@@ -109,12 +109,25 @@ const AdminAsignaciones = () => {
     
     const asigs = getAsignacionesDeCurso(curso.id);
     
-    // 🚀 AHORA TODAS LAS PARTES SE CALCULAN CONTANDO LOS GRUPOS REALES (NO CON DIVISIÓN MATEMÁTICA)
+    // 🚀 LÓGICA CORREGIDA PARA RECORDAR LA CANTIDAD DE GRUPOS REALES
     const calcularGruposFijos = (tipo) => {
       const asigsTipo = asigs.filter(a => a.tipo === tipo);
       if (asigsTipo.length > 0) {
-        const gruposUnicos = new Set(asigsTipo.map(a => a.grupo || 'Único')).size;
-        return Math.max(gruposUnicos, 1);
+        // Filtrar asignaciones que tienen formato de letra (A, B, C...)
+        const letterGroups = asigsTipo.filter(a => a.grupo && a.grupo !== 'Único');
+        
+        if (letterGroups.length > 0) {
+          // Buscar la letra más alta en la base de datos (ej. si existe 'C', la más alta es 'C')
+          const highestLetter = letterGroups.reduce((max, a) => a.grupo > max ? a.grupo : max, 'A');
+          // Convertir la letra a cantidad ('A' -> 1, 'B' -> 2, 'C' -> 3)
+          const num = highestLetter.charCodeAt(0) - 64;
+          
+          // Si hay letras guardadas, MÍNIMO el curso se dividió en 2. Retornamos el número real.
+          return Math.max(num, 2);
+        }
+        
+        // Si hay asignación pero ninguna es letra, entonces es grupo 'Único'
+        return 1;
       }
       return 1;
     };
@@ -161,11 +174,10 @@ const AdminAsignaciones = () => {
     });
   };
 
-  // 🚀 NINGUNA HORA SE DIVIDE MATEMÁTICAMENTE AHORA
   const totalHorasSeleccionadas = useMemo(() => {
     return checkedPartes.reduce((sum, item) => {
       const [tipo] = item.split('-');
-      const horas = getHorasCurso(cursoSeleccionado, tipo); // Siempre obtiene las horas completas
+      const horas = getHorasCurso(cursoSeleccionado, tipo); 
       return sum + horas;
     }, 0);
   }, [checkedPartes, cursoSeleccionado]);
@@ -226,7 +238,6 @@ const AdminAsignaciones = () => {
         const promises = checkedPartes.map(item => {
           const [tipo, grupo] = item.split('-');
           
-          // 🚀 SE GUARDAN LAS HORAS ÍNTEGRAS PARA CUALQUIER TIPO DE CLASE
           const horasParaGuardar = getHorasCurso(cursoSeleccionado, tipo);
 
           return api.post('/asignaciones', {
@@ -585,8 +596,6 @@ const AdminAsignaciones = () => {
                       const asigsGuardadas = getAsignacionesDeCurso(cursoSeleccionado.id).filter(a => a.tipo === tipo);
                       
                       const estaBloqueado = asigsGuardadas.length > 0;
-                      
-                      // 🚀 AHORA TODAS LAS HORAS SE ASIGNAN COMPLETAS POR GRUPO
                       const horasPorGrupo = horasTotal; 
                         
                       const nombresGrupos = numGrupos[tipo] === 1 ? ['Único'] : Array.from({length: numGrupos[tipo]}, (_, i) => String.fromCharCode(65 + i));

@@ -15,15 +15,16 @@ import {
   AlertCircle,
   FileDown,
   Loader2,
-  Layers
+  Layers,
+  CalendarDays // Ícono para el horario
 } from "lucide-react";
 import { generarFormatoN1, generarFormatoN2Central, generarFormatoN2Valles } from "../../utils/formatosPDF";
+import { generarPDF_F03 } from "../../utils/reportHorarioDocente"; // 🚀 Asegúrate de que esta ruta sea correcta
 
 const CATEGORIAS = ["Principal", "Asociado", "Auxiliar", "Jefe de practica"];
 const TIPOS_NOMBRAMIENTO = ["Nombrado", "Contratado"];
 const MODALIDADES = ["Tiempo Completo", "Tiempo Parcial"];
 
-// 🚀 Dejamos la lista de escuelas como sugerencias base para el datalist
 const ESCUELAS_BASE = [
   "Ingenieria de Sistemas", "Escuela de Matemáticas", "Escuela de Fisica",
   "Escuela de Lengua y Literatura", "Escuela de CC. Psicologicas", "Escuela de Filosofia",
@@ -34,13 +35,14 @@ const ESCUELAS_BASE = [
 
 const AdminDocentes = () => {
   const [docentes, setDocentes] = useState([]);
-  const [cursos, setCursos] = useState([]); // 🚀 NUEVO ESTADO PARA ALIMENTAR LOS DEPARTAMENTOS
+  const [cursos, setCursos] = useState([]); 
+  const [configuracion, setConfiguracion] = useState(null); // 🚀 ESTADO PARA GUARDAR LA CONFIG (Horas inicio/fin)
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState(null);
   const [search, setSearch] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
-  const [filtroDepartamento, setFiltroDepartamento] = useState(""); // 🚀 RENOMBRADO
+  const [filtroDepartamento, setFiltroDepartamento] = useState("");
   const [semestreActivo, setSemestreActivo] = useState("2026-1");
   const [descargandoId, setDescargandoId] = useState(null);
   const [dropdownAbierto, setDropdownAbierto] = useState(null);
@@ -57,26 +59,29 @@ const AdminDocentes = () => {
     categoria: "Auxiliar",
     tipo_nombramiento: "Nombrado",
     modalidad: "Tiempo Completo", 
-    especialidad: "", // Mapea internamente a departamento
+    especialidad: "", 
     escuela: "Ingenieria de Sistemas",
     semestre_contrato: "",
     antiguedad_anios: 0,
   });
   const [guardando, setGuardando] = useState(false);
 
-  // 🚀 CARGAR DATOS ACTUALIZADO PARA TRAER TAMBIÉN LOS CURSOS
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
       const [resDocentes, resConfig, resCursos] = await Promise.all([
         api.get("/docentes"),
         api.get("/configuracion"),
-        api.get("/cursos").catch(() => ({ data: { data: [] } })) // Evita crasheos si la ruta no responde
+        api.get("/cursos").catch(() => ({ data: { data: [] } }))
       ]);
       setDocentes(resDocentes.data?.data || []);
       setCursos(resCursos.data?.data || []);
-      const sem = resConfig.data?.data?.semestre_activo;
-      if (sem) setSemestreActivo(sem);
+      
+      const configData = resConfig.data?.data;
+      if (configData) {
+        setConfiguracion(configData); // 🚀 Guardamos la configuración entera
+        if (configData.semestre_activo) setSemestreActivo(configData.semestre_activo);
+      }
     } catch (err) {
       console.error("Error cargando datos:", err);
       setMensaje({ tipo: "error", texto: "Error al cargar los datos del servidor" });
@@ -96,21 +101,36 @@ const AdminDocentes = () => {
     return () => document.removeEventListener("click", handler);
   }, [dropdownAbierto]);
 
-  // 🚀 PROCESAMIENTO DINÁMICO DE DEPARTAMENTOS DESDE LOS CURSOS REGISTRADOS
   const departamentosDisponibles = useMemo(() => {
     return [...new Set(cursos.map((c) => c.especialidad).filter(Boolean))].sort();
   }, [cursos]);
 
-  // Sugerencias de escuelas combinando la base y las ya guardadas en la BD
   const escuelasSugeridas = useMemo(() => {
     const escuelasDb = docentes.map(d => d.escuela).filter(Boolean);
     return [...new Set([...ESCUELAS_BASE, ...escuelasDb])].sort();
   }, [docentes]);
 
+  // 🚀 LÓGICA DE DESCARGA ACTUALIZADA
   const descargarFormato = async (docente, tipo) => {
     setDescargandoId(docente.id);
     setDropdownAbierto(null);
+    
     try {
+      // 🚀 SI PIDEN EL FORMATO F03 (EL HORARIO COMPLETO)
+      if (tipo === 'f03') {
+        const [resLectiva, resNoLectiva] = await Promise.all([
+          api.get(`/docente/${docente.id}/horario-lectivo`, { params: { semestre: semestreActivo } }).catch(() => ({ data: { data: [] } })),
+          api.get(`/docente/${docente.id}/horario-no-lectivo`, { params: { semestre: semestreActivo } }).catch(() => ({ data: { data: [] } }))
+        ]);
+        
+        const lectivos = resLectiva.data?.data || [];
+        const noLectivos = resNoLectiva.data?.data || [];
+        
+        generarPDF_F03(docente, lectivos, noLectivos, configuracion, semestreActivo);
+        return;
+      }
+
+      // Si piden los otros formatos de carga horaria...
       const res = await api.get(`/carga/docente/${docente.id}`, { params: { semestre: semestreActivo } });
       const data = res.data?.data || {};
       const cargaNoLectiva = data.cargaNoLectiva || {};
@@ -145,9 +165,11 @@ const AdminDocentes = () => {
           otras_actividades_detalle: cargaNoLectiva.otras_actividades_detalle || '',
         }
       };
+      
       if (tipo === 'n1') generarFormatoN1(datos);
       else if (tipo === 'n2central') generarFormatoN2Central(datos);
       else if (tipo === 'n2valles') generarFormatoN2Valles(datos);
+
     } catch (err) {
       setMensaje({ tipo: "error", texto: "Error al obtener datos del docente para generar el formato." });
       console.error(err);
@@ -156,7 +178,6 @@ const AdminDocentes = () => {
     }
   };
 
-  // LÓGICA DE FILTRADO DE DOCENTES ACTUALIZADA
   const docentesFiltrados = docentes.filter((d) => {
     const matchSearch =
       !search ||
@@ -165,7 +186,7 @@ const AdminDocentes = () => {
       (d.dni && d.dni.includes(search));
     const matchCat = !filtroCategoria || d.categoria === filtroCategoria;
     const matchTipo = !filtroTipo || d.tipo_nombramiento === filtroTipo;
-    const matchDep = !filtroDepartamento || d.especialidad === filtroDepartamento; // 🚀 Filtrado por departamento
+    const matchDep = !filtroDepartamento || d.especialidad === filtroDepartamento;
     return matchSearch && matchCat && matchTipo && matchDep;
   });
 
@@ -241,9 +262,7 @@ const AdminDocentes = () => {
         }
       }
       setModalOpen(false);
-      
       cargarDatos(); 
-      
     } catch (err) {
       setMensaje({
         tipo: "error",
@@ -258,9 +277,7 @@ const AdminDocentes = () => {
     if (!confirm("¿Eliminar este docente? Se realizará una eliminación lógica.")) return;
     try {
       await api.delete(`/docentes/${id}`);
-      
       cargarDatos(); 
-      
     } catch (err) {
       setMensaje({
         tipo: "error",
@@ -376,7 +393,6 @@ const AdminDocentes = () => {
             </select>
           </div>
           
-          {/* 🚀 FILTRO DE DEPARTAMENTO (COMBOBOX ESTRICTO DESDE LOS CURSOS) */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Departamento</label>
             <select value={filtroDepartamento} onChange={(e) => setFiltroDepartamento(e.target.value)} className="input w-52 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white">
@@ -472,8 +488,20 @@ const AdminDocentes = () => {
                             : <FileDown className="w-4 h-4" />}
                         </button>
                         {dropdownAbierto === d.id && (
-                          <div className="absolute right-0 top-8 z-50 w-52 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 animate-fade-in">
+                          <div className="absolute right-0 top-8 z-50 w-56 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 animate-fade-in">
                             <p className="px-3 py-1.5 text-2xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Formatos Oficiales</p>
+                            
+                            {/* 🚀 NUEVO BOTÓN PARA FORMATO F03 */}
+                            <button
+                              onClick={() => descargarFormato(d, 'f03')}
+                              className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                            >
+                              <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
+                              Formato F03 — Horario Docente
+                            </button>
+                            
+                            <div className="border-t border-neutral-100 dark:border-neutral-700 my-1"></div>
+
                             <button
                               onClick={() => descargarFormato(d, 'n1')}
                               className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
@@ -520,7 +548,6 @@ const AdminDocentes = () => {
         <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setModalOpen(false)}>
           <div className="card p-6 w-full max-w-2xl shadow-modal animate-scale-in max-h-[90vh] overflow-y-auto dark:bg-neutral-800 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
             
-            {/* 🚀 DATALIST INVISIBLE PARA EL DESPLEGABLE HÍBRIDO DE ESCUELAS */}
             <datalist id="escuelas-sugeridas-list">
               {escuelasSugeridas.map((e) => <option key={e} value={e} />)}
             </datalist>
@@ -596,8 +623,6 @@ const AdminDocentes = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                
-                {/* 🚀 COMBOBOX ESTRICTO DE DEPARTAMENTO (POBLADO DESDE LOS CURSOS REGISTRADOS) */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Departamento *</label>
                   <select name="especialidad" value={form.especialidad} onChange={handleChange} className="input w-full dark:bg-neutral-900 dark:border-neutral-700 dark:text-white" required>
@@ -608,7 +633,6 @@ const AdminDocentes = () => {
                   </select>
                 </div>
 
-                {/* 🚀 COMBOBOX HÍBRIDO DE ESCUELA (PERMITE SUGERIR O ESCRIBIR MANUALMENTE) */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Escuela *</label>
                   <input 

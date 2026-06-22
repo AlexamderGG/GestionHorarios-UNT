@@ -291,11 +291,18 @@ export const generarPDF_F03 = (miPerfil, horariosLectivos, horariosNoLectivos, c
   doc.text(`Docente ${miPerfil?.categoria || "Asociado"}`, 45, finalY + 8, { align: "center" });
 
   // Línea de Firma 2: Director de Departamento
-  doc.line(140, finalY, 190, finalY);
+  doc.line(85, finalY, 135, finalY);
   doc.setFont("Helvetica", "bold");
-  doc.text("DIRECTOR DE DEPARTAMENTO", 165, finalY + 4, { align: "center" });
+  doc.text("DIRECTOR DE DEPARTAMENTO", 110, finalY + 4, { align: "center" });
   doc.setFont("Helvetica", "normal");
-  doc.text("Dpto. Académico de Sistemas", 165, finalY + 8, { align: "center" });
+  doc.text("Dpto. Académico de Sistemas", 110, finalY + 8, { align: "center" });
+
+    // Línea de Firma 3: Decano
+  doc.line(150, finalY, 195, finalY);
+  doc.setFont("Helvetica", "bold");
+  doc.text("V°B° DECANO", 170, finalY + 4, { align: "center" });
+  doc.setFont("Helvetica", "normal");
+  doc.text("Fac. Ingeniería", 170, finalY + 8, { align: "center" });
 
   // Guardar y descargar automáticamente
   doc.save(`F03-CAD_Horario_${miPerfil?.apellidos || "Docente"}.pdf`);

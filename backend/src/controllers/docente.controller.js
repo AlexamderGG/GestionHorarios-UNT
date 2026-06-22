@@ -110,7 +110,6 @@ const DocenteController = {
     }
   },
 
-  // Endpoint para obtener docentes disponibles por especialidad
   getDisponibles: async (req, res) => {
     try {
       const { especialidad } = req.query;

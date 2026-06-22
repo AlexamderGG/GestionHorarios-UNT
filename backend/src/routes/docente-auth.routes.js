@@ -29,6 +29,11 @@ router.post('/seleccionar', authenticate, requireRole('docente'), DocenteAuthCon
  * @route   DELETE /api/docente/horario/:id
  * @desc    Eliminar un horario propio (solo si no fue editado por admin)
  */
+router.get('/:id/horario-lectivo', authenticate, requireRole('docente'), DocenteAuthController.getHorarioLectivo);
+router.get('/:id/horario-no-lectivo' , authenticate, requireRole('docente'), DocenteAuthController.getHorarioNoLectivo);
+router.post('/horario-no-lectivo', authenticate, requireRole('docente'), DocenteAuthController.crearHorarioNoLectivo);
+router.delete('/horario-no-lectivo/:id', authenticate, requireRole('docente'), DocenteAuthController.eliminarHorarioNoLectivo);
+
 router.delete('/horario/:id', authenticate, requireRole('docente'), DocenteAuthController.eliminarMiHorario);
 
 /**

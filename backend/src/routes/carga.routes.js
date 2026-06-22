@@ -8,6 +8,6 @@ router.get('/mi-carga', authenticate, cargaController.getMiCarga);
 router.post('/mi-carga', authenticate, cargaController.guardarMiCarga);
 
 // Admin: obtener carga completa de cualquier docente
-router.get('/docente/:docente_id', authenticate, requireRole('admin'), cargaController.getCargaDocente);
+router.get('/docente/:docente_id', authenticate, cargaController.getCargaDocente);
 
 module.exports = router;

@@ -562,6 +562,77 @@ const DocenteAuthController = {
       return res.status(500).json({ success: false, message: 'Error interno del servidor' });
     }
   },
+
+  getHorarioLectivo: async (req, res) => {
+    const { id } = req.params;
+    const { semestre } = req.query;
+    try {
+      const result = await pool.query(`
+        SELECT 
+          h.dia, 
+          TO_CHAR(h.hora_inicio, 'HH24:MI') as hora_inicio, 
+          TO_CHAR(h.hora_fin, 'HH24:MI') as hora_fin,
+          c.nombre as curso_nombre, 
+          COALESCE(a.codigo, l.codigo, 'Sin Ambiente') as ambiente_codigo
+        FROM horarios h
+        JOIN asignacion_docente_curso adc ON h.asignacion_id = adc.id
+        JOIN cursos c ON adc.curso_id = c.id
+        LEFT JOIN aulas a ON h.aula_id = a.id
+        LEFT JOIN laboratorios l ON h.laboratorio_id = l.id
+        WHERE adc.docente_id = $1 AND h.semestre = $2
+      `, [id, semestre]);
+      res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Error al obtener horario lectivo' });
+    }
+  },
+
+  getHorarioNoLectivo: async (req, res) => {
+    const { id } = req.params;
+    const { semestre } = req.query;
+    try {
+      const result = await pool.query(`
+        SELECT 
+          id, actividad_id, actividad_nombre, dia, 
+          TO_CHAR(hora_inicio, 'HH24:MI') as hora_inicio, 
+          TO_CHAR(hora_fin, 'HH24:MI') as hora_fin, 
+          ambiente 
+        FROM horarios_no_lectivos 
+        WHERE docente_id = $1 AND semestre = $2
+      `, [id, semestre]);
+      res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Error al obtener horario no lectivo' });
+    }
+  },
+
+  crearHorarioNoLectivo: async (req, res) => {
+    const { docente_id, actividad_id, actividad_nombre, dia, hora_inicio, hora_fin, ambiente, semestre } = req.body;
+    try {
+      const result = await pool.query(`
+        INSERT INTO horarios_no_lectivos 
+        (docente_id, actividad_id, actividad_nombre, dia, hora_inicio, hora_fin, ambiente, semestre) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+      `, [docente_id, actividad_id, actividad_nombre, dia, hora_inicio, hora_fin, ambiente, semestre]);
+      res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Error al guardar horario no lectivo' });
+    }
+  },
+
+  eliminarHorarioNoLectivo: async (req, res) => {
+    const { id } = req.params;
+    try {
+      await pool.query('DELETE FROM horarios_no_lectivos WHERE id = $1', [id]);
+      res.json({ success: true, message: 'Bloque liberado correctamente' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Error al eliminar bloque' });
+    }
+  }
 };
 
 module.exports = DocenteAuthController;

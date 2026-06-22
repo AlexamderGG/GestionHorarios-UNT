@@ -26,6 +26,7 @@ import {
   ListOrdered,
   HelpCircle,
   FileClock,
+  ClipboardList,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
@@ -70,15 +71,16 @@ const Navbar = () => {
   }, []);
 
   const docenteLinks = [
-    { to: '/docente/cursos', label: 'Mis Cursos', icon: BookOpen },
-    { to: '/docente/horario', label: 'Mi Horario', icon: Calendar },
-    { to: '/docente/disponibilidad', label: 'Disponibilidad', icon: Clock },
-    config?.docentes_pueden_asignar 
-      ? { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle } 
-      : null,
-    { to: '/docente/carga-horaria', label: 'Carga Horaria', icon: FileClock },
-    { to: '/docente/excepciones', label: 'Excepciones/ Permuta', icon: Lock },
-  ].filter(Boolean);
+  { to: '/docente/cursos', label: 'Mis Cursos', icon: BookOpen },
+  { to: '/docente/horario', label: 'Mi Horario', icon: Calendar },
+  { to: '/docente/disponibilidad', label: 'Disponibilidad', icon: Clock },
+  config?.docentes_pueden_asignar 
+    ? { to: '/docente/seleccionar', label: 'Seleccionar', icon: PlayCircle } 
+    : null,
+  { to: '/docente/carga-horaria', label: 'Carga Horaria', icon: FileClock },
+  { to: '/docente/horario-no-lectivo', label: 'Horario No Lectivo', icon: ClipboardList }, 
+  { to: '/docente/excepciones', label: 'Excepciones/ Permuta', icon: Lock },
+].filter(Boolean);
 
   const adminLinks = [
     { to: '/admin/horarios', label: 'Horarios', icon: Calendar },

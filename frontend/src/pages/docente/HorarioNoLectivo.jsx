@@ -68,7 +68,10 @@ const HorarioNoLectivo = () => {
           { id: "asesoria", nombre: "Asesoría de Tesis", horas_asignadas: Number(cargaNL.asesoria_tesis) || 0 },
           { id: "investigacion", nombre: "Investigación", horas_asignadas: Number(cargaNL.investigacion) || 0 },
           { id: "responsabilidad", nombre: "Responsabilidad Social", horas_asignadas: Number(cargaNL.responsabilidad_social) || 0 },
-          { id: "gestion", nombre: "Gestión Administrativa", horas_asignadas: Number(cargaNL.gestion_admin) || 0 }
+          { id: "produccion", nombre: "Producción Intelectual", horas_asignadas: Number(cargaNL.produccion_intelectual) || 0 },
+          { id: "gestion", nombre: "Gestión Administrativa", horas_asignadas: Number(cargaNL.gestion_admin) || 0 },
+          { id: "capacitacion", nombre: "Capacitación Docente", horas_asignadas: Number(cargaNL.capacitacion) || 0 },
+          { id: "otras", nombre: "Otras Actividades", horas_asignadas: Number(cargaNL.otras_actividades) || 0 }
         ].filter(act => act.horas_asignadas > 0); 
 
         setActividadesNoLectivas(listaActividades);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { generarPDF_F03 } from '../../utils/reportHorarioDocente';
 import { 
   Calendar, 
   Trash2, 
@@ -437,6 +438,13 @@ const MiHorario = () => {
             {semestre && <span className="ml-2 text-neutral-400 dark:text-neutral-500">· Semestre: {semestre}</span>}
           </p>
         </div>
+        <button
+          onClick={() => generarPDF_F03(miPerfil, horariosLectivos, horariosNoLectivos, config, semestre)}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-all duration-200 transform active:scale-95"
+        >
+          <Save className="w-4 h-4" />
+          Exportar Horario
+        </button>
         
         {config?.docentes_pueden_asignar && demoEstado?.turnoActual && !esCompletado && (
           <div className={`badge px-3 py-1.5 ${demoEstado.turnoActual.docente_id === user?.id ? 'bg-success-100 text-success-800 dark:bg-success-900/40 dark:text-success-400' : 'bg-warning-100 text-warning-800 dark:bg-warning-900/40 dark:text-warning-400'}`}>

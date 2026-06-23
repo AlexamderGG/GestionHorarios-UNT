@@ -137,6 +137,7 @@ const HorarioNoLectivo = () => {
   }, [actividadesNoLectivas, bloquesNoLectivosGuardados]);
 
   const handleAbrirModal = () => {
+    if (esCompletado) return; // Validación extra
     if (actividadesPendientes.length === 0) {
       alert("¡Felicidades! Ya has agendado el 100% de tus actividades no lectivas para este semestre.");
       return;
@@ -184,14 +185,19 @@ const HorarioNoLectivo = () => {
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Establece tus horas de tutoría, investigación y preparación evaluando cruces con tus clases lectivas.</p>
         </div>
         
-        {!esCompletado && (
-          <button 
-            onClick={handleAbrirModal}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Agendar Horas
-          </button>
-        )}
+        {/* 🚀 BOTÓN AGENDAR HORAS (DESHABILITADO SI ESTÁ COMPLETADO) */}
+        <button 
+          onClick={handleAbrirModal}
+          disabled={esCompletado}
+          title={esCompletado ? "Horario completado. No puedes agendar más horas." : "Agendar nuevas horas"}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+            esCompletado 
+              ? "bg-neutral-200 text-neutral-400 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-600 shadow-none" 
+              : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+          }`}
+        >
+          <Plus className="w-4 h-4" /> Agendar Horas
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -228,7 +234,7 @@ const HorarioNoLectivo = () => {
                 <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase">
                   <th className="p-4">Día / Horario</th>
                   <th className="p-4">Actividad</th>
-                  {!esCompletado && <th className="p-4 text-right">Acción</th>}
+                  <th className="p-4 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-sm">
@@ -244,17 +250,21 @@ const HorarioNoLectivo = () => {
                         <Building2 className="w-3.5 h-3.5"/> {b.ambiente}
                       </span>
                     </td>
-                    {!esCompletado && (
-                      <td className="p-4 text-right">
-                        <button 
-                          onClick={() => handleEliminarBloque(b.id)} 
-                          className="p-2 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title="Eliminar bloque"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    )}
+                    {/* 🚀 BOTÓN ELIMINAR (DESHABILITADO SI ESTÁ COMPLETADO) */}
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => handleEliminarBloque(b.id)} 
+                        disabled={esCompletado}
+                        className={`p-2 rounded-lg transition-colors ${
+                          esCompletado 
+                            ? "text-neutral-300 cursor-not-allowed dark:text-neutral-700" 
+                            : "text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        }`}
+                        title={esCompletado ? "Horario completado. No se puede eliminar." : "Eliminar bloque"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {bloquesNoLectivosGuardados.length === 0 && (
@@ -271,7 +281,7 @@ const HorarioNoLectivo = () => {
       </div>
 
       {/* MODAL CONFIGURADOR */}
-      {modalOpen && (
+      {modalOpen && !esCompletado && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
             

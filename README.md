@@ -94,6 +94,8 @@ createdb -U postgres scheduling_unt
 psql -U postgres -d scheduling_unt -f database/migrations/001_init.sql
 psql -U postgres -d scheduling_unt -f database/migrations/002_alter_cursos.sql
 psql -U postgres -d scheduling_unt -f database/migrations/003_labs_genericos.sql
+psql -U postgres -d scheduling_unt -f database/migrations/004_carga_no_lectiva.sql
+psql -U postgres -d scheduling_unt -f database/migrations/005_horario_no_lectivos.sql
 ```
 
 ### 3. Cargar datos de prueba (seeds)

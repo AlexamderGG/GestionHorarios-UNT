@@ -439,7 +439,19 @@ const MiHorario = () => {
           </p>
         </div>
         <button
-          onClick={() => generarPDF_F03(miPerfil, horariosLectivos, horariosNoLectivos, config, semestre)}
+          onClick={() => generarPDF_F03({
+            perfil: {
+              nombreCompleto: `${miPerfil?.nombres || ''} ${miPerfil?.apellidos || ''}`.toUpperCase().trim(),
+              dni: miPerfil?.dni || '',
+              categoria: miPerfil?.categoria || '',
+              escuela: miPerfil?.escuela || 'Ingeniería de Sistemas',
+              modalidad: miPerfil?.modalidad || 'Tiempo Completo'
+            },
+            horariosLectivos,
+            horariosNoLectivos,
+            config,
+            semestre
+          })}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-all duration-200 transform active:scale-95"
         >
           <Save className="w-4 h-4" />

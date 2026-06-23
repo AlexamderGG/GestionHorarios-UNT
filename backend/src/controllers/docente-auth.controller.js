@@ -542,11 +542,12 @@ const DocenteAuthController = {
   getMiPerfil: async (req, res) => {
     try {
       // Tu middleware de autenticación (authenticate) debería inyectar req.user con el ID del token
-      const docenteId = req.user.id; 
+      const docenteId = req.user.id;
 
       const query = `
-        SELECT id, nombres, apellidos, email, estado_turno 
-        FROM docentes 
+        SELECT id, nombres, apellidos, email, estado_turno,
+               dni, categoria, escuela, modalidad, tipo_nombramiento, especialidad, telefono
+        FROM docentes
         WHERE id = $1
       `;
       const result = await pool.query(query, [docenteId]);

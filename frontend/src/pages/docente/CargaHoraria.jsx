@@ -153,14 +153,12 @@ const CargaHoraria = () => {
 
   const totalGeneral = horasLectivas + totalNoLectivo;
 
-  // NUENA LÓGICA DE HORAS EXACTAS
-  // Usamos requerido, o si por alguna razón no viene, hacemos un fallback seguro.
   const horasRequeridas =
     resumen?.limites?.requerido || resumen?.limites?.max || 40;
-  const isValido = totalGeneral === horasRequeridas; // Validación estricta
+  const isValido = totalGeneral === horasRequeridas; 
   const porcentaje = Math.min((totalGeneral / horasRequeridas) * 100, 100);
 
-  let statusColor = "bg-warning-500"; // Por defecto (si faltan horas)
+  let statusColor = "bg-warning-500"; 
   if (totalGeneral > horasRequeridas) statusColor = "bg-danger-500";
   else if (totalGeneral === horasRequeridas) statusColor = "bg-success-500";
 
@@ -211,19 +209,21 @@ const CargaHoraria = () => {
     generarFormatoN2Valles(buildDatosDocente());
 
   const handleFormatoF03 = () => {
-    generarPDF_F03({
-      perfil: {
-        nombreCompleto: (resumen?.docenteNombre || "").toUpperCase(),
+    generarPDF_F03(
+      {
+        nombres: resumen?.docenteNombre || "", 
+        apellidos: "", 
         dni: resumen?.docenteDni || "",
         categoria: resumen?.categoria || "",
         escuela: resumen?.escuela || "Ingeniería de Sistemas",
-        modalidad: resumen?.modalidad || "Tiempo Completo"
+        modalidad: resumen?.modalidad || "Tiempo Completo",
+        regimen: resumen?.tipo_nombramiento || "TC"
       },
       horariosLectivos,
       horariosNoLectivos,
       config,
       semestre
-    });
+    );
   };
 
   if (loading)
@@ -299,28 +299,28 @@ const CargaHoraria = () => {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleFormatoN1}
-              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3"
+              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 dark:text-neutral-200 text-xs py-2 px-3"
             >
               <Download className="w-4 h-4 text-primary-600 dark:text-primary-400" />{" "}
               Formato N°1 - Carga Horaria
             </button>
             <button
               onClick={handleFormatoN2Central}
-              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3"
+              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 dark:text-neutral-200 text-xs py-2 px-3"
             >
               <Download className="w-4 h-4 text-amber-600 dark:text-amber-400" />{" "}
               Formato N°2 - Sede Central
             </button>
             <button
               onClick={handleFormatoN2Valles}
-              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3"
+              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 dark:text-neutral-200 text-xs py-2 px-3"
             >
               <Download className="w-4 h-4 text-green-600 dark:text-green-400" />{" "}
               Formato N°2 - Sedes Valles
             </button>
             <button
               onClick={handleFormatoF03}
-              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-xs py-2 px-3"
+              className="btn-secondary flex items-center gap-2 bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 dark:text-neutral-200 text-xs py-2 px-3"
             >
               <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />{" "}
               Formato F03 - Horario Docente
@@ -462,7 +462,8 @@ const CargaHoraria = () => {
                       name={`${item.key}_detalle`}
                       value={form[`${item.key}_detalle`]}
                       onChange={handleTextChange}
-                      className="input w-full text-xs dark:bg-neutral-900"
+                      // 🚀 AQUI: Añadí dark:text-white y dark:border-neutral-700
+                      className="input w-full text-xs dark:bg-neutral-900 dark:text-white dark:border-neutral-700"
                     />
                   </div>
                   <div className="relative md:col-span-2">
@@ -472,7 +473,8 @@ const CargaHoraria = () => {
                       name={item.key}
                       value={form[item.key]}
                       onChange={handleNumberChange}
-                      className="input w-full pr-7 text-right font-bold text-primary-700 dark:text-primary-400 dark:bg-neutral-900"
+                      // 🚀 AQUI TAMBIÉN
+                      className="input w-full pr-7 text-right font-bold text-primary-700 dark:text-primary-400 dark:bg-neutral-900 dark:border-neutral-700"
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs font-medium">
                       h

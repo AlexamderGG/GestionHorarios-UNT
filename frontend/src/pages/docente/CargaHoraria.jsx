@@ -30,6 +30,7 @@ const CargaHoraria = () => {
   const [config, setConfig] = useState(null);
   const [horariosLectivos, setHorariosLectivos] = useState([]);
   const [horariosNoLectivos, setHorariosNoLectivos] = useState([]);
+  const [miPerfil, setMiPerfil] = useState(null); // 🚀 NUEVO: Estado para saber si está completado
 
   const [form, setForm] = useState({
     preparacion_clases: 0,
@@ -63,7 +64,8 @@ const CargaHoraria = () => {
 
       const docenteId = user?.id;
 
-      const [resCarga, resCursos, resHorarios, resNoLectivos] = await Promise.all([
+      // 🚀 SE AGREGA LA CONSULTA DEL PERFIL DEL DOCENTE
+      const [resCarga, resCursos, resHorarios, resNoLectivos, resPerfil] = await Promise.all([
         api.get("/carga/mi-carga", { params: { semestre: semestreActivo } }),
         api.get("/docente/mis-cursos", {
           params: { semestre: semestreActivo },
@@ -71,7 +73,8 @@ const CargaHoraria = () => {
         api.get("/docente/mi-horario", { params: { semestre: semestreActivo } }),
         docenteId
           ? api.get(`/docente/${docenteId}/horario-no-lectivo`, { params: { semestre: semestreActivo } }).catch(() => ({ data: { data: [] } }))
-          : Promise.resolve({ data: { data: [] } })
+          : Promise.resolve({ data: { data: [] } }),
+        api.get('/docente/mi-perfil').catch(() => ({ data: { data: null } }))
       ]);
 
       const dataCarga = resCarga.data.data;
@@ -79,38 +82,28 @@ const CargaHoraria = () => {
       setMisCursos(resCursos.data?.data || []);
       setHorariosLectivos(Array.isArray(resHorarios.data?.data) ? resHorarios.data.data : []);
       setHorariosNoLectivos(Array.isArray(resNoLectivos.data?.data) ? resNoLectivos.data.data : []);
+      setMiPerfil(resPerfil.data?.data);
 
       if (dataCarga.cargaNoLectiva) {
         setForm({
           preparacion_clases: dataCarga.cargaNoLectiva.preparacion_clases || 0,
-          preparacion_clases_detalle:
-            dataCarga.cargaNoLectiva.preparacion_clases_detalle || "",
+          preparacion_clases_detalle: dataCarga.cargaNoLectiva.preparacion_clases_detalle || "",
           tutoria_consejeria: dataCarga.cargaNoLectiva.tutoria_consejeria || 0,
-          tutoria_consejeria_detalle:
-            dataCarga.cargaNoLectiva.tutoria_consejeria_detalle || "",
+          tutoria_consejeria_detalle: dataCarga.cargaNoLectiva.tutoria_consejeria_detalle || "",
           asesoria_tesis: dataCarga.cargaNoLectiva.asesoria_tesis || 0,
-          asesoria_tesis_detalle:
-            dataCarga.cargaNoLectiva.asesoria_tesis_detalle || "",
+          asesoria_tesis_detalle: dataCarga.cargaNoLectiva.asesoria_tesis_detalle || "",
           investigacion: dataCarga.cargaNoLectiva.investigacion || 0,
-          investigacion_detalle:
-            dataCarga.cargaNoLectiva.investigacion_detalle || "",
-          responsabilidad_social:
-            dataCarga.cargaNoLectiva.responsabilidad_social || 0,
-          responsabilidad_social_detalle:
-            dataCarga.cargaNoLectiva.responsabilidad_social_detalle || "",
-          produccion_intelectual:
-            dataCarga.cargaNoLectiva.produccion_intelectual || 0,
-          produccion_intelectual_detalle:
-            dataCarga.cargaNoLectiva.produccion_intelectual_detalle || "",
+          investigacion_detalle: dataCarga.cargaNoLectiva.investigacion_detalle || "",
+          responsabilidad_social: dataCarga.cargaNoLectiva.responsabilidad_social || 0,
+          responsabilidad_social_detalle: dataCarga.cargaNoLectiva.responsabilidad_social_detalle || "",
+          produccion_intelectual: dataCarga.cargaNoLectiva.produccion_intelectual || 0,
+          produccion_intelectual_detalle: dataCarga.cargaNoLectiva.produccion_intelectual_detalle || "",
           gestion_admin: dataCarga.cargaNoLectiva.gestion_admin || 0,
-          gestion_admin_detalle:
-            dataCarga.cargaNoLectiva.gestion_admin_detalle || "",
+          gestion_admin_detalle: dataCarga.cargaNoLectiva.gestion_admin_detalle || "",
           capacitacion: dataCarga.cargaNoLectiva.capacitacion || 0,
-          capacitacion_detalle:
-            dataCarga.cargaNoLectiva.capacitacion_detalle || "",
+          capacitacion_detalle: dataCarga.cargaNoLectiva.capacitacion_detalle || "",
           otras_actividades: dataCarga.cargaNoLectiva.otras_actividades || 0,
-          otras_actividades_detalle:
-            dataCarga.cargaNoLectiva.otras_actividades_detalle || "",
+          otras_actividades_detalle: dataCarga.cargaNoLectiva.otras_actividades_detalle || "",
         });
       }
     } catch (error) {
@@ -139,6 +132,9 @@ const CargaHoraria = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 🚀 REGLA DE SEGURIDAD
+  const esCompletado = miPerfil?.estado_turno === 'Completado';
+
   const horasLectivas = resumen?.horasLectivas || 0;
   const totalNoLectivo =
     form.preparacion_clases +
@@ -163,6 +159,7 @@ const CargaHoraria = () => {
   else if (totalGeneral === horasRequeridas) statusColor = "bg-success-500";
 
   const handleGuardar = async () => {
+    if (esCompletado) return; // Doble validación por seguridad
     if (!isValido) {
       setMensaje({
         tipo: "error",
@@ -203,10 +200,8 @@ const CargaHoraria = () => {
   });
 
   const handleFormatoN1 = () => generarFormatoN1(buildDatosDocente());
-  const handleFormatoN2Central = () =>
-    generarFormatoN2Central(buildDatosDocente());
-  const handleFormatoN2Valles = () =>
-    generarFormatoN2Valles(buildDatosDocente());
+  const handleFormatoN2Central = () => generarFormatoN2Central(buildDatosDocente());
+  const handleFormatoN2Valles = () => generarFormatoN2Valles(buildDatosDocente());
 
   const handleFormatoF03 = () => {
     generarPDF_F03(
@@ -283,6 +278,20 @@ const CargaHoraria = () => {
 
   return (
     <div className="max-w-5xl animate-fade-in pb-10">
+      
+      {/*  AVISO SI ESTÁ COMPLETADO */}
+      {esCompletado && (
+        <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl flex gap-3 shadow-sm mb-6">
+          <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <h4 className="font-bold">Horario Completado</h4>
+            <p className="text-sm mt-1 text-emerald-700 dark:text-emerald-400">
+              Tu horario ha sido marcado como completado por la secretaría. Ya no puedes modificar tu declaración de carga horaria.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
@@ -290,8 +299,7 @@ const CargaHoraria = () => {
             Declaración de Carga Horaria
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Semestre {semestre} · Declara tus horas y actividades de carga no
-            lectiva
+            Semestre {semestre} · Declara tus horas y actividades de carga no lectiva
           </p>
         </div>
 
@@ -462,8 +470,8 @@ const CargaHoraria = () => {
                       name={`${item.key}_detalle`}
                       value={form[`${item.key}_detalle`]}
                       onChange={handleTextChange}
-                      // 🚀 AQUI: Añadí dark:text-white y dark:border-neutral-700
-                      className="input w-full text-xs dark:bg-neutral-900 dark:text-white dark:border-neutral-700"
+                      disabled={esCompletado} // 🚀 SE DESHABILITA
+                      className="input w-full text-xs dark:bg-neutral-900 dark:text-white dark:border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                   <div className="relative md:col-span-2">
@@ -473,8 +481,8 @@ const CargaHoraria = () => {
                       name={item.key}
                       value={form[item.key]}
                       onChange={handleNumberChange}
-                      // 🚀 AQUI TAMBIÉN
-                      className="input w-full pr-7 text-right font-bold text-primary-700 dark:text-primary-400 dark:bg-neutral-900 dark:border-neutral-700"
+                      disabled={esCompletado} // 🚀 SE DESHABILITA
+                      className="input w-full pr-7 text-right font-bold text-primary-700 dark:text-primary-400 dark:bg-neutral-900 dark:border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs font-medium">
                       h
@@ -494,10 +502,12 @@ const CargaHoraria = () => {
             </div>
 
             <div className="mt-6 border-t border-neutral-200 dark:border-neutral-700 pt-5 flex justify-end">
+              
               <button
                 onClick={handleGuardar}
-                disabled={saving || !isValido}
-                className="btn-primary flex items-center gap-2 py-2.5 px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={saving || !isValido || esCompletado}
+                title={esCompletado ? "Horario completado. No se puede modificar." : "Guardar declaración"}
+                className="btn-primary flex items-center gap-2 py-2.5 px-6 font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-neutral-400 dark:disabled:bg-neutral-600 transition-all"
               >
                 {saving ? (
                   <>Guardando...</>

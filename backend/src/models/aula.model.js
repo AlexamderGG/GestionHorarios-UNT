@@ -2,7 +2,8 @@ const pool = require('../config/db');
 
 const AulaModel = {
   getAll: async () => {
-    const result = await pool.query('SELECT * FROM aulas WHERE activa = TRUE ORDER BY codigo');
+    // Se quitó la condición "WHERE activa = TRUE" para que siempre devuelva todo lo que existe
+    const result = await pool.query('SELECT * FROM aulas ORDER BY codigo');
     return result.rows;
   },
 
@@ -22,19 +23,21 @@ const AulaModel = {
   },
 
   update: async (id, data) => {
-    const { codigo, nombre, capacidad, ubicacion, tipo, activa } = data;
+    // Se quitó el campo "activa" de la actualización ya que no lo usaremos
+    const { codigo, nombre, capacidad, ubicacion, tipo } = data;
     const result = await pool.query(
       `UPDATE aulas 
-       SET codigo = $1, nombre = $2, capacidad = $3, ubicacion = $4, tipo = $5, activa = $6
-       WHERE id = $7 RETURNING *`,
-      [codigo, nombre, capacidad, ubicacion, tipo, activa, id]
+       SET codigo = $1, nombre = $2, capacidad = $3, ubicacion = $4, tipo = $5
+       WHERE id = $6 RETURNING *`,
+      [codigo, nombre, capacidad, ubicacion, tipo, id]
     );
     return result.rows[0] || null;
   },
 
   delete: async (id) => {
+    // AHORA SÍ HACE UN HARD DELETE (Elimina la fila físicamente de la base de datos)
     const result = await pool.query(
-      'UPDATE aulas SET activa = FALSE WHERE id = $1 RETURNING *',
+      'DELETE FROM aulas WHERE id = $1 RETURNING *',
       [id]
     );
     return result.rows[0] || null;

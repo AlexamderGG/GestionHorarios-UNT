@@ -27,6 +27,8 @@ import {
   HelpCircle,
   FileClock,
   ClipboardList,
+  Book,
+  Building,
 } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
@@ -100,8 +102,9 @@ const Navbar = () => {
       label: "Planificación Intel.",
       icon: BookOpen,
     },
+    { to: "/admin/plan-estudios", label: "Plan de Estudios", icon: Book },
     { to: "/admin/docentes", label: "Docentes", icon: Users },
-    { to: "/admin/plan-estudios", label: "Plan de Estudios", icon: BookOpen },
+    { to: "/admin/ambientes", label: "Ambientes", icon: Building },
     { to: "/admin/estado-docentes", label: "Estado Doc.", icon: BarChart3 },
     { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/admin/configuracion", label: "Configuración", icon: Settings },

@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 const LaboratorioModel = {
   getAll: async () => {
-    const result = await pool.query('SELECT * FROM laboratorios WHERE activo = TRUE ORDER BY codigo');
+    const result = await pool.query('SELECT * FROM laboratorios ORDER BY codigo');
     return result.rows;
   },
 
@@ -34,7 +34,7 @@ const LaboratorioModel = {
 
   delete: async (id) => {
     const result = await pool.query(
-      'UPDATE laboratorios SET activo = FALSE WHERE id = $1 RETURNING *',
+      'DELETE FROM laboratorios WHERE id = $1 RETURNING *',
       [id]
     );
     return result.rows[0] || null;

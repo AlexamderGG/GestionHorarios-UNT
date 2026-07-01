@@ -111,7 +111,6 @@ const PlanificacionSecretaria = () => {
     );
   }, [asignacionesProcesadas, borradores]);
 
-  // UNIFICADA: ELIMINAR RESTRICCIÓN Y PREFERENCIA DESDE LA GRILLA
   const handleEliminarDisponibilidad = async (id, tipoDisponibilidad) => {
     if (!window.confirm(`¿Seguro que desea eliminar este bloque ${tipoDisponibilidad} del docente?`)) return;
     try {
@@ -137,6 +136,7 @@ const PlanificacionSecretaria = () => {
     }
   };
 
+  //  MOTOR INTELIGENTE DE CRUCES AMPLIADO (CON LA CORRECCIÓN >= 2)
   const checkHoraStatus = (diaCandidate, horaCandidate, cursoTarget) => {
     const curso = cursoTarget || cursoActivo;
     if (!diaCandidate || !docenteSelect || !curso) return { invalida: true, motivo: '' };
@@ -172,38 +172,56 @@ const PlanificacionSecretaria = () => {
     const cicloModal = curso.curso_ciclo || curso.ciclo || curso.asignacion?.ciclo;
     if (cicloModal && String(cicloModal) !== "0") {
       const horariosMismoCiclo = horariosGlobales.filter(h => {
-          const hCiclo = h.ciclo || h.asignacion?.ciclo || h.asignacion?.curso?.ciclo || h.curso?.ciclo;
+          const hCiclo = h.curso_ciclo || h.ciclo || h.asignacion?.curso_ciclo || h.asignacion?.ciclo || h.asignacion?.curso?.ciclo || h.curso?.ciclo;
           return h.dia === diaCandidate && String(hCiclo) === String(cicloModal);
       });
       const borradoresMismoCiclo = borradores.filter(b => b.dia === diaCandidate && b.asignacion_id !== curso.id && String(b.ciclo) === String(cicloModal));
       
-      const isIncomingException = (curso.curso_codigo || '').startsWith('EL-') || curso.tipo === 'Laboratorio';
+      const cInCod = String(curso.curso_codigo || '').toUpperCase();
+      const cInTip = String(curso.tipo || '').toUpperCase();
+      const cInNom = String(curso.curso_nombre || '').toUpperCase();
+      
+      // Identificamos si el curso ENTRANTE es Electivo o Laboratorio
+      const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
+      
       let overlapsCount = 0;
 
+      // 1. REVISAR CONTRA BASE DE DATOS
       for (let h of horariosMismoCiclo) {
         if (checkOverlap(horaCandidate, horaFinCandidate, h.hora_inicio, h.hora_fin)) {
-          const hCodigo = h.asignacion?.curso?.codigo || h.curso?.codigo || '';
-          const hTipo = h.asignacion?.tipo || h.tipo || '';
-          const isExistingException = hCodigo.startsWith('EL-') || hTipo === 'Laboratorio';
+          const hCodigo = String(h.curso_codigo || h.codigo_curso || h.curso?.codigo || h.asignacion?.curso?.codigo || h.asignacion?.curso_codigo || '').toUpperCase();
+          const hTipo = String(h.tipo || h.tipo_asignacion || h.asignacion?.tipo || h.asignacion?.tipo_asignacion || '').toUpperCase();
+          const hNombre = String(h.curso_nombre || h.curso?.nombre || h.asignacion?.curso?.nombre || h.asignacion?.curso_nombre || '').toUpperCase();
+          const hasLabId = h.laboratorio_id !== null && h.laboratorio_id !== undefined;
+
+          // Evaluamos si la clase que ya existe en BD es Electivo o Lab
+          const isExistingException = hCodigo.startsWith('EL-') || hTipo.includes('LAB') || hNombre.includes('ELECTIV') || hasLabId;
+          
           if (!isIncomingException || !isExistingException) {
-            return { invalida: true, motivo: `Cruce Ciclo ${cicloModal}` };
+            return { invalida: true, motivo: `Cruce regular C${cicloModal}` };
           }
           overlapsCount++;
         }
       }
 
+      // 2. REVISAR CONTRA OTROS BORRADORES EN MESA DE TRABAJO
       for (let b of borradoresMismoCiclo) {
         if (checkOverlap(horaCandidate, horaFinCandidate, b.hora_inicio, b.hora_fin)) {
-          const isExistingException = (b.curso_codigo || '').startsWith('EL-') || b.tipo === 'Laboratorio';
+          const bCodigo = String(b.curso_codigo || b.curso?.codigo || '').toUpperCase();
+          const bTipo = String(b.tipo || '').toUpperCase();
+          
+          const isExistingException = bCodigo.startsWith('EL-') || bTipo.includes('LAB');
+
           if (!isIncomingException || !isExistingException) {
-            return { invalida: true, motivo: `Cruce Ciclo ${cicloModal}` };
+            return { invalida: true, motivo: `Cruce regular C${cicloModal}` };
           }
           overlapsCount++;
         }
       }
 
+      // 🌟 CORRECCIÓN VITAL: Si hay 2 o más cruces, se bloquea la grilla (Límite Máximo 2)
       if (overlapsCount >= 2) {
-         return { invalida: true, motivo: `Límite Ciclo ${cicloModal}` };
+         return { invalida: true, motivo: `Límite Máx (2) C${cicloModal}` };
       }
     }
     return { invalida: false, motivo: '' };
@@ -459,6 +477,9 @@ const PlanificacionSecretaria = () => {
                             const isClickableToDelete = showDeleteHover;
                             const isClickable = isClickableToAssign || isClickableToDelete;
 
+                            // Visualización de bloqueo si tengo un curso agarrado y la celda es inválida
+                            const isHoveringInvalid = cursoActivo && hoveredCell && hoveredCell.dia === dia && hoveredCell.hora === hora && status.invalida;
+
                             return (
                               <button
                                 key={`${dia}-${hora}`}
@@ -493,7 +514,8 @@ const PlanificacionSecretaria = () => {
                                   showDeleteHover && isPref ? 'bg-success-50 dark:bg-success-900/10 text-success-600 font-bold hover:bg-danger-500 hover:text-white cursor-pointer group' :
                                   !showDeleteHover && isPref ? 'bg-success-50 dark:bg-success-900/10 text-success-600 font-bold' :
 
-                                  // CURSO ACTIVO PERO CASILLA INVÁLIDA (Choque con algo no permitido)
+                                  // CURSO ACTIVO Y CASILLA INVÁLIDA (Muestra feedback rojo de bloqueo)
+                                  isHoveringInvalid ? 'bg-danger-100 dark:bg-danger-900/40 border-danger-300 dark:border-danger-700 shadow-inner cursor-not-allowed z-10' :
                                   cursoActivo && status.invalida ? 'bg-neutral-100 dark:bg-neutral-800/40 cursor-not-allowed opacity-40' :
                                   
                                   // CURSO ACTIVO Y CASILLA VÁLIDA (Espacio blanco libre)
@@ -510,7 +532,12 @@ const PlanificacionSecretaria = () => {
                                   occupied?.titulo || (status.invalida ? status.motivo : `Asignar aquí`)
                                 }
                               >
-                                {isPrevisualizado ? (
+                                {isHoveringInvalid ? (
+                                  <div className="flex flex-col items-center text-danger-700 dark:text-danger-300 w-full">
+                                    <XCircle className="w-4 h-4 mb-0.5" />
+                                    <span className="font-bold text-[9px] leading-tight px-1 text-center w-full line-clamp-2">{status.motivo}</span>
+                                  </div>
+                                ) : isPrevisualizado ? (
                                   <span className="font-bold">Soltar aquí</span>
                                 ) : isBD ? (
                                   <div className="flex flex-col items-center justify-center w-full h-full">

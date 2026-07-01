@@ -179,12 +179,24 @@ const SecretariaController = {
   notificarTodos: async (req, res) => {
     const client = await pool.connect();
     try {
-      // 1. Obtenemos todos los que tengan "algo" en el campo email
-      const query = `SELECT id, nombres, apellidos, email FROM docentes WHERE email IS NOT NULL AND email != ''`;
-      const result = await client.query(query);
+      // 1. Obtener el semestre activo de la configuración
+      const configQuery = `SELECT valor FROM configuracion WHERE clave = 'semestre_activo'`;
+      const configResult = await client.query(configQuery);
+      const semestreActivo = configResult.rows.length > 0 ? configResult.rows[0].valor : '2026-1';
+
+      // 2. Obtenemos SOLO los docentes que tengan carga en el semestre activo y posean email
+      const query = `
+        SELECT DISTINCT d.id, d.nombres, d.apellidos, d.email 
+        FROM docentes d
+        INNER JOIN asignacion_docente_curso adc ON d.id = adc.docente_id
+        WHERE adc.semestre_asignacion = $1
+          AND d.email IS NOT NULL 
+          AND d.email != ''
+      `;
+      const result = await client.query(query, [semestreActivo]);
       const docentes = result.rows;
 
-      // 2. EL FILTRO INTELIGENTE: Expresión regular para correos válidos
+      // 3. EL FILTRO INTELIGENTE: Expresión regular para correos válidos
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       
       // Filtramos la lista quedándonos solo con los correos que pasen la prueba
@@ -194,37 +206,37 @@ const SecretariaController = {
         client.release();
         return res.status(404).json({ 
           success: false, 
-          message: 'No hay docentes con correos válidos para notificar (revise si están mal escritos).' 
+          message: `No hay docentes con carga en el semestre ${semestreActivo} que posean un correo válido.` 
         });
       }
 
-      // 3. Respondemos de inmediato a Vercel
+      // 4. Respondemos de inmediato al Frontend (para no bloquear la petición)
       res.json({ 
         success: true, 
-        message: `El proceso inició con éxito. Se enviarán credenciales a ${docentesValidos.length} docentes válidos (se omitieron los correos mal formateados).` 
+        message: `El proceso inició con éxito. Se enviarán credenciales a ${docentesValidos.length} docentes asignados al semestre ${semestreActivo}.` 
       });
 
-      // 4. Ejecutamos en segundo plano (Fire and Forget masivo)
+      // 5. Ejecutamos en segundo plano (Fire and Forget masivo)
       (async () => {
         try {
           await client.query('BEGIN');
 
-          // Iteramos SOLO sobre los docentes con correos verificados
+          // Iteramos SOLO sobre los docentes filtrados
           for (const docente of docentesValidos) {
             try {
               const emailDestino = docente.email.trim();
               const passwordTemporal = `UNT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
               const hashedPassword = await bcrypt.hash(passwordTemporal, 10);
               
-              // Actualizar clave y cambiar estado SOLO a Completado
-              await DocenteModel.updateEstadoTurno(docente.id, 'Completado', client);
+              // ACTUALIZACIÓN CORREGIDA: Se cambia el estado a 'Notificado', no 'Completado'
+              await DocenteModel.updateEstadoTurno(docente.id, 'Notificado', client);
               await DocenteModel.updatePassword(docente.id, hashedPassword, client);
 
               const htmlContent = `
                 <div style="font-family: Arial, sans-serif; color: #333; padding: 20px; max-w-md; margin: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
                   <h2 style="color: #1a56db; margin-bottom: 20px;">Credenciales de Acceso</h2>
                   <p>Estimado/a <strong>${docente.nombres} ${docente.apellidos}</strong>,</p>
-                  <p>El sistema se encuentra habilitado para que registre sus <strong>preferencias y restricciones horarias</strong>.</p>
+                  <p>El sistema se encuentra habilitado para que registre sus <strong>preferencias y restricciones horarias</strong> para el semestre ${semestreActivo}.</p>
                   <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
                     <p style="margin: 5px 0;"><strong>Usuario (Email):</strong> ${emailDestino}</p>
                     <p style="margin: 5px 0;"><strong>Contraseña Temporal:</strong> <span style="font-family: monospace; font-size: 16px; color: #1a56db; font-weight: bold;">${passwordTemporal}</span></p>
@@ -250,13 +262,12 @@ const SecretariaController = {
 
               console.log(`✅ Masivo: Correo enviado a ${emailDestino}`);
             } catch (error) {
-              // Si un correo falla (ej. rebotado), atrapamos el error aquí 
-              // para que el bucle "for" no se rompa y siga con el siguiente docente.
+              // Si un correo falla, el bucle "for" continúa
               console.error(`❌ Masivo: Error enviando a ${docente.email}:`, error.response?.data || error.message);
             }
           }
 
-          // Si el bucle termina, hacemos el Commit de toda la transacción
+          // Commit de toda la transacción
           await client.query('COMMIT');
           console.log('✅ Proceso masivo de correos finalizado con éxito.');
 
@@ -264,13 +275,11 @@ const SecretariaController = {
           await client.query('ROLLBACK');
           console.error('[Sistema] Error crítico en envío masivo de segundo plano:', bgError);
         } finally {
-          // Protegemos la base de datos devolviendo la conexión
           client.release();
         }
       })();
 
     } catch (error) {
-      // Si ocurre un error ANTES de iniciar el proceso de fondo
       client.release();
       console.error('Error al preparar el envío masivo:', error);
       if (!res.headersSent) {
@@ -285,33 +294,49 @@ const SecretariaController = {
       // Iniciamos una transacción para que la lectura y escritura sean seguras
       await client.query('BEGIN');
 
-      const checkQuery = `
-        SELECT id 
-        FROM docentes 
-        WHERE password IS NULL OR password = '' 
-           OR email IS NULL OR email = ''
-      `;
-      const checkResult = await client.query(checkQuery);
+      // 1. Obtener el semestre activo de la configuración
+      const configQuery = `SELECT valor FROM configuracion WHERE clave = 'semestre_activo'`;
+      const configResult = await client.query(configQuery);
+      const semestreActivo = configResult.rows.length > 0 ? configResult.rows[0].valor : '2026-1';
 
-      // 2. Si encontramos al menos uno, cancelamos todo el proceso
+      // 2. Verificar credenciales SOLO de los docentes que tienen carga en el semestre activo
+      const checkQuery = `
+        SELECT DISTINCT d.id 
+        FROM docentes d
+        INNER JOIN asignacion_docente_curso adc ON d.id = adc.docente_id
+        WHERE adc.semestre_asignacion = $1
+          AND (d.password IS NULL OR d.password = '' OR d.email IS NULL OR d.email = '')
+      `;
+      const checkResult = await client.query(checkQuery, [semestreActivo]);
+
+      // 3. Si encontramos al menos uno con carga pero sin credenciales, cancelamos
       if (checkResult.rows.length > 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ 
           success: false, 
-          message: `Acción cancelada: Se encontraron ${checkResult.rows.length} docente(s) sin credenciales o correo registrado. Genere los accesos masivos primero.` 
+          message: `Acción cancelada: Se encontraron ${checkResult.rows.length} docente(s) con carga en el semestre ${semestreActivo} sin credenciales o correo. Genere los accesos masivos primero.` 
         });
       }
 
-      // 3. Si pasó la validación (todos tienen credenciales), actualizamos a Completado
-      const updateQuery = `UPDATE docentes SET estado_turno = 'Completado' WHERE estado_turno != 'Completado'`;
-      await client.query(updateQuery);
+      // 4. Si pasó la validación, actualizamos a Completado SOLO a los docentes con carga en el semestre
+      const updateQuery = `
+        UPDATE docentes 
+        SET estado_turno = 'Completado' 
+        WHERE estado_turno != 'Completado'
+          AND id IN (
+            SELECT DISTINCT docente_id 
+            FROM asignacion_docente_curso 
+            WHERE semestre_asignacion = $1
+          )
+      `;
+      await client.query(updateQuery, [semestreActivo]);
       
       // Guardamos los cambios
       await client.query('COMMIT');
       
       return res.json({ 
         success: true, 
-        message: 'Todos los turnos han sido bloqueados (marcados como Completados).' 
+        message: 'Todos los turnos de los docentes con carga asignada han sido bloqueados (Completados).' 
       });
     } catch (error) {
       // Si el servidor falla, deshacemos cualquier cambio a medias

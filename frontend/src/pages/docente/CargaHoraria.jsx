@@ -152,11 +152,13 @@ const CargaHoraria = () => {
   const horasRequeridas =
     resumen?.limites?.requerido || resumen?.limites?.max || 40;
   const isValido = totalGeneral === horasRequeridas; 
-  const porcentaje = Math.min((totalGeneral / horasRequeridas) * 100, 100);
-
-  let statusColor = "bg-warning-500"; 
-  if (totalGeneral > horasRequeridas) statusColor = "bg-danger-500";
-  else if (totalGeneral === horasRequeridas) statusColor = "bg-success-500";
+  const porcentajeLectivo = Math.min((horasLectivas / horasRequeridas) * 100, 100);
+  const porcentajeNoLectivo = Math.min(
+    (totalNoLectivo / horasRequeridas) * 100,
+    Math.max(100 - porcentajeLectivo, 0)
+  );
+  const horasRestantes = Math.max(horasRequeridas - totalGeneral, 0);
+  const horasExcedidas = Math.max(totalGeneral - horasRequeridas, 0);
 
   const handleGuardar = async () => {
     if (esCompletado) return; // Doble validación por seguridad
@@ -385,17 +387,38 @@ const CargaHoraria = () => {
           </div>
         </div>
 
-        <div className="w-full bg-neutral-200 dark:bg-neutral-700 h-3 rounded-full overflow-hidden flex">
+        <div className="w-full bg-neutral-200 dark:bg-neutral-700 h-4 rounded-full overflow-hidden flex shadow-inner">
           <div
-            className={`h-full ${statusColor} transition-all duration-500 ease-out`}
-            style={{ width: `${porcentaje}%` }}
+            className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-500 ease-out"
+            style={{ width: `${porcentajeLectivo}%` }}
+            title={`Carga lectiva: ${horasLectivas}h`}
+          />
+          <div
+            className="h-full bg-emerald-500 dark:bg-emerald-400 transition-all duration-500 ease-out"
+            style={{ width: `${porcentajeNoLectivo}%` }}
+            title={`Carga no lectiva: ${totalNoLectivo}h`}
           />
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-blue-500 dark:bg-blue-400" />
+            Lectivas: {horasLectivas}h
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            No lectivas: {totalNoLectivo}h
+          </span>
+          <span className={`inline-flex items-center gap-1.5 ${isValido ? "text-success-600 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400"}`}>
+            Total: {totalGeneral}h / {horasRequeridas}h
+          </span>
+        </div>
+
         {!isValido && (
           <p className="text-xs text-danger-500 dark:text-danger-400 mt-2 font-medium">
             {totalGeneral < horasRequeridas
-              ? `Te faltan ${horasRequeridas - totalGeneral}h para completar tu requerimiento.`
-              : `Has excedido tu requerimiento por ${totalGeneral - horasRequeridas}h.`}
+              ? `Te faltan ${horasRestantes}h para completar tu requerimiento.`
+              : `Has excedido tu requerimiento por ${horasExcedidas}h.`}
           </p>
         )}
       </div>

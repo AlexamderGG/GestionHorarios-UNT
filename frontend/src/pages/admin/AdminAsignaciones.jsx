@@ -46,6 +46,16 @@ const AdminAsignaciones = () => {
   const [ambientesOcupados, setAmbientesOcupados] = useState([]);
   const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
 
+  // 🌟 NUEVO ESTADO: Memoria Global para recordar la configuración de grupos del usuario
+  const [gruposGlobales, setGruposGlobales] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unt_grupos_config');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const semestre = config?.semestre_activo || "2026-1";
 
   const cargarDatos = useCallback(async () => {
@@ -109,27 +119,20 @@ const AdminAsignaciones = () => {
     
     const asigs = getAsignacionesDeCurso(curso.id);
     
-    // 🚀 LÓGICA CORREGIDA PARA RECORDAR LA CANTIDAD DE GRUPOS REALES
+    // 🚀 LÓGICA CORREGIDA: Recupera la cantidad de grupos desde la Memoria Local
     const calcularGruposFijos = (tipo) => {
+      let dbMax = 1;
       const asigsTipo = asigs.filter(a => a.tipo === tipo);
       if (asigsTipo.length > 0) {
-        // Filtrar asignaciones que tienen formato de letra (A, B, C...)
         const letterGroups = asigsTipo.filter(a => a.grupo && a.grupo !== 'Único');
-        
         if (letterGroups.length > 0) {
-          // Buscar la letra más alta en la base de datos (ej. si existe 'C', la más alta es 'C')
           const highestLetter = letterGroups.reduce((max, a) => a.grupo > max ? a.grupo : max, 'A');
-          // Convertir la letra a cantidad ('A' -> 1, 'B' -> 2, 'C' -> 3)
-          const num = highestLetter.charCodeAt(0) - 64;
-          
-          // Si hay letras guardadas, MÍNIMO el curso se dividió en 2. Retornamos el número real.
-          return Math.max(num, 2);
+          dbMax = Math.max(highestLetter.charCodeAt(0) - 64, 2);
         }
-        
-        // Si hay asignación pero ninguna es letra, entonces es grupo 'Único'
-        return 1;
       }
-      return 1;
+      
+      const memoized = gruposGlobales[`${curso.id}-${tipo}`];
+      return memoized ? Math.max(memoized, dbMax) : dbMax;
     };
 
     setNumGrupos({ 
@@ -157,9 +160,28 @@ const AdminAsignaciones = () => {
 
   const toggleParte = (idParte) => setCheckedPartes(prev => prev.includes(idParte) ? prev.filter(p => p !== idParte) : [...prev, idParte]);
 
+  // 🚀 LÓGICA CORREGIDA: Guarda la división de grupos en memoria
   const handleCambioGrupos = (tipo, nuevoValor) => {
-    const valorNum = Math.max(1, Number(nuevoValor));
+    const asigsGuardadas = getAsignacionesDeCurso(cursoSeleccionado?.id).filter(a => a.tipo === tipo);
+    // Si ya existe 'Único', no podemos cambiar nada
+    if (asigsGuardadas.some(a => !a.grupo || a.grupo === 'Único')) return;
+
+    let minGrupos = 1;
+    const letterGroups = asigsGuardadas.filter(a => a.grupo && a.grupo !== 'Único');
+    if (letterGroups.length > 0) {
+      const highestLetter = letterGroups.reduce((max, a) => a.grupo > max ? a.grupo : max, 'A');
+      minGrupos = Math.max(highestLetter.charCodeAt(0) - 64, 2);
+    }
+
+    const valorNum = Math.max(minGrupos, Number(nuevoValor));
     setNumGrupos(prev => ({ ...prev, [tipo]: valorNum }));
+
+    // Guardar en Memoria Local para recordarlo después
+    setGruposGlobales(prev => {
+      const updated = { ...prev, [`${cursoSeleccionado.id}-${tipo}`]: valorNum };
+      localStorage.setItem('unt_grupos_config', JSON.stringify(updated));
+      return updated;
+    });
 
     setCheckedPartes(prev => {
       const teniaSeleccion = prev.some(item => item.startsWith(`${tipo}-`));
@@ -595,7 +617,9 @@ const AdminAsignaciones = () => {
                       const themeColors = { Teoria: "primary", Practica: "emerald", Laboratorio: "indigo" }[tipo];
                       const asigsGuardadas = getAsignacionesDeCurso(cursoSeleccionado.id).filter(a => a.tipo === tipo);
                       
-                      const estaBloqueado = asigsGuardadas.length > 0;
+                      // Validación lógica: Si el grupo 'Único' ya fue asignado, bloqueamos todo para evitar desbaratarlo
+                      const bloqueoTotal = asigsGuardadas.some(a => !a.grupo || a.grupo === 'Único');
+                      
                       const horasPorGrupo = horasTotal; 
                         
                       const nombresGrupos = numGrupos[tipo] === 1 ? ['Único'] : Array.from({length: numGrupos[tipo]}, (_, i) => String.fromCharCode(65 + i));
@@ -609,12 +633,12 @@ const AdminAsignaciones = () => {
                                 Se asignan horas completas ({horasPorGrupo}h por grupo)
                               </span>
                             </div>
-                            <div className={`flex items-center gap-2 text-sm bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm ${estaBloqueado ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                            <div className={`flex items-center gap-2 text-sm bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-sm ${bloqueoTotal ? 'opacity-70 cursor-not-allowed' : ''}`}>
                               <span className="text-neutral-600 dark:text-neutral-400 font-medium">Dividir curso en:</span>
                               <input 
                                 type="number" min="1" max="10" 
-                                disabled={estaBloqueado}
-                                className={`w-12 text-center font-bold outline-none bg-transparent ${estaBloqueado ? 'text-neutral-400 dark:text-neutral-500' : 'dark:text-white'}`}
+                                disabled={bloqueoTotal}
+                                className={`w-12 text-center font-bold outline-none bg-transparent ${bloqueoTotal ? 'text-neutral-400 dark:text-neutral-500' : 'dark:text-white'}`}
                                 value={numGrupos[tipo]}
                                 onChange={(e) => handleCambioGrupos(tipo, e.target.value)}
                               />

@@ -387,7 +387,7 @@ const AdminAsignaciones = () => {
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 transition-colors">
               <Filter className="w-3.5 h-3.5 inline mr-1 text-neutral-400 dark:text-neutral-500" />
-              Especialidad
+              Departamento 
             </label>
             <select value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="input w-48 dark:bg-neutral-900 dark:border-neutral-700 dark:text-white transition-colors">
               <option value="">Todas</option>
@@ -415,7 +415,7 @@ const AdminAsignaciones = () => {
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-24">Código</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Curso y Malla</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-16">Ciclo</th>
-                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-40">Especialidad</th>
+                <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-40">Departamento</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Horas</th>
                 <th className="text-left p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Asignaciones</th>
                 <th className="text-center p-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase w-28">Acción</th>

@@ -172,7 +172,9 @@ const AdminHorarios = () => {
     setEditForm({ ...editForm, hora_inicio: horaIni, hora_fin: calcularHoraFinAutomatica(horaIni, horasRequeridas) });
   };
 
-  // 🌟 MOTOR DE VALIDACIÓN CORREGIDO CON SETs ÚNICOS
+  // =====================================================================
+  // BARRIDO DE TIEMPO (SWEEP LINE) PARA VALIDACIÓN EXACTA DE CRUCES
+  // =====================================================================
   const verificarConflictoCreate = (horaIniPropuesta) => {
     if (!asigSeleccionada || !createForm.dia) return null;
     const horasRequeridas = Number(asigSeleccionada.horas_asignadas || 2);
@@ -184,9 +186,6 @@ const AdminHorarios = () => {
     if (finPropuestoMin > timeToMinutes(config?.hora_fin || "22:00")) return `Excede cierre`;
 
     const targetDia = normalizarDia(createForm.dia);
-    const crucesEnCiclo = new Set(); // Evita doble conteo del mismo grupo
-    
-    // Extracción limpia del curso entrante
     const cursoSel = cursos.find(c => c.id === asigSeleccionada.curso_id);
     const cicloModal = cursoSel?.ciclo || asigSeleccionada.ciclo;
     
@@ -194,6 +193,8 @@ const AdminHorarios = () => {
     const cInTip = String(asigSeleccionada.tipo || '').toUpperCase();
     const cInNom = String(cursoSel?.nombre || '').toUpperCase();
     const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
+
+    const clasesCruzadas = []; // Guardaremos los intervalos exactos de colisión
 
     for (const h of horarios) {
       if (normalizarDia(h.dia) === targetDia) {
@@ -219,14 +220,30 @@ const AdminHorarios = () => {
             if (!isIncomingException || !isExistingException) {
                return `Cruce con Teoría (Ciclo ${cicloModal})`;
             }
-            // Agregamos el ID de la asignación. Si son 2 bloques del mismo grupo, cuenta como 1.
-            crucesEnCiclo.add(h.asignacion_id);
+            
+            // Registramos el rango de tiempo de cruce efectivo
+            clasesCruzadas.push({
+              ini: Math.max(hIni, iniPropuestoMin),
+              fin: Math.min(hFin, finPropuestoMin),
+              id: h.asignacion_id || h.id
+            });
           }
         }
       }
     }
-    
-    if (crucesEnCiclo.size >= 2) return `Límite 2 grupos paralelos`;
+
+    // Comprobamos la carga concurrente barriendo cada 15 minutos de la clase propuesta
+    for (let t = iniPropuestoMin; t < finPropuestoMin; t += 15) {
+      const concurrentIds = new Set();
+      for (const c of clasesCruzadas) {
+        if (t >= c.ini && t < c.fin) {
+          concurrentIds.add(c.id);
+        }
+      }
+      // Si en ALGÚN MINUTO exacto hay 2 o más laboratorios, bloquea
+      if (concurrentIds.size >= 2) return `Límite 2 grupos paralelos`;
+    }
+
     return null;
   };
 
@@ -242,8 +259,6 @@ const AdminHorarios = () => {
     if (finPropuestoMin > timeToMinutes(config?.hora_fin || "22:00")) return `Excede cierre`;
 
     const targetDia = normalizarDia(editForm.dia);
-    const crucesEnCiclo = new Set();
-
     const cursoSel = cursos.find(c => c.id === asigSeleccionada?.curso_id) || editando.curso;
     const cicloModal = cursoSel?.ciclo || asigSeleccionada?.ciclo || editando.ciclo;
     
@@ -251,6 +266,8 @@ const AdminHorarios = () => {
     const cInTip = String(asigSeleccionada?.tipo || editando.tipo || '').toUpperCase();
     const cInNom = String(cursoSel?.nombre || '').toUpperCase();
     const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
+
+    const clasesCruzadas = [];
 
     for (const h of horarios) {
       if (Number(h.id) !== Number(editando.id) && normalizarDia(h.dia) === targetDia) {
@@ -276,12 +293,26 @@ const AdminHorarios = () => {
             if (!isIncomingException || !isExistingException) {
                return `Cruce con Teoría (Ciclo ${cicloModal})`;
             }
-            crucesEnCiclo.add(h.asignacion_id);
+            
+            clasesCruzadas.push({
+              ini: Math.max(hIni, iniPropuestoMin),
+              fin: Math.min(hFin, finPropuestoMin),
+              id: h.asignacion_id || h.id
+            });
           }
         }
       }
     }
-    if (crucesEnCiclo.size >= 2) return `Límite 2 grupos paralelos`;
+
+    for (let t = iniPropuestoMin; t < finPropuestoMin; t += 15) {
+      const concurrentIds = new Set();
+      for (const c of clasesCruzadas) {
+        if (t >= c.ini && t < c.fin) {
+          concurrentIds.add(c.id);
+        }
+      }
+      if (concurrentIds.size >= 2) return `Límite 2 grupos paralelos`;
+    }
     return null;
   };
 

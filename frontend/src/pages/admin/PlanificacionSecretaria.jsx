@@ -136,7 +136,7 @@ const PlanificacionSecretaria = () => {
     }
   };
 
-  //  MOTOR INTELIGENTE DE CRUCES AMPLIADO (CON LA CORRECCIÓN >= 2)
+  // 🌟 MOTOR INTELIGENTE CON ALGORITMO DE BARRIDO (SWEEP LINE) EXACTO
   const checkHoraStatus = (diaCandidate, horaCandidate, cursoTarget) => {
     const curso = cursoTarget || cursoActivo;
     if (!diaCandidate || !docenteSelect || !curso) return { invalida: true, motivo: '' };
@@ -144,7 +144,10 @@ const PlanificacionSecretaria = () => {
     const horaFinCandidate = sumarHoras(horaCandidate, Number(curso.horas_asignadas || 0));
     const horaCierre = config?.hora_fin || "22:00";
 
-    if (timeToMins(horaFinCandidate) > timeToMins(horaCierre)) {
+    const iniPropuestoMin = timeToMins(horaCandidate);
+    const finPropuestoMin = timeToMins(horaFinCandidate);
+
+    if (finPropuestoMin > timeToMins(horaCierre)) {
       return { invalida: true, motivo: `Excede cierre (${formatAMPM(horaCierre)})` };
     }
 
@@ -181,10 +184,9 @@ const PlanificacionSecretaria = () => {
       const cInTip = String(curso.tipo || '').toUpperCase();
       const cInNom = String(curso.curso_nombre || '').toUpperCase();
       
-      // Identificamos si el curso ENTRANTE es Electivo o Laboratorio
       const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
       
-      let overlapsCount = 0;
+      const clasesCruzadas = []; // Guardará los intervalos exactos para el barrido
 
       // 1. REVISAR CONTRA BASE DE DATOS
       for (let h of horariosMismoCiclo) {
@@ -194,13 +196,17 @@ const PlanificacionSecretaria = () => {
           const hNombre = String(h.curso_nombre || h.curso?.nombre || h.asignacion?.curso?.nombre || h.asignacion?.curso_nombre || '').toUpperCase();
           const hasLabId = h.laboratorio_id !== null && h.laboratorio_id !== undefined;
 
-          // Evaluamos si la clase que ya existe en BD es Electivo o Lab
-          const isExistingException = hCodigo.startsWith('EL-') || hTipo.includes('LAB') || hNombre.includes('ELECTIV') || hasLabId;
+          const isExistingException = hCodigo.startsWith('EL') || hTipo.includes('LAB') || hNombre.includes('ELECTIV') || hasLabId;
           
           if (!isIncomingException || !isExistingException) {
             return { invalida: true, motivo: `Cruce regular C${cicloModal}` };
           }
-          overlapsCount++;
+          
+          clasesCruzadas.push({
+            ini: Math.max(timeToMins(h.hora_inicio), iniPropuestoMin),
+            fin: Math.min(timeToMins(h.hora_fin), finPropuestoMin),
+            id: h.asignacion_id || h.id
+          });
         }
       }
 
@@ -209,19 +215,34 @@ const PlanificacionSecretaria = () => {
         if (checkOverlap(horaCandidate, horaFinCandidate, b.hora_inicio, b.hora_fin)) {
           const bCodigo = String(b.curso_codigo || b.curso?.codigo || '').toUpperCase();
           const bTipo = String(b.tipo || '').toUpperCase();
+          const bNombre = String(b.curso_nombre || '').toUpperCase();
           
-          const isExistingException = bCodigo.startsWith('EL-') || bTipo.includes('LAB');
+          const isExistingException = bCodigo.startsWith('EL') || bTipo.includes('LAB') || bNombre.includes('ELECTIV');
 
           if (!isIncomingException || !isExistingException) {
             return { invalida: true, motivo: `Cruce regular C${cicloModal}` };
           }
-          overlapsCount++;
+          
+          clasesCruzadas.push({
+            ini: Math.max(timeToMins(b.hora_inicio), iniPropuestoMin),
+            fin: Math.min(timeToMins(b.hora_fin), finPropuestoMin),
+            id: b.asignacion_id
+          });
         }
       }
 
-      // 🌟 CORRECCIÓN VITAL: Si hay 2 o más cruces, se bloquea la grilla (Límite Máximo 2)
-      if (overlapsCount >= 2) {
-         return { invalida: true, motivo: `Límite Máx (2) C${cicloModal}` };
+      // 3. VALIDACIÓN POR BARRIDO (SWEEP LINE CADA 15 MINUTOS)
+      for (let t = iniPropuestoMin; t < finPropuestoMin; t += 15) {
+        const concurrentIds = new Set();
+        for (const c of clasesCruzadas) {
+          if (t >= c.ini && t < c.fin) {
+            concurrentIds.add(c.id);
+          }
+        }
+        // Si en este momento exacto hay 2 o más cruzándose, bloquea.
+        if (concurrentIds.size >= 2) {
+           return { invalida: true, motivo: `Límite Máx (2) C${cicloModal}` };
+        }
       }
     }
     return { invalida: false, motivo: '' };

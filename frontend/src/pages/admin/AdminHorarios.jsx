@@ -172,9 +172,6 @@ const AdminHorarios = () => {
     setEditForm({ ...editForm, hora_inicio: horaIni, hora_fin: calcularHoraFinAutomatica(horaIni, horasRequeridas) });
   };
 
-  // =====================================================================
-  // BARRIDO DE TIEMPO (SWEEP LINE) PARA VALIDACIÓN EXACTA DE CRUCES
-  // =====================================================================
   const verificarConflictoCreate = (horaIniPropuesta) => {
     if (!asigSeleccionada || !createForm.dia) return null;
     const horasRequeridas = Number(asigSeleccionada.horas_asignadas || 2);
@@ -186,15 +183,11 @@ const AdminHorarios = () => {
     if (finPropuestoMin > timeToMinutes(config?.hora_fin || "22:00")) return `Excede cierre`;
 
     const targetDia = normalizarDia(createForm.dia);
+    let overlapsCount = 0;
+    
     const cursoSel = cursos.find(c => c.id === asigSeleccionada.curso_id);
     const cicloModal = cursoSel?.ciclo || asigSeleccionada.ciclo;
-    
-    const cInCod = String(cursoSel?.codigo || '').toUpperCase();
-    const cInTip = String(asigSeleccionada.tipo || '').toUpperCase();
-    const cInNom = String(cursoSel?.nombre || '').toUpperCase();
-    const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
-
-    const clasesCruzadas = []; // Guardaremos los intervalos exactos de colisión
+    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL') || asigSeleccionada.tipo === 'Laboratorio';
 
     for (const h of horarios) {
       if (normalizarDia(h.dia) === targetDia) {
@@ -205,52 +198,26 @@ const AdminHorarios = () => {
           if (String(h.docente?.id || h.docente_id) === String(asigSeleccionada.docente_id)) {
             return "Docente ocupado";
           }
-          
-          const asigH = asignaciones.find(a => a.id === h.asignacion_id);
-          const cursoH = cursos.find(c => c.id === asigH?.curso_id) || h.curso;
-          const cicloH = cursoH?.ciclo || asigH?.ciclo || h.ciclo;
-
+          const cicloH = h.curso?.ciclo || h.ciclo;
           if (cicloModal && String(cicloModal) !== "0" && String(cicloH) === String(cicloModal)) {
-            const hCodigo = String(cursoH?.codigo || h.codigo_curso || '').toUpperCase();
-            const hTipo = String(asigH?.tipo || h.tipo || h.tipo_asignacion || '').toUpperCase();
-            const hNombre = String(cursoH?.nombre || h.curso_nombre || '').toUpperCase();
-            
-            const isExistingException = hCodigo.startsWith('EL') || hTipo.includes('LAB') || hNombre.includes('ELECTIV');
+            const isExistingException = (h.curso?.codigo || '').startsWith('EL') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
             
             if (!isIncomingException || !isExistingException) {
-               return `Cruce con Teoría (Ciclo ${cicloModal})`;
+               return `Cruce regular Ciclo ${cicloModal}`;
             }
-            
-            // Registramos el rango de tiempo de cruce efectivo
-            clasesCruzadas.push({
-              ini: Math.max(hIni, iniPropuestoMin),
-              fin: Math.min(hFin, finPropuestoMin),
-              id: h.asignacion_id || h.id
-            });
+            overlapsCount++;
           }
         }
       }
     }
-
-    // Comprobamos la carga concurrente barriendo cada 15 minutos de la clase propuesta
-    for (let t = iniPropuestoMin; t < finPropuestoMin; t += 15) {
-      const concurrentIds = new Set();
-      for (const c of clasesCruzadas) {
-        if (t >= c.ini && t < c.fin) {
-          concurrentIds.add(c.id);
-        }
-      }
-      // Si en ALGÚN MINUTO exacto hay 2 o más laboratorios, bloquea
-      if (concurrentIds.size >= 2) return `Límite 2 grupos paralelos`;
-    }
-
+    if (overlapsCount >= 2) return `Ciclo ${cicloModal} lleno (Max 2)`;
     return null;
   };
 
   const verificarConflictoEdit = (horaIniPropuesta) => {
     if (!editando || !editForm.dia) return null;
-    const asigSeleccionada = asignaciones.find(a => a.id === editando.asignacion_id);
-    const horasRequeridas = asigSeleccionada ? Number(asigSeleccionada.horas_asignadas) : 2;
+    const asig = asignaciones.find(a => a.id === editando.asignacion_id);
+    const horasRequeridas = asig ? Number(asig.horas_asignadas) : 2;
     const horaFinPropuesta = calcularHoraFinAutomatica(horaIniPropuesta, horasRequeridas);
     if (!horaFinPropuesta) return null;
 
@@ -259,15 +226,11 @@ const AdminHorarios = () => {
     if (finPropuestoMin > timeToMinutes(config?.hora_fin || "22:00")) return `Excede cierre`;
 
     const targetDia = normalizarDia(editForm.dia);
-    const cursoSel = cursos.find(c => c.id === asigSeleccionada?.curso_id) || editando.curso;
-    const cicloModal = cursoSel?.ciclo || asigSeleccionada?.ciclo || editando.ciclo;
-    
-    const cInCod = String(cursoSel?.codigo || '').toUpperCase();
-    const cInTip = String(asigSeleccionada?.tipo || editando.tipo || '').toUpperCase();
-    const cInNom = String(cursoSel?.nombre || '').toUpperCase();
-    const isIncomingException = cInCod.startsWith('EL') || cInTip.includes('LAB') || cInNom.includes('ELECTIV');
+    let overlapsCount = 0;
 
-    const clasesCruzadas = [];
+    const cursoSel = cursos.find(c => c.id === asig?.curso_id) || editando.curso;
+    const cicloModal = cursoSel?.ciclo || editando.ciclo;
+    const isIncomingException = (cursoSel?.codigo || '').startsWith('EL') || asig?.tipo === 'Laboratorio' || editando.tipo === 'Laboratorio';
 
     for (const h of horarios) {
       if (Number(h.id) !== Number(editando.id) && normalizarDia(h.dia) === targetDia) {
@@ -278,41 +241,19 @@ const AdminHorarios = () => {
           if (String(h.docente?.id || h.docente_id) === String(editando.docente?.id || editando.docente_id)) {
             return "Docente ocupado";
           }
-          
-          const asigH = asignaciones.find(a => a.id === h.asignacion_id);
-          const cursoH = cursos.find(c => c.id === asigH?.curso_id) || h.curso;
-          const cicloH = cursoH?.ciclo || asigH?.ciclo || h.ciclo;
-
+          const cicloH = h.curso?.ciclo || h.ciclo;
           if (cicloModal && String(cicloModal) !== "0" && String(cicloH) === String(cicloModal)) {
-            const hCodigo = String(cursoH?.codigo || h.codigo_curso || '').toUpperCase();
-            const hTipo = String(asigH?.tipo || h.tipo || h.tipo_asignacion || '').toUpperCase();
-            const hNombre = String(cursoH?.nombre || h.curso_nombre || '').toUpperCase();
-            
-            const isExistingException = hCodigo.startsWith('EL') || hTipo.includes('LAB') || hNombre.includes('ELECTIV');
+            const isExistingException = (h.curso?.codigo || '').startsWith('EL') || h.tipo === 'Laboratorio' || h.tipo_asignacion === 'Laboratorio';
             
             if (!isIncomingException || !isExistingException) {
-               return `Cruce con Teoría (Ciclo ${cicloModal})`;
+               return `Cruce regular Ciclo ${cicloModal}`;
             }
-            
-            clasesCruzadas.push({
-              ini: Math.max(hIni, iniPropuestoMin),
-              fin: Math.min(hFin, finPropuestoMin),
-              id: h.asignacion_id || h.id
-            });
+            overlapsCount++;
           }
         }
       }
     }
-
-    for (let t = iniPropuestoMin; t < finPropuestoMin; t += 15) {
-      const concurrentIds = new Set();
-      for (const c of clasesCruzadas) {
-        if (t >= c.ini && t < c.fin) {
-          concurrentIds.add(c.id);
-        }
-      }
-      if (concurrentIds.size >= 2) return `Límite 2 grupos paralelos`;
-    }
+    if (overlapsCount >= 2) return `Ciclo ${cicloModal} lleno (Max 2)`;
     return null;
   };
 
@@ -388,6 +329,7 @@ const AdminHorarios = () => {
     } catch (err) { alert(err.response?.data?.message || "Error al guardar"); }
   };
 
+
   // =========================================================================
   // AUXILIARES DE RENDERIZACIÓN PARA PDF Y EXCEL (ALGORITMO GEOMÉTRICO)
   // =========================================================================
@@ -450,6 +392,7 @@ const AdminHorarios = () => {
       });
       
       if (startIdx !== -1) {
+        // ✅ CORRECCIÓN: Agregamos el "tipo" al evento para detectarlo luego
         events.push({ 
             h, asig, groupKey, startIdx, endIdx, 
             span: endIdx - startIdx + 1, dia: diaNorm, 
@@ -470,6 +413,7 @@ const AdminHorarios = () => {
     events.forEach(ev => {
       if (!curr) curr = { ...ev };
       else {
+        // ✅ CORRECCIÓN: Evitamos la fusión si el bloque actual o el nuevo son "Laboratorio"
         const esLaboratorio = curr.tipo === 'Laboratorio' || ev.tipo === 'Laboratorio';
 
         if (curr.groupKey === ev.groupKey && curr.endIdx >= ev.startIdx - 1 && !esLaboratorio) {
@@ -531,6 +475,10 @@ const AdminHorarios = () => {
     }
     return mat;
   };
+
+  // =========================================================================
+  // MÉTODOS DE EXPORTACIÓN REFACTORIZADOS Y SEGUROS
+  // =========================================================================
 
   const exportarPDFCiclo = () => {
     try {

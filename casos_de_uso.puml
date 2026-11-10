@@ -1,0 +1,70 @@
+@startuml
+left to right direction
+skinparam packageStyle rect
+skinparam actorStyle awesome
+
+actor "Docente" as Docente
+actor "Administrador" as Admin
+
+rectangle "Sistema de Gestión de Horarios UNT (Iteración 1)" {
+  
+  package "Seguridad" {
+    usecase "HU-01 / HU-08: Iniciar Sesión" as UC_Login
+  }
+  
+  package "Portal Docente" {
+    usecase "HU-02: Consultar Cursos Asignados" as UC_VerCursos
+    usecase "HU-03: Consultar Horario Semanal" as UC_VerHorario
+    usecase "HU-04: Seleccionar Horario" as UC_SelHorario
+    usecase "HU-05: Eliminar Horario Propio" as UC_DelHorario
+    usecase "HU-06: Consultar Restricciones" as UC_VerRestr
+    usecase "HU-07: Gestionar Restricciones\n(Agregar / Eliminar)" as UC_GestRestr
+    usecase "HU-22: Consultar Indicador de Turno" as UC_VerTurno
+  }
+  
+  package "Módulo Administrador" {
+    usecase "HU-11: Asignar Horario Manual" as UC_AsigManual
+    usecase "HU-12: Consultar Horarios Agrupados" as UC_VerHorariosGroup
+    usecase "HU-13: Consultar Progreso de Selección" as UC_VerProgreso
+    usecase "HU-14: Editar / Eliminar Horarios (Admin)" as UC_GestHorariosAdmin
+  }
+  
+  package "Simulador de Turnos (Modo Demo)" {
+    usecase "HU-09: Activar / Desactivar Demo" as UC_ToggleDemo
+    usecase "HU-10 / HU-21: Avanzar Turno" as UC_AvanzarTurno
+    usecase "HU-20: Configurar Minutos por Paso" as UC_ConfigPaso
+  }
+}
+
+' Relaciones del Docente
+Docente --> UC_Login
+Docente --> UC_VerCursos
+Docente --> UC_VerHorario
+Docente --> UC_SelHorario
+Docente --> UC_DelHorario
+Docente --> UC_VerRestr
+Docente --> UC_GestRestr
+Docente --> UC_VerTurno
+
+' Relaciones del Administrador
+Admin --> UC_Login
+Admin --> UC_AsigManual
+Admin --> UC_VerHorariosGroup
+Admin --> UC_VerProgreso
+Admin --> UC_GestHorariosAdmin
+Admin --> UC_ToggleDemo
+Admin --> UC_AvanzarTurno
+Admin --> UC_ConfigPaso
+
+' Validaciones de Negocio del Sistema para Selección de Horario (HU-04)
+usecase "HU-15: Validar No Solapamiento Docente" as UC_ValDocente
+usecase "HU-16: Validar No Doble Ocupación Aula/Lab" as UC_ValAula
+usecase "HU-17: Validar Restricciones del Docente" as UC_ValRestr
+usecase "HU-19: Consultar Ambientes Disponibles" as UC_VerAmbDisp
+
+UC_SelHorario ..> UC_ValDocente : <<include>>
+UC_SelHorario ..> UC_ValAula : <<include>>
+UC_SelHorario ..> UC_ValRestr : <<include>>
+UC_SelHorario ..> UC_VerAmbDisp : <<include>>
+
+@enduml
